@@ -197,6 +197,17 @@ namespace AppsFlyerSDK
 #endif
         }
 
+        //// <summary>
+        /// Set the deepLink timeout value that should be used for DDL.
+        /// </summary>
+        /// <param name="deepLinkTimeout">deepLink timeout in milliseconds.</param>
+        public void setDeepLinkTimeout(long deepLinkTimeout)
+        {
+#if !UNITY_EDITOR
+             appsFlyerAndroid.CallStatic("setDeepLinkTimeout", deepLinkTimeout);
+#endif
+        }
+
         /// <summary>
         /// Set the user emails.
         /// </summary>
@@ -354,6 +365,18 @@ namespace AppsFlyerSDK
         }
 
         /// <summary>
+        /// Calling enableTCFDataCollection(true) will enable collecting and sending any TCF related data.
+        /// Calling enableTCFDataCollection(false) will disable the collection of TCF related data and from sending it.
+        /// </summary>
+        /// <param name = "shouldCollectTcfData" >should start TCF Data collection boolean.</param>
+        public void enableTCFDataCollection(bool shouldCollectTcfData)
+        {
+#if !UNITY_EDITOR
+             appsFlyerAndroid.CallStatic("enableTCFDataCollection", shouldCollectTcfData);
+#endif
+        }
+
+        /// <summary>
         /// Enable the collection of Facebook Deferred AppLinks.
         /// Requires Facebook SDK and Facebook app on target/client device.
         /// This API must be invoked prior to initializing the AppsFlyer SDK in order to function properly.
@@ -366,6 +389,34 @@ namespace AppsFlyerSDK
 #endif
         }
 
+        /// <summary>
+        /// Sets or updates the user consent data related to GDPR and DMA regulations for advertising and data usage purposes within the application.
+        /// call this method when GDPR user is true
+        /// </summary>
+        /// <param name = "hasConsentForDataUsage" >hasConsentForDataUsage boolean.</param>
+        /// <param name = "hasConsentForAdsPersonalization" >hasConsentForAdsPersonalization boolean.</param>
+        public void setConsentData(AppsFlyerConsent appsFlyerConsent)
+        {
+#if !UNITY_EDITOR
+           string isUserSubjectToGDPR = appsFlyerConsent.isUserSubjectToGDPR?.ToString().ToLower() ?? "null";
+           string hasConsentForDataUsage = appsFlyerConsent.hasConsentForDataUsage?.ToString().ToLower() ?? "null";
+           string hasConsentForAdsPersonalization = appsFlyerConsent.hasConsentForAdsPersonalization?.ToString().ToLower() ?? "null";
+           string hasConsentForAdStorage = appsFlyerConsent.hasConsentForAdStorage?.ToString().ToLower() ?? "null";
+
+           appsFlyerAndroid.CallStatic("setConsentData", isUserSubjectToGDPR, hasConsentForDataUsage, hasConsentForAdsPersonalization, hasConsentForAdStorage);
+#endif
+        }
+
+        /// <summary>
+        /// Logs ad revenue data along with additional parameters if provided.
+        /// <param name = "adRevenueData" >instance of AFAdRevenueData containing ad revenue information.</param>
+        /// <param name = "additionalParameters" >An optional map of additional parameters to be logged with ad revenue data. This can be null if there are no additional parameters.</param>
+        public void logAdRevenue(AFAdRevenueData adRevenueData, Dictionary<string, string> additionalParameters)
+        {
+#if !UNITY_EDITOR
+            appsFlyerAndroid.CallStatic("logAdRevenue", adRevenueData.monetizationNetwork, getMediationNetwork(adRevenueData.mediationNetwork), adRevenueData.currencyIso4217Code, adRevenueData.eventRevenue, convertDictionaryToJavaMap(additionalParameters));
+#endif
+        }
 
         /// <summary>
         /// Restrict reengagement via deep-link to once per each unique deep-link.
@@ -446,6 +497,19 @@ namespace AppsFlyerSDK
         {
 #if !UNITY_EDITOR
            appsFlyerAndroid.CallStatic("validateAndTrackInAppPurchase", publicKey, signature, purchaseData, price, currency, convertDictionaryToJavaMap(additionalParameters), gameObject ? gameObject.name : null);
+#endif
+        }
+
+        /// <summary>
+        /// API for server verification of in-app purchases.
+        /// An af_purchase event with the relevant values will be automatically sent if the validation is successful.
+        /// </summary>
+        /// <param name="details">AFPurchaseDetailsAndroid instance.</param>
+        /// <param name="additionalParameters">additionalParameters Freehand parameters to be sent with the purchase (if validated).</param>
+        public void validateAndSendInAppPurchase(AFPurchaseDetailsAndroid details, Dictionary<string, string> additionalParameters, MonoBehaviour gameObject)
+        {
+#if !UNITY_EDITOR
+           appsFlyerAndroid.CallStatic("validateAndTrackInAppPurchaseV2", (int)details.purchaseType, details.purchaseToken, details.productId, details.price, details.currency, convertDictionaryToJavaMap(additionalParameters), gameObject ? gameObject.name : null);
 #endif
         }
 
@@ -704,6 +768,65 @@ namespace AppsFlyerSDK
         /// <summary>
         /// Internal Helper Method.
         /// </summary>
+        private static AndroidJavaObject getMediationNetwork(MediationNetwork mediationNetwork)
+        {
+            AndroidJavaClass mediationNetworkEnumClass = new AndroidJavaClass("com.appsflyer.MediationNetwork");
+            AndroidJavaObject mediationNetworkObject;
+
+            switch (mediationNetwork)
+            {
+                case MediationNetwork.IronSource:
+                    mediationNetworkObject = mediationNetworkEnumClass.GetStatic<AndroidJavaObject>("IRONSOURCE");
+                    break;
+                case MediationNetwork.ApplovinMax:
+                    mediationNetworkObject = mediationNetworkEnumClass.GetStatic<AndroidJavaObject>("APPLOVIN_MAX");
+                    break;
+                case MediationNetwork.GoogleAdMob:
+                    mediationNetworkObject = mediationNetworkEnumClass.GetStatic<AndroidJavaObject>("GOOGLE_ADMOB");
+                    break;
+                case MediationNetwork.Fyber:
+                    mediationNetworkObject = mediationNetworkEnumClass.GetStatic<AndroidJavaObject>("FYBER");
+                    break;
+                case MediationNetwork.Appodeal:
+                    mediationNetworkObject = mediationNetworkEnumClass.GetStatic<AndroidJavaObject>("APPODEAL");
+                    break;
+                case MediationNetwork.Admost:
+                    mediationNetworkObject = mediationNetworkEnumClass.GetStatic<AndroidJavaObject>("ADMOST");
+                    break;
+                case MediationNetwork.Topon:
+                    mediationNetworkObject = mediationNetworkEnumClass.GetStatic<AndroidJavaObject>("TOPON");
+                    break;
+                case MediationNetwork.Tradplus:
+                    mediationNetworkObject = mediationNetworkEnumClass.GetStatic<AndroidJavaObject>("TRADPLUS");
+                    break;
+                case MediationNetwork.Yandex:
+                    mediationNetworkObject = mediationNetworkEnumClass.GetStatic<AndroidJavaObject>("YANDEX");
+                    break;
+                case MediationNetwork.ChartBoost:
+                    mediationNetworkObject = mediationNetworkEnumClass.GetStatic<AndroidJavaObject>("CHARTBOOST");
+                    break;
+                case MediationNetwork.Unity:
+                    mediationNetworkObject = mediationNetworkEnumClass.GetStatic<AndroidJavaObject>("UNITY");
+                    break;
+                case MediationNetwork.ToponPte:
+                    mediationNetworkObject = mediationNetworkEnumClass.GetStatic<AndroidJavaObject>("TOPON_PTE");
+                    break;
+                case MediationNetwork.Custom:
+                    mediationNetworkObject = mediationNetworkEnumClass.GetStatic<AndroidJavaObject>("CUSTOM_MEDIATION");
+                    break;
+                case MediationNetwork.DirectMonetization:
+                    mediationNetworkObject = mediationNetworkEnumClass.GetStatic<AndroidJavaObject>("DIRECT_MONETIZATION_NETWORK");
+                    break;
+                default:
+                    mediationNetworkObject = mediationNetworkEnumClass.GetStatic<AndroidJavaObject>("NONE");
+                    break;
+        }
+        return mediationNetworkObject;
+        }
+
+        /// <summary>
+        /// Internal Helper Method.
+        /// </summary>
         private static AndroidJavaObject convertDictionaryToJavaMap(Dictionary<string, string> dictionary)
         {
             AndroidJavaObject map = new AndroidJavaObject("java.util.HashMap");
@@ -723,9 +846,6 @@ namespace AppsFlyerSDK
             return map;
         }
     }
-
 #endif
-
-
 
 }

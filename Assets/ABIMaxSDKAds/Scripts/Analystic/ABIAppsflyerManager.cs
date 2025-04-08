@@ -15,7 +15,7 @@ namespace SDK
     {
         private static ABIAppsflyerManager instance;
         public static ABIAppsflyerManager Instance { get { return instance; } }
-
+        
         private void Awake()
         {
             if (instance)
@@ -25,7 +25,10 @@ namespace SDK
             }
             DontDestroyOnLoad(gameObject);
             instance = this;
-            AppsFlyerAdRevenue.start();
+        }
+
+        private void Start()
+        {
         }
 
         public static void SendEvent(string eventName, Dictionary<string, string> pairs)
@@ -34,27 +37,37 @@ namespace SDK
         }
         public static void SendEvent(string eventName)
         {
-            AppsFlyer.sendEvent(eventName, null);
+            Debug.Log("ABIAppsflyer call send event " + eventName);
+            AppsFlyer.sendEvent(eventName, new Dictionary<string, string>());
         }
 
         #region Conversion
         public void onConversionDataSuccess(string conversionData)
         {
+            Debug.Log("ABIAppsflyer onConversionDataSuccess " + conversionData);
         }
 
         public void onConversionDataFail(string error)
         {
             AppsFlyer.AFLog("onConversionDataFail", error);
+            Debug.Log("ABIAppsflyer onConversionDataFail " + error);
         }
 
         public void onAppOpenAttribution(string attributionData)
         {
             AppsFlyer.AFLog("onAppOpenAttribution", attributionData);
+            Debug.Log("ABIAppsflyer onAppOpenAttribution " + attributionData);
         }
 
         public void onAppOpenAttributionFailure(string error)
         {
             AppsFlyer.AFLog("onAppOpenAttributionFailure", error);
+            Debug.Log("ABIAppsflyer onAppOpenAttributionFailure " + error);
+        }
+
+        public static void onFirstOpen()
+        {
+            SendEvent(af_first_open);
         }
         #endregion
 
@@ -72,6 +85,8 @@ namespace SDK
         public const string af_rewarded_show_count = "af_rewarded_show_count_";
         
         public const string af_level_achieved = "af_level_achieved";
+        public const string af_completed_level = "completed_level_";
+        public const string af_first_open = "first_open";
 
         /// <summary>
         /// 
@@ -88,13 +103,14 @@ namespace SDK
         {
             SendEvent(af_inters_displayed);
         }
-        public void TrackInterstitial_ShowCount(int total, float revenue) {
+        public static void TrackInterstitial_ShowCount(int total) {
+            Debug.Log("TrackInterstitial_ShowCount " + total);
             if (total == 0) return;
-            bool isTracking = total % 5 == 0;
-
-            if (!isTracking) return;
-            string eventName = af_inters_show_count + total;
-            SendEvent(eventName);
+            if (total <= 20)
+            {
+                string eventName = string.Format(af_inters_show_count, total);
+                SendEvent(eventName);    
+            }
         }
         public static void TrackRewarded_ClickShowButton()
         {
@@ -118,9 +134,9 @@ namespace SDK
         }
         public static void TrackAppflyerPurchase(string purchaseId, decimal cost, string currency) {
             float fCost = (float)cost;
-            fCost *= 0.63f;
+            fCost *= 0.65f;
             Dictionary<string, string> eventValue = new Dictionary<string, string>();
-            eventValue.Add(AFInAppEvents.REVENUE, fCost.ToString());
+            eventValue.Add(AFInAppEvents.REVENUE, fCost.ToString(CultureInfo.InvariantCulture));
             eventValue.Add(AFInAppEvents.CURRENCY, currency);
             eventValue.Add(AFInAppEvents.QUANTITY, "1");
             AppsFlyer.sendEvent(AFInAppEvents.PURCHASE, eventValue);
@@ -128,21 +144,39 @@ namespace SDK
 
         public static void TrackAppsflyerAdRevenue(ImpressionData impressionData)
         {
-            Dictionary<string,string> eventValue = new Dictionary<string, string>
+            Debug.Log("TrackAppsflyerAdRevenue " + impressionData.ad_revenue + " " + impressionData.ad_source + " " + impressionData.ad_mediation + " " + impressionData.ad_unit_name + " " + impressionData.ad_format);
+            MediationNetwork mediationNetwork = MediationNetwork.ApplovinMax;
+            switch (impressionData.ad_mediation)
             {
-                { "ad_platform", "applovin" },
-                { "ad_source", impressionData.ad_source },
-                { "ad_unit_name", impressionData.ad_unit_name },
-                { "ad_format", impressionData.ad_format },
-                { "placement", "" },
-                { "value", impressionData.ad_revenue.ToString(CultureInfo.InvariantCulture) },
-                { "currency", impressionData.ad_currency }
-            };
-            AppsFlyerAdRevenue.logAdRevenue(impressionData.ad_source, 
-                AppsFlyerAdRevenueMediationNetworkType.AppsFlyerAdRevenueMediationNetworkTypeApplovinMax,
-                impressionData.ad_revenue,
-                "USD",
-                eventValue);
+                case AdsMediationType.MAX:
+                {
+                    mediationNetwork = MediationNetwork.ApplovinMax;
+                    break;
+                }
+                case AdsMediationType.ADMOB:
+                {
+                    mediationNetwork = MediationNetwork.GoogleAdMob;
+                    break;
+                }
+                case AdsMediationType.IRONSOURCE:
+                {
+                    mediationNetwork = MediationNetwork.IronSource;
+                    break;
+                }
+            }
+            Dictionary<string, string> additionalParams = new Dictionary<string, string>();
+            additionalParams.Add(AdRevenueScheme.COUNTRY, "USA");
+            additionalParams.Add(AdRevenueScheme.AD_UNIT, impressionData.ad_unit_name);
+            additionalParams.Add(AdRevenueScheme.AD_TYPE, impressionData.ad_format);
+            additionalParams.Add(AdRevenueScheme.PLACEMENT, "");
+            var logRevenue = new AFAdRevenueData(impressionData.ad_source, mediationNetwork, "USD", impressionData.ad_revenue);
+            AppsFlyer.logAdRevenue(logRevenue, additionalParams); 
+        }
+        public static void TrackCompleteLevel(int level)
+        {
+            if (level > 200) return;
+            string eventName = af_completed_level + level;
+            SendEvent(eventName);
         }
         #endregion
 

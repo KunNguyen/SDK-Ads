@@ -129,7 +129,7 @@ public class PanelAdsTest : MonoBehaviour
     
     public void ShowInter()
     {
-        AdsManager.Instance.ShowInterstitial(null,null,false);
+        AdsManager.Instance.ShowInterstitial(null,null,null);
     }
 
     public void ShowReward()

@@ -16,13 +16,13 @@ MonoBehaviour:
   interstitialCappingTime: 30
   maxAdsSetup:
     sdkKey:
-      AndroidID: ZoNyqu_piUmpl33-qkoIfRp6MTZGW9M5xk1mb1ZIWK6FN9EBu0TXSHeprC3LMPQI7S3kTc1-x7DJGSV8S-gvFJ
+      AndroidID: uJa4sGbT3zSQ9zw2o_CzJrxzsUI682WXsNFOfDGoT0Z5SsqQSWN52AZi7P0UtoN13VRe_MgEZodmMuzDKQwf0d
     interstitialAdUnitID:
-      AndroidID: 
+      AndroidID: dc0ad761a49f5182
     rewardedAdUnitID:
-      AndroidID: 
+      AndroidID: ff0317a314d2117c
     bannerAdUnitID:
-      AndroidID: 
+      AndroidID: 6d8e4a6ca85ee0d0
     collapsibleBannerAdUnitID:
       AndroidID: 
     mrecAdUnitID:
@@ -43,15 +43,21 @@ MonoBehaviour:
       AndroidID: []
     appOpenAdUnitID:
       AndroidID: []
+  ironSourceAdSetup:
+    appKey: 
+    interstitialID: 
+    rewardedID: 
+    bannerID: 
   adsMediationType: 1
-  interstitialAdsMediationType: 0
+  interstitialAdsMediationType: 1
   rewardedAdsMediationType: 1
   IsLinkToRemoveAds: 1
-  bannerAdsMediationType: 0
-  maxBannerAdsPosition: 0
+  bannerAdsMediationType: 1
+  maxBannerAdsPosition: 1
   admobBannerAdsPosition: 0
-  isBannerShowingOnStart: 0
-  collapsibleBannerAdsMediationType: 2
+  isBannerShowingOnStart: 1
+  isAutoRefreshBannerByCode: 0
+  collapsibleBannerAdsMediationType: 0
   adsPositionCollapsibleBanner: 1
   isShowingOnStartCollapsibleBanner: 1
   isAutoRefreshCollapsibleBanner: 1
@@ -60,4 +66,5 @@ MonoBehaviour:
   isAutoCloseCollapsibleBanner: 0
   autoCloseTime: 30
   mrecAdsMediationType: 0
+  mrecAdsPosition: 0
   appOpenAdsMediationType: 0

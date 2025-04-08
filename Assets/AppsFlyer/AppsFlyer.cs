@@ -6,8 +6,7 @@ namespace AppsFlyerSDK
 {
     public class AppsFlyer : MonoBehaviour
     {
-
-        public static readonly string kAppsFlyerPluginVersion = "6.12.20";
+        public static readonly string kAppsFlyerPluginVersion = "6.16.2";
         public static string CallBackObjectName = null;
         private static EventHandler onRequestResponse;
         private static EventHandler onInAppResponse;
@@ -225,6 +224,21 @@ namespace AppsFlyerSDK
         }
 
         /// <summary>
+        /// Set the deepLink timeout value that should be used for DDL.
+        /// </summary>
+        /// <param name="deepLinkTimeout">deepLink timeout in milliseconds.</param>
+        public static void setDeepLinkTimeout(long deepLinkTimeout)
+        {
+
+            if (instance != null)
+            {
+                instance.setDeepLinkTimeout(deepLinkTimeout);
+            }
+
+
+        }
+
+        /// <summary>
         /// Set additional data to be sent to AppsFlyer.
         /// </summary>
         /// <param name="customData">additional data Dictionary.</param>
@@ -307,6 +321,31 @@ namespace AppsFlyerSDK
         }
 
         /// <summary>
+        /// Sets or updates the user consent data related to GDPR and DMA regulations for advertising and data usage purposes within the application.
+        /// </summary>
+        /// <param name = "appsFlyerConsent" >instance of AppsFlyerConsent.</param>
+        public static void setConsentData(AppsFlyerConsent appsFlyerConsent)
+        {
+            if (instance != null)
+            {
+                instance.setConsentData(appsFlyerConsent);
+            }
+        }
+
+        /// <summary>
+        /// Logs ad revenue data along with additional parameters if provided.
+        /// </summary>
+        /// <param name = "adRevenueData" >instance of AFAdRevenueData containing ad revenue information.</param>
+        /// <param name = "additionalParameters" >An optional map of additional parameters to be logged with ad revenue data. This can be null if there are no additional parameters.</param>
+        public static void logAdRevenue(AFAdRevenueData adRevenueData, Dictionary<string, string> additionalParameters)
+        {
+            if (instance != null)
+            {
+                instance.logAdRevenue(adRevenueData, additionalParameters);
+            }
+        }
+
+        /// <summary>
         /// Manually record the location of the user.
         /// </summary>
         /// <param name="latitude">latitude as double.</param>
@@ -337,6 +376,19 @@ namespace AppsFlyerSDK
             }
 
 
+        }
+
+        /// <summary>
+        /// Calling enableTCFDataCollection(true) will enable collecting and sending any TCF related data.
+        /// Calling enableTCFDataCollection(false) will disable the collection of TCF related data and from sending it.
+        /// </summary>
+        /// <param name = "shouldCollectTcfData" >should start TCF Data collection boolean.</param>
+        public static void enableTCFDataCollection(bool shouldCollectTcfData)
+        {
+            if (instance != null)
+            {
+                instance.enableTCFDataCollection(shouldCollectTcfData);
+            }
         }
 
         /// <summary>
@@ -716,12 +768,22 @@ namespace AppsFlyerSDK
             }
         }
 
-        public static void validateAndSendInAppPurchase(string productIdentifier, string price, string currency, string tranactionId, Dictionary<string, string> additionalParameters, MonoBehaviour gameObject)
+        public static void validateAndSendInAppPurchase(string productIdentifier, string price, string currency, string transactionId, Dictionary<string, string> additionalParameters, MonoBehaviour gameObject)
         {
             if (instance != null && instance is IAppsFlyerIOSBridge)
             {
                 IAppsFlyerIOSBridge appsFlyeriOSInstance = (IAppsFlyerIOSBridge)instance;
-                appsFlyeriOSInstance.validateAndSendInAppPurchase(productIdentifier, price, currency, tranactionId, additionalParameters, gameObject);
+                appsFlyeriOSInstance.validateAndSendInAppPurchase(productIdentifier, price, currency, transactionId, additionalParameters, gameObject);
+            }
+        }
+
+        // V2 
+        public static void validateAndSendInAppPurchase(AFSDKPurchaseDetailsIOS details, Dictionary<string, string> extraEventValues, MonoBehaviour gameObject)
+        {
+            if (instance != null && instance is IAppsFlyerIOSBridge)
+            {
+                IAppsFlyerIOSBridge appsFlyeriOSInstance = (IAppsFlyerIOSBridge)instance;
+                appsFlyeriOSInstance.validateAndSendInAppPurchase(details, extraEventValues, gameObject);
             }
         }
 
@@ -731,6 +793,16 @@ namespace AppsFlyerSDK
             {
                 IAppsFlyerAndroidBridge appsFlyerAndroidInstance = (IAppsFlyerAndroidBridge)instance;
                 appsFlyerAndroidInstance.validateAndSendInAppPurchase(publicKey, signature,purchaseData, price, currency, additionalParameters, gameObject);
+            }
+        }
+
+        // V2
+        public static void validateAndSendInAppPurchase(AFPurchaseDetailsAndroid details, Dictionary<string, string> additionalParameters, MonoBehaviour gameObject)
+        {
+            if (instance != null && instance is IAppsFlyerAndroidBridge)
+            {
+                IAppsFlyerAndroidBridge appsFlyerAndroidInstance = (IAppsFlyerAndroidBridge)instance;
+                appsFlyerAndroidInstance.validateAndSendInAppPurchase(details, additionalParameters, gameObject);
             }
         }
 
