@@ -1,3 +1,6 @@
+using System;
+using System.Collections;
+using AppsFlyerSDK;
 using Firebase;
 using Firebase.Analytics;
 using Firebase.Extensions;
@@ -16,6 +19,9 @@ namespace SDK {
 
         private static ABIFirebaseManager m_Instance;
         public static ABIFirebaseManager Instance => m_Instance;
+        
+        public bool IsFirebaseReady { get; private set; } = false;
+        public bool IsFirebaseRemoteFetchingSuccess { get; private set; } = false;
 
         public FirebaseApp FirebaseApp { get; set; }
         private void Awake() {
@@ -23,6 +29,22 @@ namespace SDK {
             DontDestroyOnLoad(gameObject);
             Init();
         }
+
+        IEnumerator Start() {
+            yield return new WaitUntil(() => IsFirebaseReady);
+#if FIREBASE_MESSAGING
+            Firebase.Messaging.FirebaseMessaging.TokenReceived += OnTokenReceived; 
+#endif
+        }
+#if FIREBASE_MESSAGING
+        public void OnTokenReceived(object sender, Firebase.Messaging.TokenReceivedEventArgs token)
+        {
+#if UNITY_ANDROID && UNITY_APPSFLYER
+            AppsFlyer.updateServerUninstallToken(token.Token);
+#endif
+        } 
+#endif
+
         private void Init() {
             m_FirebaseAnalyticsManager = new FirebaseAnalyticsManager();
             m_FirebaseRemoteConfigManager = new FirebaseRemoteConfigManager();
@@ -30,29 +52,30 @@ namespace SDK {
             Firebase.FirebaseApp.CheckAndFixDependenciesAsync().ContinueWithOnMainThread(task => {
                 DependencyStatus dependencyStatus = task.Result;
                 if (dependencyStatus == Firebase.DependencyStatus.Available) {
-                    InitializeFirebase();
+                    InitializedFirebase();
                 } else {
                     Debug.LogError("Could not resolve all Firebase dependencies: " + task.Result);
                 }
             });
         }
-        private void InitializeFirebase()
+        private void InitializedFirebase()
         {
+            Debug.Log("Initialize Firebase");
             FirebaseApp = FirebaseApp.DefaultInstance;
-            IsFirebaseReady = true;
             m_FirebaseInitedSuccessCallback?.Invoke();
             SetupRemoteConfig();
+            IsFirebaseReady = true;
         }
         private void SetupRemoteConfig()
         {
             m_FirebaseRemoteConfigManager.InitRemoteConfig(OnFetchSuccess);
         }
         private void OnFetchSuccess() {
-            Debug.Log("Fetch Success");
             Debug.Log("---------------------Update All RemoteConfigs----------------------");
             EventManager.AddEventNextFrame(() => EventManager.TriggerEvent("UpdateRemoteConfigs"));
+            IsFirebaseRemoteFetchingSuccess = true;
         }
-        public bool IsFirebaseReady { get; private set; } = false;
+        
 
         public void LogFirebaseEvent(string eventName, string eventParamete, double eventValue) {
             if (IsFirebaseReady) {
@@ -79,6 +102,18 @@ namespace SDK {
         }
         public ConfigValue GetConfigValue(string key) {
             return m_FirebaseRemoteConfigManager.GetValues(key);
+        }
+        public string GetConfigString(string key)
+        {
+            return m_FirebaseRemoteConfigManager.GetValues(key).StringValue;
+        }
+        public double GetConfigDouble(string key)
+        {
+            return m_FirebaseRemoteConfigManager.GetValues(key).DoubleValue;
+        }
+        public bool GetConfigBool(string key)
+        {
+            return m_FirebaseRemoteConfigManager.GetValues(key).BooleanValue;
         }
     }
 }

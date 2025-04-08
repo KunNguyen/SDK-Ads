@@ -32,19 +32,32 @@ namespace SDK {
         #region Banner Ads
         protected UnityAction m_BannerAdLoadedSuccessCallback;
         protected UnityAction m_BannerAdLoadedFailCallback;
+        protected UnityAction m_BannerAdsDisplayedCallback;
+        protected UnityAction m_BannerAdsDisplayedFailedCallback;
+        protected UnityAction m_BannerAdsClickedCallback;
         protected UnityAction m_BannerAdsCollapsedCallback;
         protected UnityAction m_BannerAdsExpandedCallback;
-        public virtual void InitBannerAds(UnityAction bannerLoadedSuccessCallback, UnityAction bannerAdLoadedFailCallback, UnityAction bannerAdsCallback, UnityAction bannerAdsExpandedCallback) {
+        
+        public virtual void InitBannerAds(
+            UnityAction bannerLoadedSuccessCallback, UnityAction bannerAdLoadedFailCallback, 
+            UnityAction bannerAdsCollapsedCallback, UnityAction bannerAdsExpandedCallback,
+            UnityAction bannerAdsDisplayed = null, UnityAction bannerAdsDisplayedFailedCallback = null,
+            UnityAction bannerAdsClickedCallback = null) {
             m_BannerAdLoadedSuccessCallback = bannerLoadedSuccessCallback;
             m_BannerAdLoadedFailCallback = bannerAdLoadedFailCallback;
-            m_BannerAdsCollapsedCallback = bannerAdsCallback;
+            m_BannerAdsCollapsedCallback = bannerAdsCollapsedCallback;
             m_BannerAdsExpandedCallback = bannerAdsExpandedCallback;
+            m_BannerAdsDisplayedCallback = bannerAdsDisplayed;
+            m_BannerAdsDisplayedFailedCallback = bannerAdsDisplayedFailedCallback;
+            m_BannerAdsClickedCallback = bannerAdsClickedCallback;
         }
         public virtual void RequestBannerAds() {
         }
         public virtual void ShowBannerAds() {
         }
         public virtual void HideBannerAds() {
+        }
+        public virtual void CreateBannerAds() {
         }
         public virtual void DestroyBannerAds() {
         }

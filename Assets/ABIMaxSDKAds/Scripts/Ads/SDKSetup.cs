@@ -24,6 +24,7 @@ public partial class SDKSetup : ScriptableObject
     public float interstitialCappingTime = 30;
     [HideInInspector]public MaxAdSetup maxAdsSetup;
     [HideInInspector]public AdmobAdSetup admobAdsSetup;
+    [HideInInspector]public IronSourceAdSetup ironSourceAdSetup;
     
     public AdsMediationType GetAdsMediationType(AdsType adsType)
     {
@@ -61,7 +62,7 @@ public partial class SDKSetup : ScriptableObject
         }
         
         SetupSymbol();
-        if (adsManager)
+        if (adsManager!= null)
         {
 #if UNITY_AD_MAX
             if (adsMediationType == AdsMediationType.MAX)
@@ -72,6 +73,12 @@ public partial class SDKSetup : ScriptableObject
                 EditorUtility.SetDirty(applovinSettings);
                 AssetDatabase.SaveAssets();
             }
+#endif
+#if UNITY_AD_IRONSOURCE
+            if (adsMediationType == AdsMediationType.IRONSOURCE)
+            {
+                
+            } 
 #endif
         }
         
@@ -246,6 +253,13 @@ public partial class SDKSetup
         get => maxAdsSetup.SDKKey;
         set => maxAdsSetup.SDKKey = value;
     }
+    [BoxGroup("SDK Key")]
+    [ShowInInspector, ShowIf("@adsMediationType == AdsMediationType.IRONSOURCE")]
+    public string sdk_IronSource
+    {
+        get => ironSourceAdSetup.appKey;
+        set => ironSourceAdSetup.appKey = value;
+    }
 }
 public partial class SDKSetup
 {
@@ -261,6 +275,12 @@ public partial class SDKSetup
     {
         get => admobAdsSetup.InterstitialAdUnitIDList;
         set => admobAdsSetup.InterstitialAdUnitIDList = value;
+    }
+    [BoxGroup("INTERSTITIAL")][ShowInInspector, ShowIf("@interstitialAdsMediationType == AdsMediationType.IRONSOURCE")]
+    public string interstitialAdUnitID_IRONSOURCE
+    {
+        get => ironSourceAdSetup.interstitialID;
+        set => ironSourceAdSetup.interstitialID = value;
     }
 }
 public partial class SDKSetup
@@ -279,6 +299,14 @@ public partial class SDKSetup
         get => admobAdsSetup.RewardedAdUnitIDList;
         set => admobAdsSetup.RewardedAdUnitIDList = value;
     }
+    
+    [BoxGroup("REWARDED")][ShowInInspector, ShowIf("@rewardedAdsMediationType == AdsMediationType.IRONSOURCE")]
+    public string rewardedAdUnitID_IRONSOURCE
+    {
+        get => ironSourceAdSetup.rewardedID;
+        set => ironSourceAdSetup.rewardedID = value;
+    }
+    
 }
 public partial class SDKSetup
 {
@@ -291,6 +319,7 @@ public partial class SDKSetup
     #endif
     
     [BoxGroup("BANNER")][ShowInInspector, ShowIf("@bannerAdsMediationType != AdsMediationType.NONE")] public bool isBannerShowingOnStart = false;
+    [BoxGroup("BANNER")][ShowInInspector, ShowIf("@bannerAdsMediationType != AdsMediationType.NONE")] public bool isAutoRefreshBannerByCode = false;
 
     [BoxGroup("BANNER")][ShowInInspector, ShowIf("@bannerAdsMediationType == AdsMediationType.MAX")]
     public string bannerAdUnitID_MAX
@@ -303,6 +332,12 @@ public partial class SDKSetup
     {
         get => admobAdsSetup.BannerAdUnitIDList;
         set => admobAdsSetup.BannerAdUnitIDList = value;
+    }
+    [BoxGroup("BANNER")][ShowInInspector, ShowIf("@bannerAdsMediationType == AdsMediationType.IRONSOURCE")]
+    public string bannerAdUnitID_IRONSOURCE
+    {
+        get => ironSourceAdSetup.bannerID;
+        set => ironSourceAdSetup.bannerID = value;
     }
 }
 public partial class SDKSetup
@@ -334,6 +369,9 @@ public partial class SDKSetup
 public partial class SDKSetup
 {
     [BoxGroup("MREC")] public AdsMediationType mrecAdsMediationType;
+    [BoxGroup("MREC")] [ShowInInspector, ShowIf("@mrecAdsMediationType == AdsMediationType.ADMOB")]
+    public AdPosition mrecAdsPosition;
+    
     [BoxGroup("MREC")] [ShowInInspector, ShowIf("@mrecAdsMediationType == AdsMediationType.MAX")]
     public string mrecAdUnitID_MAX
     {

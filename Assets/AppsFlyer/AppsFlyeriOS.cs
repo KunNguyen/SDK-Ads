@@ -186,6 +186,57 @@ public void startSDK(bool shouldCallback, string CallBackObjectName)
         }
 
         /// <summary>
+        /// Set the deepLink timeout value that should be used for DDL.
+        /// </summary>
+        /// <param name="deepLinkTimeout">deepLink timeout in milliseconds.</param>
+        public void setDeepLinkTimeout(long deepLinkTimeout)
+        {
+#if !UNITY_EDITOR
+            _setDeepLinkTimeout(deepLinkTimeout);
+#endif
+         }
+
+        /// <summary>
+        /// Calling enableTCFDataCollection(true) will enable collecting and sending any TCF related data.
+        /// Calling enableTCFDataCollection(false) will disable the collection of TCF related data and from sending it.
+        /// </summary>
+        /// <param name = "shouldCollectTcfData" >should start TCF Data collection boolean.</param>
+        public void enableTCFDataCollection(bool shouldCollectTcfData)
+        {
+#if !UNITY_EDITOR
+            _enableTCFDataCollection(shouldCollectTcfData);
+#endif
+         }
+
+        /// <summary>
+        /// Sets or updates the user consent data related to GDPR and DMA regulations for advertising and data usage purposes within the application.
+        /// </summary>
+        /// <param name = "appsFlyerConsent" >instance of AppsFlyerConsent.</param>
+        public void setConsentData(AppsFlyerConsent appsFlyerConsent)
+        {
+#if !UNITY_EDITOR
+           string isUserSubjectToGDPR = appsFlyerConsent.isUserSubjectToGDPR?.ToString().ToLower() ?? "null";
+           string hasConsentForDataUsage = appsFlyerConsent.hasConsentForDataUsage?.ToString().ToLower() ?? "null";
+           string hasConsentForAdsPersonalization = appsFlyerConsent.hasConsentForAdsPersonalization?.ToString().ToLower() ?? "null";
+           string hasConsentForAdStorage = appsFlyerConsent.hasConsentForAdStorage?.ToString().ToLower() ?? "null";
+
+           _setConsentData(isUserSubjectToGDPR, hasConsentForDataUsage, hasConsentForAdsPersonalization, hasConsentForAdStorage);
+#endif
+         }
+
+        /// <summary>
+        /// Logs ad revenue data along with additional parameters if provided.
+        /// </summary>
+        /// <param name = "adRevenueData" >instance of AFAdRevenueData containing ad revenue information.</param>
+        /// <param name = "additionalParameters" >An optional map of additional parameters to be logged with ad revenue data. This can be null if there are no additional parameters.</param>
+        public void logAdRevenue(AFAdRevenueData adRevenueData, Dictionary<string, string> additionalParameters)
+        {
+#if !UNITY_EDITOR
+            _logAdRevenue(adRevenueData.monetizationNetwork, adRevenueData.mediationNetwork, adRevenueData.currencyIso4217Code, adRevenueData.eventRevenue, AFMiniJSON.Json.Serialize(additionalParameters));
+#endif
+         }
+
+        /// <summary>
         /// Anonymize user Data.
         /// Use this API during the SDK Initialization to explicitly anonymize a user's installs, events and sessions.
         /// Default is false
@@ -284,17 +335,30 @@ public void startSDK(bool shouldCallback, string CallBackObjectName)
         }
 
         /// <summary>
-        ///  To send and validate in app purchases you can call this method from the processPurchase method.
+        ///  To send and validate in app purchases you can call this method from the processPurchase method - please use v2.
         /// </summary>
         /// <param name="productIdentifier">The product identifier.</param>
         /// <param name="price">The product price.</param>
         /// <param name="currency">The product currency.</param>
-        /// <param name="tranactionId">The purchase transaction Id.</param>
+        /// <param name="transactionId">The purchase transaction Id.</param>
         /// <param name="additionalParameters">The additional param, which you want to receive it in the raw reports.</param>
-        public void validateAndSendInAppPurchase(string productIdentifier, string price, string currency, string tranactionId, Dictionary<string, string> additionalParameters, MonoBehaviour gameObject)
+        public void validateAndSendInAppPurchase(string productIdentifier, string price, string currency, string transactionId, Dictionary<string, string> additionalParameters, MonoBehaviour gameObject)
         {
 #if !UNITY_EDITOR
-            _validateAndSendInAppPurchase(productIdentifier, price, currency, tranactionId, AFMiniJSON.Json.Serialize(additionalParameters), gameObject ? gameObject.name : null);
+            _validateAndSendInAppPurchase(productIdentifier, price, currency, transactionId, AFMiniJSON.Json.Serialize(additionalParameters), gameObject ? gameObject.name : null);
+#endif
+        }
+
+        /// <summary>
+        ///  V2
+        ///  To send and validate in app purchases you can call this method from the processPurchase method.
+        /// </summary>
+        /// <param name="details">The AFSDKPurchaseDetailsIOS instance.</param>
+        /// <param name="extraEventValues">The extra params, which you want to receive it in the raw reports.</param>
+        public void validateAndSendInAppPurchase(AFSDKPurchaseDetailsIOS details, Dictionary<string, string> extraEventValues, MonoBehaviour gameObject)
+        {
+#if !UNITY_EDITOR
+            _validateAndSendInAppPurchaseV2(details.productId, details.price, details.currency, details.transactionId, AFMiniJSON.Json.Serialize(extraEventValues), gameObject ? gameObject.name : null);
 #endif
         }
 
@@ -680,7 +744,35 @@ public void startSDK(bool shouldCallback, string CallBackObjectName)
 #elif UNITY_STANDALONE_OSX
         [DllImport("AppsFlyerBundle")]
 #endif
+        private static extern void _setDeepLinkTimeout(long deepLinkTimeout);
+
+#if UNITY_IOS
+    [DllImport("__Internal")]
+#elif UNITY_STANDALONE_OSX
+        [DllImport("AppsFlyerBundle")]
+#endif
         private static extern void _anonymizeUser(bool shouldAnonymizeUser);
+
+#if UNITY_IOS
+    [DllImport("__Internal")]
+#elif UNITY_STANDALONE_OSX
+        [DllImport("AppsFlyerBundle")]
+#endif
+        private static extern void _enableTCFDataCollection(bool shouldCollectTcfData);
+
+#if UNITY_IOS
+    [DllImport("__Internal")]
+#elif UNITY_STANDALONE_OSX
+        [DllImport("AppsFlyerBundle")]
+#endif
+        private static extern void _setConsentData(string isUserSubjectToGDPR, string hasConsentForDataUsage, string hasConsentForAdsPersonalization, string hasConsentForAdStorage);
+
+#if UNITY_IOS
+    [DllImport("__Internal")]
+#elif UNITY_STANDALONE_OSX
+        [DllImport("AppsFlyerBundle")]
+#endif
+        private static extern void _logAdRevenue(string monetizationNetwork, MediationNetwork mediationNetwork, string currencyIso4217Code, double eventRevenue, string additionalParameters);
 
 #if UNITY_IOS
     [DllImport("__Internal")]
@@ -743,7 +835,15 @@ public void startSDK(bool shouldCallback, string CallBackObjectName)
 #elif UNITY_STANDALONE_OSX
         [DllImport("AppsFlyerBundle")]
 #endif
-        private static extern void _validateAndSendInAppPurchase(string productIdentifier, string price, string currency, string tranactionId, string additionalParameters, string objectName);
+        private static extern void _validateAndSendInAppPurchase(string productIdentifier, string price, string currency, string transactionId, string additionalParameters, string objectName);
+
+
+#if UNITY_IOS
+    [DllImport("__Internal")]
+#elif UNITY_STANDALONE_OSX
+        [DllImport("AppsFlyerBundle")]
+#endif
+        private static extern void _validateAndSendInAppPurchaseV2(string product, string price, string currency, string transactionId, string extraEventValues, string objectName);
 
 #if UNITY_IOS
     [DllImport("__Internal")]

@@ -1,41 +1,25 @@
-buildscript {
-    repositories {
-        google()
-        jcenter()
-    }
-}
-
-allprojects {
-   repositories {
-      google()
-      flatDir {
-        dirs 'libs'
-      }
-   }
-}
-
 apply plugin: 'com.android.application'
 
 dependencies {
     implementation project(':unityLibrary')
-	implementation "androidx.multidex:multidex:2.0.1"
-	implementation 'androidx.appcompat:appcompat:1.4.1'
     }
 
 android {
+    namespace "**NAMESPACE**"
+    ndkPath "**NDKPATH**"
+
     compileSdkVersion **APIVERSION**
     buildToolsVersion '**BUILDTOOLS**'
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
     }
 
     defaultConfig {
         minSdkVersion **MINSDKVERSION**
         targetSdkVersion **TARGETSDKVERSION**
         applicationId '**APPLICATIONID**'
-		multiDexEnabled true
         ndk {
             abiFilters **ABIFILTERS**
         }
@@ -45,7 +29,7 @@ android {
 
     aaptOptions {
         noCompress = **BUILTIN_NOCOMPRESS** + unityStreamingAssets.tokenize(', ')
-        ignoreAssetsPattern = "!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~"
+        ignoreAssetsPattern = "!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~"
     }**SIGN**
 
     lintOptions {

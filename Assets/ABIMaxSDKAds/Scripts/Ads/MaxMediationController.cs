@@ -24,21 +24,24 @@ namespace SDK {
                 // AppLovin SDK is initialized, configure and start loading ads.
                 Debug.Log("MAX SDK Initialized");
                 AdsManager.Instance.InitAdsType(AdsMediationType.MAX);
+                MaxSdk.ShowMediationDebugger();
             };
             MaxSdk.SetSdkKey(m_MaxAdConfig.SDKKey);
+            MaxSdk.SetHasUserConsent(true);
+            MaxSdk.SetDoNotSell(false);
             MaxSdk.InitializeSdk();
         }
 
         private void OnAdRevenuePaidEvent(AdsType adsType, string adUnitId, MaxSdkBase.AdInfo impressionData) {
             double revenue = impressionData.Revenue;
             ImpressionData impression = new ImpressionData {
-                ad_platform = "AppLovin",
+                ad_mediation = AdsMediationType.MAX,
                 ad_source = impressionData.NetworkName,
                 ad_unit_name = impressionData.AdUnitIdentifier,
                 ad_format = impressionData.AdFormat,
                 ad_revenue = revenue,
                 ad_currency = "USD",
-                ad_type = adsType
+                ad_type = impressionData.AdFormat
             };
             AdRevenuePaidCallback?.Invoke(impression);
         }
@@ -204,8 +207,22 @@ namespace SDK {
 
         public MaxSdkBase.BannerPosition m_BannerPosition;
         private bool m_IsBannerLoaded;
-        public override void InitBannerAds(UnityAction bannerLoadedSuccessCallback, UnityAction bannerAdLoadedFailCallback, UnityAction bannerAdsCallback, UnityAction bannerAdsExpandedCallback) {
-            base.InitBannerAds(bannerLoadedSuccessCallback, bannerAdLoadedFailCallback, bannerAdsCallback, bannerAdsExpandedCallback);
+        public override void InitBannerAds(
+            UnityAction bannerLoadedSuccessCallback, 
+            UnityAction bannerAdLoadedFailCallback, 
+            UnityAction bannerAdsCollapsedCallback, 
+            UnityAction bannerAdsExpandedCallback,
+            UnityAction bannerAdsDisplayed, 
+            UnityAction bannerAdsDisplayedFailedCallback,
+            UnityAction bannerAdsClickedCallback) {
+            base.InitBannerAds(
+                bannerLoadedSuccessCallback, 
+                bannerAdLoadedFailCallback, 
+                bannerAdsCollapsedCallback, 
+                bannerAdsExpandedCallback,
+                bannerAdsDisplayed,
+                bannerAdsDisplayedFailedCallback,
+                bannerAdsClickedCallback);
             Debug.Log("Banner MAX Init ID = " + m_MaxAdConfig.BannerAdUnitID);
             MaxSdk.CreateBanner(m_MaxAdConfig.BannerAdUnitID, m_BannerPosition);
             MaxSdk.SetBannerBackgroundColor(m_MaxAdConfig.BannerAdUnitID, Color.black);
@@ -240,15 +257,16 @@ namespace SDK {
             m_BannerAdLoadedSuccessCallback?.Invoke();
             m_IsBannerLoaded = true;
         }
-        private void BannerAdLoadFailedEvent(string arg1, MaxSdkBase.ErrorInfo arg2)
+        private void BannerAdLoadFailedEvent(string adUnitID, MaxSdkBase.ErrorInfo errorInfo)
         {
             Debug.Log("MAX Mediation Banner Loaded Fail");
             m_BannerAdLoadedFailCallback?.Invoke();
             m_IsBannerLoaded = false;
         }
-        private void BannerAdClickedEvent(string arg1, MaxSdkBase.AdInfo arg2)
+        private void BannerAdClickedEvent(string adUnitID, MaxSdkBase.AdInfo adInfo)
         {
             Debug.Log("MAX Mediation Banner Clicked");
+            m_BannerAdsClickedCallback?.Invoke();
         }
         private void OnBannerAdCollapsedEvent(string adUnitID, MaxSdkBase.AdInfo adInfo)
         {

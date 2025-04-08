@@ -22,19 +22,31 @@ namespace SDK {
         #region Ads Tracking
 
         #region Revenue
+        public const string key_ad_rewarded_revenue = "ad_rewarded_revenue";
+        public const string key_ad_rewarded_count = "ad_rewarded_count";
+        public const string key_ad_inters_revenue = "ad_inters_revenue";
+        public const string key_ad_inters_count = "ad_inters_count";
 
-        private const string key_ad_rewarded_revenue = "ad_rewarded_revenue";
-        private const string key_ad_rewarded_count = "ad_rewarded_count";
-        private const string key_ad_inters_revenue = "ad_inters_revenue";
-        private const string key_ad_inters_count = "ad_inters_count";
-
-        private const string ad_inters_show_count = "ad_inters_show_count_";
-        private const string ad_rewarded_show_count = "ad_rewarded_show_count_";
+        public const string ad_inters_show_count = "ad_inters_show_count_";
+        public const string ad_rewarded_show_count = "ad_rewarded_show_count_";
 
         public static void TrackAdImpression(ImpressionData impressionData) {
             double revenue = impressionData.ad_revenue;
+            string ad_platform = impressionData.ad_mediation.ToString();
+            switch (impressionData.ad_mediation)
+            {
+                case AdsMediationType.MAX:
+                    ad_platform = "Applovin";
+                    break;
+                case AdsMediationType.ADMOB:
+                    ad_platform = "Admob";
+                    break;
+                case AdsMediationType.IRONSOURCE:
+                    ad_platform = "Ironsource";
+                    break;
+            }
             Parameter[] impressionParameters = new[] {
-                new Parameter("ad_platform", impressionData.ad_platform),
+                new Parameter("ad_platform", ad_platform),
                 new Parameter("ad_source", impressionData.ad_source),
                 new Parameter("ad_unit_name", impressionData.ad_unit_name),
                 new Parameter("ad_format", impressionData.ad_format),
@@ -42,64 +54,32 @@ namespace SDK {
                 new Parameter("currency", "USD"), // All AppLovin revenue is sent in USD
             };
             ABIFirebaseManager.Instance.LogFirebaseEvent("ad_impression", impressionParameters);
-            
-            EventManager.AddEventWithDelay(() =>
-            {
-                ABIFirebaseManager.Instance.LogFirebaseEvent("ad_impression_abi", impressionParameters);    
-            }, 0.1f);
-            EventManager.AddEventWithDelay(() =>
-            {
-                TrackLocalAdImpression(impressionData.ad_format, impressionData);
-            }, 0.2f);
         }
-
-        private static void TrackLocalAdImpression(string adFormat, ImpressionData impressionData) {
-            List<int> trackPoints = new List<int> { 5, 15, 30, 50, 100 };
-            switch (adFormat) {
-                case "REWARDED": {
-                        
+        public static void TrackLocalAdImpression(AdsType adsType) {
+            Debug.Log("TrackLocalAdImpression " + adsType);
+            switch (adsType) {
+                case AdsType.REWARDED: {
                         int totalWatched = PlayerPrefs.GetInt(key_ad_rewarded_count, 0);
                         totalWatched++;
                         PlayerPrefs.SetInt(key_ad_rewarded_count, totalWatched);
-
-                        bool isTracking = trackPoints.Contains(totalWatched);
+                        bool isTracking = totalWatched<=20;
                         if (!isTracking) return;
 
                         string eventName = ad_rewarded_show_count + totalWatched;
-
-                        float totalRevenue = PlayerPrefs.GetFloat(key_ad_rewarded_revenue, 0);
-                        totalRevenue += (float)impressionData.ad_revenue;
-                        PlayerPrefs.SetFloat(key_ad_rewarded_revenue, totalRevenue);
-
-                        Parameter[] parameters = new Parameter[] {
-                            new Parameter("revenue_inters", totalRevenue)
-                        };
-                        ABIFirebaseManager.Instance.LogFirebaseEvent(eventName, parameters);
-#if UNITY_APPSFLYER
-                        ABIAppsflyerManager.TrackRewarded_ShowCount(totalWatched);
-#endif
+                        ABIFirebaseManager.Instance.LogFirebaseEvent(eventName);
                     }
                     break;
-                case "INTER": {
+                case AdsType.INTERSTITIAL: {
                         int totalWatched = PlayerPrefs.GetInt(key_ad_inters_count, 0);
                         totalWatched++;
                         PlayerPrefs.SetInt(key_ad_inters_count, totalWatched);
-
-                        bool isTracking = trackPoints.Contains(totalWatched);
+                        bool isTracking = totalWatched <= 20;
                         if (!isTracking) return;
 
                         string eventName = ad_inters_show_count + totalWatched;
-
-                        float totalRevenue = PlayerPrefs.GetFloat(key_ad_inters_revenue, 0);
-                        totalRevenue += (float)impressionData.ad_revenue;
-                        PlayerPrefs.SetFloat(key_ad_inters_revenue, totalRevenue);
-
-                        Parameter[] parameters = new Parameter[] {
-                            new Parameter("revenue_reward", totalRevenue)
-                        };
-                        ABIFirebaseManager.Instance.LogFirebaseEvent(eventName, parameters);
+                        ABIFirebaseManager.Instance.LogFirebaseEvent(eventName);
 #if UNITY_APPSFLYER
-                    ABIAppsflyerManager.Instance.TrackInterstitial_ShowCount(totalWatched, totalRevenue);
+                        ABIAppsflyerManager.TrackInterstitial_ShowCount(totalWatched); 
 #endif
                     }
                     break;
@@ -108,12 +88,11 @@ namespace SDK {
         #endregion
 
         #region Rewarded Ads
-
-        private const string ads_reward_complete = "ads_reward_complete";
-        private const string ads_reward_click = "ads_reward_click";
-        private const string ads_reward_show = "ads_reward_show";
-        private const string ads_reward_fail = "ads_reward_fail";
-        private const string ads_reward_loadsuccess = "ads_reward_loadsuccess";
+        public const string ads_reward_complete = "ads_reward_complete";
+        public const string ads_reward_click = "ads_reward_click";
+        public const string ads_reward_show = "ads_reward_show";
+        public const string ads_reward_fail = "ads_reward_fail";
+        public const string ads_reward_loadsuccess = "ads_reward_loadsuccess";
 
         public void TrackAdsReward_ClickOnButton() {
             ABIFirebaseManager.Instance.LogFirebaseEvent(ads_reward_click);
@@ -123,9 +102,7 @@ namespace SDK {
         }
         public void TrackAdsReward_StartShow() {
             ABIFirebaseManager.Instance.LogFirebaseEvent(ads_reward_show);
-#if UNITY_APPSFLYER
-            ABIAppsflyerManager.TrackRewarded_Displayed();
-#endif
+
         }
         public void TrackAdsReward_ShowFail() {
             ABIFirebaseManager.Instance.LogFirebaseEvent(ads_reward_fail);
@@ -135,6 +112,13 @@ namespace SDK {
                 new Parameter("placement", placement)
             };
             ABIFirebaseManager.Instance.LogFirebaseEvent(ads_reward_complete, parameters);
+#if UNITY_APPSFLYER
+            ABIAppsflyerManager.TrackRewarded_Displayed();
+            EventManager.AddEventNextFrame(() =>
+            {
+                TrackLocalAdImpression(AdsType.REWARDED);
+            });
+#endif
         }
         public void TrackAdsReward_LoadSuccess() {
             ABIFirebaseManager.Instance.LogFirebaseEvent(ads_reward_loadsuccess);
@@ -145,11 +129,10 @@ namespace SDK {
         #endregion
 
         #region Interstitial Ads
-
-        private const string ad_inter_fail = "ad_inter_fail";
-        private const string ad_inter_load = "ad_inter_load";
-        private const string ad_inter_show = "ad_inter_show";
-        private const string ad_inter_click = "ad_inter_click";
+        public const string ad_inter_fail = "ad_inter_fail";
+        public const string ad_inter_load = "ad_inter_load";
+        public const string ad_inter_show = "ad_inter_show";
+        public const string ad_inter_click = "ad_inter_click";
 
         public void TrackAdsInterstitial_LoadedSuccess() {
             ABIFirebaseManager.Instance.LogFirebaseEvent(ad_inter_load);
@@ -161,6 +144,10 @@ namespace SDK {
             ABIFirebaseManager.Instance.LogFirebaseEvent(ad_inter_show);
 #if UNITY_APPSFLYER
             ABIAppsflyerManager.TrackInterstitial_Displayed();
+            EventManager.AddEventNextFrame(() =>
+            {
+                TrackLocalAdImpression(AdsType.INTERSTITIAL);
+            });
 #endif
         }
         public void TrackAdsInterstitial_ShowFail() {
@@ -179,9 +166,9 @@ namespace SDK {
         public void TrackSessionStart(int id) {
             string eventName = "session_start_" + id;
             ABIFirebaseManager.Instance.LogFirebaseEvent(eventName);
-#if UNITY_APPSFLYER
-            ABIAppsflyerManager.SendEvent(eventName, null);
-#endif
+//#if UNITY_APPSFLYER
+//            ABIAppsflyerManager.SendEvent(eventName, null);
+//#endif
         }
         public void TrackEventMapComplete(int map) {
 
@@ -191,14 +178,29 @@ namespace SDK {
             ABIAppsflyerManager.SendEvent(eventName, null);
 #endif
         }
+        
+        public void TrackEventStartLevel(int lv)
+        {
+            string level = lv.ToString("000");
+            string eventName = $"start_level_{level}";
+            ABIFirebaseManager.Instance.LogFirebaseEvent(eventName);
+        }
+        public void TrackEventWinLevel(int lv)
+        {
+            string level = lv.ToString("000");
+            string eventName = $"win_level_{level}";
+            ABIFirebaseManager.Instance.LogFirebaseEvent(eventName);
+        }
+        
     }
     public class ImpressionData {
-        public string ad_platform;
+        public AdsMediationType ad_mediation;
+        public string ad_type;
         public string ad_source;
         public string ad_unit_name;
         public string ad_format;
         public double ad_revenue;
         public string ad_currency;
-        public AdsType ad_type;
+        public string placement = "";
     }
 }

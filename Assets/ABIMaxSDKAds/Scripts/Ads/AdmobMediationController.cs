@@ -107,10 +107,15 @@ namespace SDK
         private BannerView m_BannerViewAds;
         public AdPosition m_BannerPosition;
         public bool IsBannerShowingOnStart = false;
-        public override void InitBannerAds(UnityAction bannerLoadedCallback, UnityAction bannerAdLoadedFailCallback,
-            UnityAction bannerAdsCallback, UnityAction bannerAdsExpandedCallback)
+        public override void InitBannerAds(
+            UnityAction bannerLoadedCallback, UnityAction bannerAdLoadedFailCallback,
+            UnityAction bannerAdsCollapsedCallback, UnityAction bannerAdsExpandedCallback, 
+            UnityAction bannerAdsDisplayed = null, UnityAction bannerAdsDisplayedFailedCallback = null,
+            UnityAction bannerAdsClickedCallback = null)
         {
-            base.InitBannerAds(bannerLoadedCallback, bannerAdLoadedFailCallback, bannerAdsCallback, bannerAdsExpandedCallback);
+            base.InitBannerAds(
+                bannerLoadedCallback, bannerAdLoadedFailCallback, bannerAdsCollapsedCallback, 
+                bannerAdsExpandedCallback, bannerAdsDisplayed, bannerAdsDisplayedFailedCallback, bannerAdsClickedCallback);
             Debug.Log("Init Admob Banner");
             RequestBannerAds();
             if (!IsBannerShowingOnStart)
@@ -156,7 +161,10 @@ namespace SDK
                 OnAdBannerOpened(bannerView);
             };
             bannerView.OnAdFullScreenContentClosed += OnAdBannerClosed;
-            bannerView.OnAdPaid += OnAdBannerPaid;
+            bannerView.OnAdPaid += (adValue) =>
+            {
+                OnAdBannerPaid(bannerView, adValue);
+            };
         }
 
         public override void ShowBannerAds()
@@ -211,9 +219,30 @@ namespace SDK
             m_BannerAdsCollapsedCallback?.Invoke();
         }
 
-        private void OnAdBannerPaid(AdValue adValue)
+        private void OnAdBannerPaid(BannerView bannerView, AdValue adValue)
         {
+            double revenue = (double)adValue.Value / 1000000;
+            string currencyCode = adValue.CurrencyCode;
             
+            ResponseInfo responseInfo = bannerView.GetResponseInfo();
+            
+            AdapterResponseInfo loadedAdapterResponseInfo = responseInfo.GetLoadedAdapterResponseInfo();
+            string adSourceId = loadedAdapterResponseInfo.AdSourceId;
+            string adSourceInstanceId = loadedAdapterResponseInfo.AdSourceInstanceId;
+            string adSourceInstanceName = loadedAdapterResponseInfo.AdSourceInstanceName;
+            string adSourceName = loadedAdapterResponseInfo.AdSourceName;
+            string adapterClassName = loadedAdapterResponseInfo.AdapterClassName;
+            long latencyMillis = loadedAdapterResponseInfo.LatencyMillis;
+            
+            ImpressionData impression = new ImpressionData
+            {
+                ad_mediation = AdsMediationType.ADMOB,
+                ad_source = adSourceName,
+                ad_unit_name = adSourceInstanceName,
+                ad_format = "Banner",
+                ad_currency = "USD",
+                ad_revenue = revenue
+            };
         }
 
         /// <summary>
@@ -277,7 +306,7 @@ namespace SDK
             DestroyCollapsibleBannerAds();
             m_CurrentCollapsibleBanner = CreateCollapsibleBannerView();
             AdRequest adRequest = new AdRequest();
-            adRequest.Extras.Add("collapsible_request_id", UUID.Generate());
+            adRequest.Extras.Add("collapsible_request_id", AdsManager.UUID.Generate());
             
             m_CurrentCollapsibleBanner?.LoadAd(adRequest);
         }
@@ -657,7 +686,7 @@ namespace SDK
         #endregion
 
         #region MREC Ads
-
+        public AdPosition m_MRECPosition;
         public override void InitRMecAds(UnityAction adLoadedCallback, UnityAction adLoadFailedCallback,
             UnityAction adClickedCallback,
             UnityAction adExpandedCallback, UnityAction adCollapsedCallback)
@@ -665,6 +694,7 @@ namespace SDK
             base.InitRMecAds(adLoadedCallback, adLoadFailedCallback, adClickedCallback, adExpandedCallback, adCollapsedCallback);
             Debug.Log("Init Admob MREC");
             RequestMRECAds();
+            HideMRecAds();
         }
 
         public void CreateMRECAdsView()
@@ -675,9 +705,9 @@ namespace SDK
                 DestroyMRECAds();
             }
 
-            string adUnitId = GetBannerID();
+            string adUnitId = GetMRECAdID();
             // Create a 320x50 banner at top of the screen
-            m_MRECAds = new BannerView(adUnitId, AdSize.MediumRectangle, m_BannerPosition);
+            m_MRECAds = new BannerView(adUnitId, AdSize.MediumRectangle, m_MRECPosition);
             RegisterMRECAdsEvents(m_MRECAds);
         }
 
@@ -697,21 +727,23 @@ namespace SDK
 
         private void RegisterMRECAdsEvents(BannerView bannerView)
         {
-            m_MRECAds.OnBannerAdLoaded += MRECAdsOnOnBannerAdLoaded;
-            m_MRECAds.OnBannerAdLoadFailed += MRECAdsOnOnBannerAdLoadFailed;
-            m_MRECAds.OnAdFullScreenContentOpened += MRECAdsOnOnAdFullScreenContentOpened;
-            m_MRECAds.OnAdFullScreenContentClosed += MRECAdsOnOnAdFullScreenContentClosed;
-            m_MRECAds.OnAdPaid += MRECAdsOnOnAdPaid;
+            bannerView.OnBannerAdLoaded += MRECAdsOnOnBannerAdLoaded;
+            bannerView.OnBannerAdLoadFailed += MRECAdsOnOnBannerAdLoadFailed;
+            bannerView.OnAdFullScreenContentOpened += MRECAdsOnOnAdFullScreenContentOpened;
+            bannerView.OnAdFullScreenContentClosed += MRECAdsOnOnAdFullScreenContentClosed;
+            bannerView.OnAdPaid += MRECAdsOnOnAdPaid;
         }
 
         public override void ShowMRecAds()
         {
+            Debug.Log("Show Admob MREC Ads");
             base.ShowMRecAds();
             m_MRECAds.Show();
         }
 
         public override void HideMRecAds()
         {
+            Debug.Log("Hide Admob MREC Ads");
             base.HideMRecAds();
             m_MRECAds.Hide();
         }
@@ -722,8 +754,10 @@ namespace SDK
             m_MRecAdLoadedCallback?.Invoke();
         }
 
-        private void MRECAdsOnOnAdPaid(AdValue obj)
+        private void MRECAdsOnOnAdPaid(AdValue adValue)
         {
+            Debug.Log("Admob MREC Ads Paid");
+            HandleAdPaidEvent("mrec", adValue, m_MRECAds.GetResponseInfo());
         }
 
         private void MRECAdsOnOnAdFullScreenContentClosed()
@@ -754,6 +788,15 @@ namespace SDK
             }
         }
 
+        public override bool IsMRecLoaded()
+        {
+            return m_MRECAds != null;
+        }
+
+        private string GetMRECAdID()
+        {
+            return m_AdmobAdSetup.MrecAdUnitID.ID;
+        }
         #endregion
 
         #region App Open Ads
@@ -816,6 +859,7 @@ namespace SDK
         {
             return m_AppOpenAd != null && m_AppOpenAd.CanShowAd();
         }
+        
 
         #region App Open Ads Events
 
@@ -860,15 +904,38 @@ namespace SDK
             Debug.Log("Admob AppOpenAds Recorded Impression");
         }
 
-        private void OnAppOpenAppPaidEvent(AdValue args)
+        private void OnAppOpenAppPaidEvent(AdValue adValue)
         {
-            Debug.LogFormat("Received paid event. (currency: {0}, value: {1}",
-                args.CurrencyCode, args.Value);
+            Debug.Log("Admob AppOpenAds Paid");
+            HandleAdPaidEvent("app_open_ad",adValue, m_AppOpenAd.GetResponseInfo());
         }
 
         #endregion
 
         #endregion
+        
+        private void HandleAdPaidEvent(string adFormat, AdValue adValue, ResponseInfo responseInfo)
+        {
+            AdapterResponseInfo loadedAdapterResponseInfo = responseInfo.GetLoadedAdapterResponseInfo();
+            string adSourceId = loadedAdapterResponseInfo.AdSourceId;
+            string adSourceInstanceId = loadedAdapterResponseInfo.AdSourceInstanceId;
+            string adSourceInstanceName = loadedAdapterResponseInfo.AdSourceInstanceName;
+            string adSourceName = loadedAdapterResponseInfo.AdSourceName;
+            string adapterClassName = loadedAdapterResponseInfo.AdapterClassName;
+            
+            Debug.Log("Admob Paid AdSourceId: " + adSourceId + " AdSourceInstanceId: " + adSourceInstanceId + " AdSourceInstanceName: " + adSourceInstanceName + " AdSourceName: " + adSourceName + " AdapterClassName: " + adapterClassName);
+        
+            double revenue = (double)adValue.Value / 1000000;
+            ImpressionData impression = new ImpressionData {
+                ad_mediation = AdsMediationType.ADMOB,
+                ad_source = adSourceName,
+                ad_unit_name = adSourceInstanceId,
+                ad_format = adFormat,
+                ad_currency = "USD",
+                ad_revenue = revenue
+            };
+            AdRevenuePaidCallback?.Invoke(impression);
+        }
 
         private void OnApplicationQuit()
         {
