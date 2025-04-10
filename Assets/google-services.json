@@ -1,21 +1,21 @@
 {
   "project_info": {
-    "project_number": "1043898787308",
-    "project_id": "click-to-revive-man",
-    "storage_bucket": "click-to-revive-man.appspot.com"
+    "project_number": "101377628372",
+    "project_id": "tcg-card-shop-simulator",
+    "storage_bucket": "tcg-card-shop-simulator.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:1043898787308:android:ada2c22f50145ef7c80cc9",
+        "mobilesdk_app_id": "1:101377628372:android:65bb0d559056c5495d8341",
         "android_client_info": {
-          "package_name": "com.abi.revive.man"
+          "package_name": "com.jis.card.shop.simulator"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyCG72YGC4b8sLD12HXDdsPqze_BQee_xXY"
+          "current_key": "AIzaSyArQVOSFbIApoOpnwohpO1J2I7J2TM0ST8"
         }
       ],
       "services": {
