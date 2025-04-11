@@ -12,11 +12,18 @@ namespace SDK.AdsManagers
           [field: SerializeField] public UnitAdManager InterruptAdManager { get; set; }
           private int rewardInterruptCount = 0;
           private const int maxRewardInterruptCount = 3;
-          public bool IsReadyToShowRewardInterrupt()
+          
+
+          public override void Init(AdsMediationType adsMediationType)
           {
-               if (IsActiveInterruptReward) return false;
-               return rewardInterruptCount>= maxRewardInterruptCount;
+               if(AdsMediationType != adsMediationType) return;
+               MediationController.InitRewardVideoAd(
+                    OnAdClosed,
+                    OnAdLoadSuccess,
+                    OnAdLoadFail,
+                    OnAdStartShow);
           }
+
           public override void RequestAd()
           {
                if (MediationController.IsRewardVideoLoaded()) return;
@@ -53,12 +60,22 @@ namespace SDK.AdsManagers
                     }
                }
           }
+
+          private void OnAdStartShow()
+          {
+               
+          }
           private void OnRewardVideoEarnSuccess()
           {
                MarkShowingAds(false);
                AdShowSuccessCallback?.Invoke();
                AdCloseCallback?.Invoke();
                ABIAnalyticsManager.Instance.TrackAdsReward_ShowCompleted(Placement);
+          }
+
+          private void OnAdClosed(bool isWatched)
+          {
+               
           }
 
           public override void ShowAd()
@@ -77,6 +94,11 @@ namespace SDK.AdsManagers
           public override bool IsAdLoaded()
           {
                return MediationController.IsRewardVideoLoaded();
+          }
+          private bool IsReadyToShowRewardInterrupt()
+          {
+               if (IsActiveInterruptReward) return false;
+               return rewardInterruptCount>= maxRewardInterruptCount;
           }
      }
 }

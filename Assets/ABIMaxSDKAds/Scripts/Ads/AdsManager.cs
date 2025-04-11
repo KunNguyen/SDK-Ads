@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using ABI;
 using UnityEngine.Events;
 using Firebase.RemoteConfig;
+using SDK.AdsManagers;
 using Sirenix.OdinInspector;
 using UnityEditor;
 using UnityEngine.Serialization;
@@ -466,6 +467,7 @@ namespace SDK
 
         #region Interstitial
 
+        [field: SerializeField] public InterstitialAdManager InterstitialAdManager { get; set; }
         private AdsConfig InterstitialAdsConfig => GetAdsConfig(AdsType.INTERSTITIAL);
 
         private UnityAction m_InterstitialAdCloseCallback;
@@ -1283,9 +1285,6 @@ namespace SDK
 
         IEnumerator coCheckingShowAppOpenAds()
         {
-#if UNITY_EDITOR
-            yield break;
-#endif
             float startCheckingTime = Time.realtimeSinceStartup;
             while (Time.realtimeSinceStartup < 10f)
             {

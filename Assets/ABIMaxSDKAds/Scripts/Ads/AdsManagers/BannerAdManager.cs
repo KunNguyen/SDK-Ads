@@ -1,12 +1,15 @@
+using SDK.AdsManagers.Interface;
+using UnityEngine;
 using UnityEngine.Events;
 
 namespace SDK.AdsManagers
 {
-     public class BannerAdManager : UnitAdManager
+     public class BannerAdManager : UnitAdManager, IBannerAdUnit
      {
-          public override void InitAd(AdsConfig adsConfig, SDKSetup sdkSetup, AdsMediationController mediationController)
+          public override void Init(AdsMediationType adsMediationType)
           {
-               base.InitAd(adsConfig, sdkSetup, mediationController);
+               if(AdsMediationType != adsMediationType) return;
+               if (IsRemoveAds()) return;
                MediationController.InitBannerAds(
                     OnAdLoadSuccess,
                     OnAdLoadFail,
@@ -26,6 +29,7 @@ namespace SDK.AdsManagers
                UnityAction showFailCallback = null, bool isTracking = true, bool isSkipCapping = false)
           {
                base.CallToShowAd(placementName, closedCallback, showSuccessCallback, showFailCallback, isTracking, isSkipCapping);
+               Debug.Log("Banner CallToShowAd");
                if (IsCheatAds() && IsRemoveAds())
                {
                     return;
@@ -34,24 +38,27 @@ namespace SDK.AdsManagers
           }
           public override void ShowAd()
           {
+               Debug.Log("Banner ShowAd");
                MediationController.ShowBannerAds();
           }
 
           public override void HideAd()
           {
+               Debug.Log("Banner HideAd");
                MediationController.HideBannerAds();
           }
           public void OnAdCollapsed()
           {
+               Debug.Log("Banner OnAdCollapsed");
           }
           public void OnAdExpanded()
           {
+               Debug.Log("Banner OnAdExpanded");
           }
-          
-          
           public override void DestroyAd()
           {
                base.DestroyAd();
+               Debug.Log("Banner DestroyAd");
                MediationController.DestroyBannerAds();
           }
 

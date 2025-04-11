@@ -11,6 +11,7 @@ namespace SDK.AdsManagers
           [field: SerializeField] public AdsConfig AdsConfig { get; set; }
           [field: SerializeField] public AdsMediationType AdsMediationType { get; set; }
           [field: SerializeField] public bool IsActive { get; set; }
+          [field: SerializeField] public bool IsReady { get; set; } = false;
           [field: SerializeField] public string Placement { get; set; }
           [field: SerializeField] public bool IsShowingAd { get; set; } = false;
 
@@ -24,12 +25,15 @@ namespace SDK.AdsManagers
           public AdChecking IsCheatAds { get; set; }
           public AdChecking IsRemoveAds { get; set; }
 
-          public virtual void InitAd(AdsConfig adsConfig, SDKSetup sdkSetup, AdsMediationController mediationController)
+          public virtual void Setup(AdsConfig adsConfig, SDKSetup sdkSetup, AdsMediationController mediationController)
           {
                SDKSetup = sdkSetup;
                AdsConfig = adsConfig;
+               AdsMediationType = adsConfig.adsMediationType;
                MediationController = mediationController;
           }
+
+          public abstract void Init(AdsMediationType adsMediationType);
           public abstract void RequestAd();
 
           public virtual void CallToShowAd(

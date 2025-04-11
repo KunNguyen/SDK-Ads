@@ -6,11 +6,9 @@ namespace SDK.AdsManagers
      public class InterstitialAdManager : UnitAdManager
      {
           [field: SerializeField] public float CappingAdsCooldown;
-
-          public override void InitAd(AdsConfig adsConfig, SDKSetup sdkSetup, AdsMediationController mediationController)
+          public override void Init(AdsMediationType adsMediationType)
           {
-               base.InitAd(adsConfig, sdkSetup, mediationController);
-               if (AdsMediationType != SDKSetup.interstitialAdsMediationType) return;
+               if (AdsMediationType != adsMediationType) return;
                if (IsRemoveAds()) return;
                Debug.Log("Setup Interstitial");
                AdsConfig.isActive = SDKSetup.IsActiveAdsType(AdsType.INTERSTITIAL);
@@ -28,6 +26,7 @@ namespace SDK.AdsManagers
 
                Debug.Log("Setup Interstitial Done");
           }
+
           public override void RequestAd()
           {
                if(MediationController.IsInterstitialLoaded())return;
