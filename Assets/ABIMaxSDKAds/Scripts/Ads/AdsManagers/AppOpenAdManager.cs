@@ -83,5 +83,10 @@ namespace SDK.AdsManagers
           {
                return MediationController != null && MediationController.IsAppOpenAdsLoaded();
           }
+
+          public override bool IsAdReady()
+          {
+               return !IsRemoveAds() && !IsCheatAds() && IsLoaded();
+          }
      }
 }

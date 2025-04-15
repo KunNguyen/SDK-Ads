@@ -9,12 +9,14 @@ namespace SDK.AdsManagers
           public override void Init(AdsMediationType adsMediationType)
           {
                if(AdsMediationType!= adsMediationType) return;
-               if (IsRemoveAds()) return;
+               if (IsRemoveAds() || IsCheatAds()) return;
                MediationController.InitRMecAds(OnAdLoadSuccess, OnAdLoadFail, OnAdClicked, OnAdExpanded,OnAdCollapsed);
           }
 
           public override void RequestAd()
           {
+               if (IsRemoveAds()) return;
+               MediationController.RequestMRecAds();
           }
 
           public override void CallToShowAd(string placementName = "", UnityAction closedCallback = null, UnityAction showSuccessCallback = null,
@@ -30,6 +32,7 @@ namespace SDK.AdsManagers
                
           }
           
+          
           public override void Show()
           {
                MediationController.ShowMRecAds();
@@ -38,6 +41,11 @@ namespace SDK.AdsManagers
           public override bool IsLoaded()
           {
                return MediationController != null && MediationController.IsMRecLoaded();
+          }
+
+          public override bool IsAdReady()
+          {
+               return !IsRemoveAds() && !IsCheatAds() &&  IsLoaded();
           }
 
           public void OnAdCollapsed()

@@ -279,7 +279,6 @@ namespace SDK
         {
             base.InitCollapsibleBannerAds(bannerLoadedCallback, bannerAdLoadedFailCallback, bannerAdsCollapsedCallback, bannerAdsExpandedCallback, bannerAdsDestroyedCallback, bannerAdsHideCallback);
             Debug.Log("Init Admob Collapsible Banner");
-            RequestCollapsibleBannerAds(IsCollapsibleBannerShowingOnStart);
         }
         
         private BannerView CreateCollapsibleBannerView()
@@ -693,7 +692,7 @@ namespace SDK
         {
             base.InitRMecAds(adLoadedCallback, adLoadFailedCallback, adClickedCallback, adExpandedCallback, adCollapsedCallback);
             Debug.Log("Init Admob MREC");
-            RequestMRECAds();
+            RequestMRecAds();
             HideMRecAds();
         }
 
@@ -711,8 +710,9 @@ namespace SDK
             RegisterMRECAdsEvents(m_MRECAds);
         }
 
-        public void RequestMRECAds()
+        public override void RequestMRecAds()
         {
+            base.RequestMRecAds();
             if (m_MRECAds == null)
             {
                 CreateMRECAdsView();

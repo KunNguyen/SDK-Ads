@@ -1,6 +1,8 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using ABI;
+using Firebase.RemoteConfig;
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -33,6 +35,18 @@ namespace SDK.AdsManagers
                RequestAd();
                Debug.Log("Setup Interstitial Done");
           }
+
+          public override void UpdateRemoteConfig()
+          {
+               base.UpdateRemoteConfig();
+               {
+                    ConfigValue configValue =
+                         ABIFirebaseManager.Instance.GetConfigValue(Keys.key_remote_interstitial_capping_time);
+                    MaxCappingAdsCooldown = (float)configValue.DoubleValue;
+                    Debug.Log("=============== Max Interstitial Capping Time " + MaxCappingAdsCooldown);
+               }
+          }
+
           private void StartCooldown()
           {
                CappingAdsCooldown = MaxCappingAdsCooldown;

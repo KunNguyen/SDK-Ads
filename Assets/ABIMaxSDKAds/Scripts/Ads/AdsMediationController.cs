@@ -158,11 +158,11 @@ namespace SDK {
             m_MRecAdExpandedCallback = adExpandedCallback;
             m_MRecAdCollapsedCallback = adCollapsedCallback;
         }
+        public virtual void RequestMRecAds() {
+        }
         public virtual void ShowMRecAds() {
-            
         }
         public virtual void HideMRecAds() {
-            
         }
         public virtual bool IsMRecLoaded() {
             return false;

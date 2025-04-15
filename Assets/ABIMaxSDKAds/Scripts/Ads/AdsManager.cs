@@ -40,8 +40,6 @@ namespace SDK
         public static AdsManager Instance { get; private set; }
 
         public SDKSetup m_SDKSetup;
-        private double m_AdsLoadingCooldown = 0f;
-        private double m_MaxLoadingCooldown = 5f;
         private int m_LevelPassToShowInterstitial = 2;
         private int m_RewardInterruptCountTime = 0;
         private int m_MaxRewardInterruptCount = 6;
@@ -90,12 +88,7 @@ namespace SDK
 
         private void UpdateRemoteConfigs()
         {
-            {
-                ConfigValue configValue =
-                    ABIFirebaseManager.Instance.GetConfigValue(Keys.key_remote_interstitial_capping_time);
-                m_MaxInterstitialCappingTime = configValue.DoubleValue;
-                Debug.Log("=============== Max Interstitial Capping Time " + m_MaxInterstitialCappingTime);
-            }
+            
             {
                 ConfigValue configValue =
                     ABIFirebaseManager.Instance.GetConfigValue(Keys.key_remote_inter_reward_interspersed);
@@ -126,24 +119,6 @@ namespace SDK
         private void Update()
         {
             float dt = Time.deltaTime;
-            if (m_AdsLoadingCooldown > 0)
-            {
-                m_AdsLoadingCooldown -= dt;
-                if (m_AdsLoadingCooldown <= 0)
-                {
-                    if (!IsRewardVideoLoaded())
-                    {
-                        RequestRewardVideo();
-                    }
-
-                    if (!IsInterstitialAdLoaded())
-                    {
-                        RequestInterstitial();
-                    }
-                }
-            }
-
-            UpdateBanner();
             UpdateCollapsibleBanner(dt);
         }
 
@@ -162,6 +137,7 @@ namespace SDK
 
             InitConfig();
             InitAdsMediation();
+            SetupUnitAdManager();
         }
 
         private void InitConfig()
@@ -238,13 +214,13 @@ namespace SDK
             SetupBannerAds();
 
             //Setup Collapsible Banner
-            SetupCollapsibleBannerAds(adsMediationType);
+            SetupCollapsibleBannerAds();
 
             //Setup RMecAds
-            SetupMRecAds(adsMediationType);
+            SetupMRecAds();
 
             //Setup AppOpenAds
-            SetupAppOpenAds(adsMediationType);
+            SetupAppOpenAds();
 
             IsInitedAdsType = true;
         }
@@ -253,6 +229,9 @@ namespace SDK
             InitInterstitial(adsMediationType);
             InitRewardedVideo(adsMediationType);
             InitBannerAds(adsMediationType);
+            InitCollapsibleBanner(adsMediationType);
+            InitMRecAds(adsMediationType);
+            
         }
 
         private void LoadRemoveAds()
@@ -483,10 +462,6 @@ namespace SDK
             InterstitialAdManager.Init(adsMediationType);
             Debug.Log("Setup Interstitial Done");
         }
-        private void RequestInterstitial()
-        {
-            InterstitialAdManager.RequestAd();
-        }
         public void ShowInterstitial(
             UnityAction closedCallback = null, 
             UnityAction showSuccessCallback = null,
@@ -558,74 +533,41 @@ namespace SDK
 
         #region Collapsible Banner
 
+        [field: SerializeField] public CollapsibleBannerAdManager CollapsibleBannerAdManager { get; set; }
         private AdsConfig CollapsibleBannerAdsConfig => GetAdsConfig(AdsType.COLLAPSIBLE_BANNER);
-        private bool IsExpandedCollapsibleBanner;
-        private bool IsShowingCollapsibleBanner;
-
-        [BoxGroup("Collapsible Banner")] public bool IsAutoRefreshCollapsibleBanner;
-        [BoxGroup("Collapsible Banner")] public bool IsAutoRefreshExtendCollapsibleBanner;
-        [BoxGroup("Collapsible Banner")] public float m_AutoRefreshTimeCollapsibleBanner;
-        private float m_RefreshTimeCounterCollapsibleBanner;
-
-        [BoxGroup("Collapsible Banner")] public bool IsAutoCloseCollapsibleBanner;
-        [BoxGroup("Collapsible Banner")] public float m_AutoCloseTimeCollapsibleBanner = 20;
-        private float m_CloseTimeCounterCollapsibleBanner;
 
         private UnityAction m_CollapsibleBannerCloseCallback;
 
-        private void SetupCollapsibleBannerAds(AdsMediationType adsMediationType)
+        private void SetupCollapsibleBannerAds()
         {
-            StartCoroutine(coDelayInitCollapsibleBannerAds(adsMediationType));
+            Debug.Log("Setup Collapsible Banner");
+            CollapsibleBannerAdManager.Setup(
+                CollapsibleBannerAdsConfig,
+                m_SDKSetup,
+                GetSelectedMediation(AdsType.COLLAPSIBLE_BANNER));
+            CollapsibleBannerAdManager.IsRemoveAds = () => IsRemoveAds;
+            CollapsibleBannerAdManager.IsCheatAds = () => IsCheatAds;
+            HideCollapsibleBannerAds();
         }
-
-        IEnumerator coDelayInitCollapsibleBannerAds(AdsMediationType adsMediationType)
+        private void InitCollapsibleBanner(AdsMediationType adsMediationType)
         {
-            yield return new WaitForSeconds(5);
-            SetupCollapsibleBannerAdMediation(adsMediationType);
+            Debug.Log("Init Collapsible Banner");
+            CollapsibleBannerAdManager.Init(adsMediationType);
+            
         }
-
-        private void SetupCollapsibleBannerAdMediation(AdsMediationType adsMediationType)
-        {
-            if (IsCheatAds || IsRemoveAds) return;
-            if (adsMediationType != m_SDKSetup.collapsibleBannerAdsMediationType) return;
-            Debug.Log("Setup Banner");
-            CollapsibleBannerAdsConfig.isActive = m_SDKSetup.IsActiveAdsType(AdsType.COLLAPSIBLE_BANNER);
-            if (!m_SDKSetup.IsActiveAdsType(AdsType.COLLAPSIBLE_BANNER)) return;
-            foreach (AdsMediationController t in CollapsibleBannerAdsConfig.adsMediations)
-            {
-                t.InitCollapsibleBannerAds(
-                    OnCollapsibleBannerLoadedSucess, OnCollapsibleBannerLoadedFail, OnCollapsibleBannerCollapsed,
-                    OnCollapsibleBannerExpanded, OnCollapsibleBannerDestroyed, OnCollapsibleBannerHide);
-            }
-
-            Debug.Log("Setup Banner Done");
-        }
-
         public bool IsCollapsibleBannerExpended()
         {
-            return IsExpandedCollapsibleBanner;
+            return CollapsibleBannerAdManager.IsExpanded;
         }
 
         public bool IsCollapsibleBannerShowing()
         {
-            return IsShowingCollapsibleBanner;
+            return CollapsibleBannerAdManager.IsShowingAd;
         }
 
         private void UpdateCollapsibleBanner(float dt)
         {
-            if (IsRemoveAds) return;
-            if (IsAutoCloseCollapsibleBanner)
-            {
-                if (m_CloseTimeCounterCollapsibleBanner > 0)
-                {
-                    m_CloseTimeCounterCollapsibleBanner -= dt;
-                    if (m_CloseTimeCounterCollapsibleBanner <= 0)
-                    {
-                        HideCollapsibleBannerAds();
-                        m_CollapsibleBannerCloseCallback?.Invoke();
-                    }
-                }
-            }
+            i
 
             if (IsAutoRefreshCollapsibleBanner)
             {
@@ -652,8 +594,7 @@ namespace SDK
         // ReSharper disable Unity.PerformanceAnalysis
         public void RequestCollapsibleBanner()
         {
-            if (!CollapsibleBannerAdsConfig.isActive || IsRemoveAds) return;
-            GetSelectedMediation(AdsType.COLLAPSIBLE_BANNER)?.RequestCollapsibleBannerAds(false);
+            CollapsibleBannerAdManager.RequestAd();
         }
 
         public void RefreshCollapsibleBanner()
@@ -680,8 +621,7 @@ namespace SDK
 
         public void DestroyCollapsibleBanner()
         {
-            GetSelectedMediation(AdsType.COLLAPSIBLE_BANNER)?.DestroyCollapsibleBannerAds();
-            IsShowingCollapsibleBanner = false;
+            CollapsibleBannerAdManager.DestroyAd();
         }
 
         public bool IsCollapsibleBannerLoaded()
@@ -770,83 +710,41 @@ namespace SDK
         #region MRec Ads
 
         private AdsConfig MRecAdsConfig => GetAdsConfig(AdsType.MREC);
-        private UnityAction m_MRecAdLoadedCallback;
-        private UnityAction m_MRecAdLoadFailCallback;
-        private UnityAction m_MRecAdClickedCallback;
-        private UnityAction m_MRecAdExpandedCallback;
-        private UnityAction m_MRecAdCollapsedCallback;
-        private bool m_IsMRecShowing;
-
-        private void SetupMRecAds(AdsMediationType adsMediationType)
+        [field: SerializeField] private MRECAdManager MRecAdManager { get; set; }
+        private void SetupMRecAds()
         {
-            if (IsRemoveAds) return;
-            if (adsMediationType != m_SDKSetup.mrecAdsMediationType) return;
-            Debug.Log("Setup MREC");
-            MRecAdsConfig.isActive = m_SDKSetup.IsActiveAdsType(AdsType.MREC);
-            if (!m_SDKSetup.IsActiveAdsType(AdsType.MREC)) return;
-            foreach (AdsMediationController t in MRecAdsConfig.adsMediations)
-            {
-                t.InitRMecAds(OnMRecAdLoadedEvent, OnMRecAdLoadFailedEvent, OnMRecAdClickedEvent, OnMRecAdExpandedEvent,
-                    OnMRecAdCollapsedEvent);
-            }
-
-            Debug.Log("Setup MREC Done");
+            Debug.Log("Setup MRec");
+            MRecAdManager.Setup(MRecAdsConfig, m_SDKSetup, GetSelectedMediation(AdsType.MREC));
+            MRecAdManager.IsRemoveAds = () => IsRemoveAds;
+            MRecAdManager.IsCheatAds = () => IsCheatAds;
         }
-
-        public bool IsMRecShowing()
+        private void InitMRecAds(AdsMediationType adsMediationType)
         {
-            return m_IsMRecShowing;
+            Debug.Log("Init MRec");
+            MRecAdManager.Init(adsMediationType);
         }
-
-        public bool IsMRecLoaded()
-        {
-            return GetSelectedMediation(AdsType.MREC) != null && GetSelectedMediation(AdsType.MREC).IsMRecLoaded();
-        }
-
-        private void OnMRecAdLoadedEvent()
-        {
-            m_MRecAdLoadedCallback?.Invoke();
-        }
-
-        private void OnMRecAdLoadFailedEvent()
-        {
-            m_MRecAdLoadFailCallback?.Invoke();
-        }
-
-        private void OnMRecAdClickedEvent()
-        {
-            m_MRecAdClickedCallback?.Invoke();
-        }
-
-        private void OnMRecAdExpandedEvent()
-        {
-            m_MRecAdExpandedCallback?.Invoke();
-            m_IsMRecShowing = true;
-        }
-
-        private void OnMRecAdCollapsedEvent()
-        {
-            m_MRecAdCollapsedCallback?.Invoke();
-            m_IsMRecShowing = false;
-        }
-
         public void ShowMRecAds()
         {
-            Debug.Log("Call Show MREC Ads 1");
-            if (IsCheatAds || IsRemoveAds) return;
-            if (!IsActiveMRECAds) return;
-            if (!m_SDKSetup.IsActiveAdsType(AdsType.MREC)) return;
-            Debug.Log("Call Show MREC Ads 2");
-            GetSelectedMediation(AdsType.MREC)?.ShowMRecAds();
+            MRecAdManager.Show();
             HideBannerAds();
         }
-
         public void HideMRecAds()
         {
-            Debug.Log("Call Hide MREC Ads");
-            GetSelectedMediation(AdsType.MREC)?.HideMRecAds();
+            Debug.Log("Call Hide MRec Ads");
+            MRecAdManager.Hide();
         }
-
+        public bool IsMRecShowing()
+        {
+            return MRecAdManager.IsShowingAd;
+        }
+        public bool IsMRecLoaded()
+        {
+            return MRecAdManager.IsLoaded();
+        }
+        public bool IsMRecReadyToShow()
+        {
+            return MRecAdManager.IsAdReady();
+        }
         #endregion
 
         #region App Open Ads

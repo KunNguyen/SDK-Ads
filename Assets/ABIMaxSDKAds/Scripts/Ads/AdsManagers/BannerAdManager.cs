@@ -33,7 +33,7 @@ namespace SDK.AdsManagers
                if (MediationController.IsBannerLoaded()) return;
                MediationController.RequestBannerAds();
           }
-          private void RefreshAutoReset()
+          private void StartAutoReset()
           {
                if (IsAutoRefreshBanner)
                {

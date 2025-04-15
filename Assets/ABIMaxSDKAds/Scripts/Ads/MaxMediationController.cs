@@ -294,6 +294,12 @@ namespace SDK {
             MaxSdkCallbacks.MRec.OnAdRevenuePaidEvent += (adUnitID, adInfo) => { OnAdRevenuePaidEvent(AdsType.MREC, adUnitID, adInfo);};
             MaxSdk.CreateMRec(m_MaxAdConfig.MrecAdUnitID, MaxSdkBase.AdViewPosition.BottomCenter);
         }
+        public override void RequestMRecAds()
+        {
+            base.RequestMRecAds();
+            Debug.Log("MAX Mediation MREC Call Request");
+            MaxSdk.LoadMRec(m_MaxAdConfig.MrecAdUnitID);
+        }
         public override bool IsMRecLoaded()
         {
             return m_IsMRecLoaded;

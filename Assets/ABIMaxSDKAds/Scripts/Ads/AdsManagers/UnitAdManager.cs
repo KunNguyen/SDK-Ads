@@ -29,6 +29,7 @@ namespace SDK.AdsManagers
           {
                SDKSetup = sdkSetup;
                AdsConfig = adsConfig;
+               AdsConfig.isActive = SDKSetup.IsActiveAdsType(AdsConfig.adsType);
                AdsMediationType = adsConfig.adsMediationType;
                MediationController = mediationController;
           }
@@ -57,6 +58,10 @@ namespace SDK.AdsManagers
           }
 
           public virtual void DestroyAd()
+          {
+          }
+          
+          public virtual void UpdateRemoteConfig()
           {
           }
 
