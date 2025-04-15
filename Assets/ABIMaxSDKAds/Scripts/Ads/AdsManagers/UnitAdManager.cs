@@ -50,9 +50,9 @@ namespace SDK.AdsManagers
                AdCloseCallback = closedCallback;
           }
 
-          public abstract void ShowAd();
+          public abstract void Show();
 
-          public virtual void HideAd()
+          public virtual void Hide()
           {
           }
 
@@ -67,7 +67,7 @@ namespace SDK.AdsManagers
                AdShowSuccessCallback?.Invoke();
           }
 
-          public virtual void OnAdShowFail()
+          public virtual void OnAdShowFailed()
           {
                IsShowingAd = false;
                MarkShowingAds?.Invoke(IsShowingAd);
@@ -95,11 +95,14 @@ namespace SDK.AdsManagers
                AdLoadFailCallback?.Invoke();
           }
 
-          public virtual void OnAdClick()
+          public virtual void OnAdClicked()
           {
+               IsShowingAd = false;
+               MarkShowingAds?.Invoke(IsShowingAd);
           }
 
-          public abstract bool IsAdLoaded();
-          
+          public abstract bool IsLoaded();
+          public abstract bool IsAdReady();
+
      }
 }

@@ -10,9 +10,10 @@ namespace SDK.AdsManagers
           [field: SerializeField] public bool IsActiveInterruptReward { get; set; } = false;
 
           [field: SerializeField] public UnitAdManager InterruptAdManager { get; set; }
-          private int rewardInterruptCount = 0;
-          private const int maxRewardInterruptCount = 3;
-          
+          private int InterruptCount { get; set; } = 0;
+          private const int MaxInterruptCount = 3;
+          private bool IsWatchedSuccess { get; set; } = false;
+          private UnityAction<bool> AdRewardClosedCallback = null;
 
           public override void Init(AdsMediationType adsMediationType)
           {
@@ -28,6 +29,16 @@ namespace SDK.AdsManagers
           {
                if (MediationController.IsRewardVideoLoaded()) return;
                MediationController.RequestRewardVideoAd();
+          }
+
+          public void CallToShowRewardAd(string placementName = "", UnityAction<bool> closedCallback = null,
+               UnityAction showSuccessCallback = null,
+               UnityAction showFailCallback = null, bool isTracking = true, bool isSkipCapping = false)
+          {
+               IsWatchedSuccess = false;
+               AdRewardClosedCallback = closedCallback;
+               CallToShowAd(placementName, null, showSuccessCallback, showFailCallback, isTracking,
+                    isSkipCapping);
           }
           public override void CallToShowAd(string placementName = "", UnityAction closedCallback = null, UnityAction showSuccessCallback = null,
                UnityAction showFailCallback = null, bool isTracking = true, bool isSkipCapping = false)
@@ -48,14 +59,17 @@ namespace SDK.AdsManagers
                {
                     if (IsReadyToShowRewardInterrupt() && IsInterruptAdLoaded())
                     {
-                         ShowInterruptAd(OnAdShowSuccess, OnAdShowFail);
+                         ShowInterruptAd(() =>
+                         {
+                              OnAdShowSuccess();
+                              ResetRewardInterruptCount();
+                         }, OnAdShowFailed);
                     }
                     else
                     {
-                         if (IsAdLoaded())
+                         if (IsLoaded())
                          {
-                              
-                              ShowAd();
+                              Show();
                          }
                     }
                }
@@ -69,16 +83,16 @@ namespace SDK.AdsManagers
           {
                MarkShowingAds(false);
                AdShowSuccessCallback?.Invoke();
-               AdCloseCallback?.Invoke();
+               InterruptCount++;
                ABIAnalyticsManager.Instance.TrackAdsReward_ShowCompleted(Placement);
           }
 
           private void OnAdClosed(bool isWatched)
           {
-               
+               AdRewardClosedCallback?.Invoke(isWatched);
           }
 
-          public override void ShowAd()
+          public override void Show()
           {
                MarkShowingAds(true);
                MediationController.ShowRewardVideoAd(AdShowSuccessCallback, AdShowFailCallback);
@@ -87,18 +101,26 @@ namespace SDK.AdsManagers
           {
                InterruptAdManager.CallToShowAd(Placement, onSuccessCallback, onFailCallback);
           }
+          private void ResetRewardInterruptCount()
+          {
+               InterruptCount = 0;
+          }
           private bool IsInterruptAdLoaded()
           {
-               return InterruptAdManager.IsAdLoaded();
+               return InterruptAdManager.IsLoaded();
           }
-          public override bool IsAdLoaded()
+          public override bool IsLoaded()
           {
                return MediationController.IsRewardVideoLoaded();
+          }
+          public override bool IsAdReady()
+          {
+               return (IsLinkRewardWithRemoveAds && IsRemoveAds()) || IsLoaded();
           }
           private bool IsReadyToShowRewardInterrupt()
           {
                if (IsActiveInterruptReward) return false;
-               return rewardInterruptCount>= maxRewardInterruptCount;
+               return InterruptCount>= MaxInterruptCount;
           }
      }
 }

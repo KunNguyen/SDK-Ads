@@ -1,3 +1,6 @@
+using System;
+using System.Threading;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -5,7 +8,11 @@ namespace SDK.AdsManagers
 {
      public class InterstitialAdManager : UnitAdManager
      {
-          [field: SerializeField] public float CappingAdsCooldown;
+          [field: SerializeField] public float MaxCappingAdsCooldown { get; set; }
+          [field: SerializeField] public float CappingAdsCooldown { get; set; }
+          private CancellationTokenSource StopCooldownCTS { get; set; } = new CancellationTokenSource();
+          private DateTime StartRequestTime{ get; set; }
+
           public override void Init(AdsMediationType adsMediationType)
           {
                if (AdsMediationType != adsMediationType) return;
@@ -16,25 +23,63 @@ namespace SDK.AdsManagers
                foreach (AdsMediationController t in AdsConfig.adsMediations)
                {
                     t.InitInterstitialAd(
-                         AdCloseCallback,
-                         AdLoadSuccessCallback,
-                         AdLoadFailCallback,
-                         AdShowSuccessCallback,
-                         AdShowFailCallback
+                         OnAdClose,
+                         OnAdLoadSuccess,
+                         OnAdLoadFail,
+                         OnAdShowSuccess,
+                         OnAdShowFailed
                     );
                }
-
+               RequestAd();
                Debug.Log("Setup Interstitial Done");
+          }
+          private void StartCooldown()
+          {
+               CappingAdsCooldown = MaxCappingAdsCooldown;
+               _ = WaitForAdCooldown();
+          }
+          private void StopAdCooldown()
+          {
+               StopCooldownCTS.Cancel();
+               StopCooldownCTS.Dispose();
+               StopCooldownCTS = new CancellationTokenSource();
+          }
+          public void RestartCooldown()
+          {
+               StopAdCooldown();
+               StartCooldown();
+          }
+          private async Task WaitForAdCooldown()
+          {
+               try
+               {
+                    await Task.Delay(TimeSpan.FromSeconds(CappingAdsCooldown), StopCooldownCTS.Token);
+               }
+               catch (TaskCanceledException)
+               {
+                    // Handle cancellation if needed
+               }
+               finally
+               {
+                    CappingAdsCooldown = 0;
+                    StopCooldownCTS.Dispose();
+                    StopCooldownCTS = new CancellationTokenSource();
+               }
           }
 
           public override void RequestAd()
           {
                if(MediationController.IsInterstitialLoaded())return;
+               StartRequestTime = DateTime.Now;
                MediationController.RequestInterstitialAd();
           }
 
-          public override void CallToShowAd(string placementName = "", UnityAction closedCallback = null, UnityAction showSuccessCallback = null,
-               UnityAction showFailCallback = null, bool isTracking = true, bool isSkipCapping = false)
+          public override void CallToShowAd(
+               string placementName = "", 
+               UnityAction closedCallback = null, 
+               UnityAction showSuccessCallback = null,
+               UnityAction showFailCallback = null, 
+               bool isTracking = true, bool isSkipCapping = false)
           {
                base.CallToShowAd(placementName, closedCallback, showSuccessCallback, showFailCallback, isTracking, isSkipCapping);
                if (IsCheatAds())
@@ -47,39 +92,70 @@ namespace SDK.AdsManagers
                {
                     if (CappingAdsCooldown > 0)
                     {
-                         OnAdShowSuccess();
-                         OnAdClose();
+                         showSuccessCallback?.Invoke();
+                         closedCallback?.Invoke();
                          return;
                     }
                }
-               if (isTracking)
-               {
-                    ABIAnalyticsManager.Instance.TrackAdsInterstitial_ClickOnButton();
-               }
-
                if (!IsRemoveAds())
                {
-                    if (IsAdLoaded())
+                    if (isTracking)
+                    {
+                         ABIAnalyticsManager.Instance.TrackAdsInterstitial_ClickOnButton();
+                    }
+                    if (IsLoaded())
                     {
                          AdShowFailCallback = showFailCallback;
-                         ShowAd();
+                         Show();
+                    }
+                    else
+                    {
+                         ABIAnalyticsManager.Instance.TrackAdsInterstitial_ShowFailByLoad();
                     }
                }
                else
                {
-                    AdCloseCallback?.Invoke();
+                    closedCallback?.Invoke();
                     showSuccessCallback?.Invoke();
                }
           }
 
-          public override void ShowAd()
+          public override void Show()
           {
                MarkShowingAds(true);
                MediationController.ShowInterstitialAd();
           }
-          public override bool IsAdLoaded()
+          public override bool IsLoaded()
           {
                return MediationController.IsInterstitialLoaded();
+          }
+          public override void OnAdShowSuccess()
+          {
+               base.OnAdShowSuccess();
+               StartCooldown();
+               ABIAnalyticsManager.Instance.TrackAdsInterstitial_ShowSuccess();
+          }
+          public override void OnAdShowFailed()
+          {
+               base.OnAdShowFailed();
+               StartCooldown();
+               ABIAnalyticsManager.Instance.TrackAdsInterstitial_ShowFail();
+          }
+          public override void OnAdClose()
+          {
+               base.OnAdClose();
+               StartCooldown();
+          }
+          public override void OnAdLoadSuccess()
+          {
+               base.OnAdLoadSuccess();
+               float timeFromStartRequest = (float)(DateTime.Now - StartRequestTime).TotalSeconds;
+               ABIAnalyticsManager.Instance.TrackAdsInterstitial_LoadedSuccess(timeFromStartRequest);
+          }
+
+          public override bool IsAdReady()
+          {
+               return CappingAdsCooldown == 0 && IsLoaded();
           }
      }
 }

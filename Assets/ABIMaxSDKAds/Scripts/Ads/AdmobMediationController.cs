@@ -92,7 +92,7 @@ namespace SDK
                         case AdapterState.Ready:
                             // The adapter was successfully initialized.
                             print("Adapter: " + className + " is initialized.");
-                            AdsManager.Instance.InitAdsType(AdsMediationType.ADMOB);
+                            AdsManager.Instance.InitAds(AdsMediationType.ADMOB);
                             break;
                     }
                 }

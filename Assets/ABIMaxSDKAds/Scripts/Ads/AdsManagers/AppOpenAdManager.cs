@@ -20,7 +20,7 @@ namespace SDK.AdsManagers
                     OnAdLoadFail, 
                     OnAdClose, 
                     OnAdShowSuccess,
-                    OnAdShowFail);
+                    OnAdShowFailed);
                StartCoroutine(coCheckingShowAppOpenAdsOnStart());
           }
           IEnumerator coCheckingShowAppOpenAdsOnStart()
@@ -33,7 +33,7 @@ namespace SDK.AdsManagers
                     if (IsReady)
                     {
                          if (!IsActive) break;
-                         if (IsAdLoaded())
+                         if (IsLoaded())
                          {
                               ShowAdsFirstTime();
                               break;  
@@ -57,9 +57,9 @@ namespace SDK.AdsManagers
                MediationController.RequestAppOpenAds();
           }
 
-          public override void ShowAd()
+          public override void Show()
           {
-               if (IsAdLoaded())
+               if (IsLoaded())
                {
                     MarkShowingAds(true);
                     Debug.Log("Start Force Show App Open Ads");
@@ -79,7 +79,7 @@ namespace SDK.AdsManagers
                base.OnAdShowSuccess();
           }
 
-          public override bool IsAdLoaded()
+          public override bool IsLoaded()
           {
                return MediationController != null && MediationController.IsAppOpenAdsLoaded();
           }

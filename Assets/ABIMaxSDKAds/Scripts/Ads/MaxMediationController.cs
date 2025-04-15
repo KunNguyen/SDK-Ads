@@ -23,7 +23,7 @@ namespace SDK {
             MaxSdkCallbacks.OnSdkInitializedEvent += sdkConfiguration => {
                 // AppLovin SDK is initialized, configure and start loading ads.
                 Debug.Log("MAX SDK Initialized");
-                AdsManager.Instance.InitAdsType(AdsMediationType.MAX);
+                AdsManager.Instance.InitAds(AdsMediationType.MAX);
                 MaxSdk.ShowMediationDebugger();
             };
             MaxSdk.SetSdkKey(m_MaxAdConfig.SDKKey);

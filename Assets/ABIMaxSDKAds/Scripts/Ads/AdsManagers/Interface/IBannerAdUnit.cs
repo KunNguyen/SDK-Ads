@@ -2,7 +2,7 @@ namespace SDK.AdsManagers.Interface
 {
      public interface IBannerAdUnit
      {
-          void HideAd();
+          void Hide();
           void OnAdCollapsed();
           void OnAdExpanded();
      }

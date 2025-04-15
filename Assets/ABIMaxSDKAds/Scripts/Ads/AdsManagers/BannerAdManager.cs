@@ -1,3 +1,5 @@
+using System.Threading;
+using System.Threading.Tasks;
 using SDK.AdsManagers.Interface;
 using UnityEngine;
 using UnityEngine.Events;
@@ -6,6 +8,12 @@ namespace SDK.AdsManagers
 {
      public class BannerAdManager : UnitAdManager, IBannerAdUnit
      {
+          
+          [field: SerializeField] public bool IsAutoRefreshBanner { get; set; } = false;
+          [field: SerializeField] private float BannerAutoResetTime { get; set; } = 15f;
+          [field: SerializeField] public bool IsBannerShowing { get; set; } = false;
+          private CancellationTokenSource AutoResetCancellationTokenSource { get; set; }
+
           public override void Init(AdsMediationType adsMediationType)
           {
                if(AdsMediationType != adsMediationType) return;
@@ -16,13 +24,41 @@ namespace SDK.AdsManagers
                     OnAdCollapsed,
                     OnAdExpanded,
                     OnAdShowSuccess,
-                    OnAdShowFail);
+                    OnAdShowFailed,
+                    OnAdClicked);
           }
 
           public override void RequestAd()
           {
                if (MediationController.IsBannerLoaded()) return;
                MediationController.RequestBannerAds();
+          }
+          private void RefreshAutoReset()
+          {
+               if (IsAutoRefreshBanner)
+               {
+                    StopAutoReset();
+                    _ = WaitForBannerAutoReset();
+               }
+          }
+          private void StopAutoReset()
+          {
+               AutoResetCancellationTokenSource?.Cancel();
+               AutoResetCancellationTokenSource?.Dispose();
+               AutoResetCancellationTokenSource = new CancellationTokenSource();
+          }
+          
+          private async Task WaitForBannerAutoReset()
+          {
+               while(!AutoResetCancellationTokenSource.IsCancellationRequested && !IsRemoveAds() && !IsCheatAds() && IsBannerShowing)
+               {
+                    await Task.Delay((int)(BannerAutoResetTime * 1000), AutoResetCancellationTokenSource.Token);
+                    if (IsBannerShowing)
+                    {
+                         DestroyAd();
+                         RequestAd();
+                    }
+               }
           }
 
           public override void CallToShowAd(string placementName = "", UnityAction closedCallback = null, UnityAction showSuccessCallback = null,
@@ -34,19 +70,29 @@ namespace SDK.AdsManagers
                {
                     return;
                }
-               ShowAd();
+               Show();
           }
-          public override void ShowAd()
+          public override void Show()
           {
                Debug.Log("Banner ShowAd");
+               IsBannerShowing = true;
                MediationController.ShowBannerAds();
           }
-
-          public override void HideAd()
+          public override void Hide()
           {
                Debug.Log("Banner HideAd");
+               IsBannerShowing = false;
                MediationController.HideBannerAds();
           }
+          
+          public override void OnAdShowSuccess()
+          {
+               
+          }
+          public override void OnAdShowFailed()
+          {
+          }
+
           public void OnAdCollapsed()
           {
                Debug.Log("Banner OnAdCollapsed");
@@ -59,12 +105,18 @@ namespace SDK.AdsManagers
           {
                base.DestroyAd();
                Debug.Log("Banner DestroyAd");
+               IsBannerShowing = false;
                MediationController.DestroyBannerAds();
           }
 
-          public override bool IsAdLoaded()
+          public override bool IsLoaded()
           {
                return MediationController.IsBannerLoaded();
+          }
+
+          public override bool IsAdReady()
+          {
+               return !IsCheatAds() && !IsRemoveAds() && IsLoaded();
           }
      }
 }

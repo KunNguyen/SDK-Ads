@@ -10,7 +10,7 @@ namespace SDK.AdsManagers
           {
                if(AdsMediationType!= adsMediationType) return;
                if (IsRemoveAds()) return;
-               MediationController.InitRMecAds(OnAdLoadSuccess, OnAdLoadFail, OnAdClick, OnAdExpanded,OnAdCollapsed);
+               MediationController.InitRMecAds(OnAdLoadSuccess, OnAdLoadFail, OnAdClicked, OnAdExpanded,OnAdCollapsed);
           }
 
           public override void RequestAd()
@@ -26,16 +26,16 @@ namespace SDK.AdsManagers
                     OnAdShowSuccess();
                     return;
                }
-               ShowAd();
+               Show();
                
           }
           
-          public override void ShowAd()
+          public override void Show()
           {
                MediationController.ShowMRecAds();
           }
 
-          public override bool IsAdLoaded()
+          public override bool IsLoaded()
           {
                return MediationController != null && MediationController.IsMRecLoaded();
           }

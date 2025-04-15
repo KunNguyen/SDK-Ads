@@ -129,16 +129,38 @@ namespace SDK {
         #endregion
 
         #region Interstitial Ads
-        public const string ad_inter_fail = "ad_inter_fail";
-        public const string ad_inter_load = "ad_inter_load";
-        public const string ad_inter_show = "ad_inter_show";
-        public const string ad_inter_click = "ad_inter_click";
 
-        public void TrackAdsInterstitial_LoadedSuccess() {
-            ABIFirebaseManager.Instance.LogFirebaseEvent(ad_inter_load);
+        private const string ad_inter_fail = "ad_inter_fail";
+        private const string ad_inter_load = "ad_inter_load";
+        private const string ad_inter_load_fail = "ad_inter_load_fail";
+        private const string ad_inter_show = "ad_inter_show";
+        private const string ad_inter_click = "ad_inter_click";
+        private const string ad_inter_show_fail_by_load = "ad_inter_show_fail_by_load";
+        private int interstitialAdsLoadSuccess = 0;
+        private int interstitialAdsShowSuccess = 0;
+
+        public void TrackAdsInterstitial_LoadedSuccess(float timeFromStartRequest) {
+            interstitialAdsLoadSuccess++;
+            //round time to 0.5 
+            timeFromStartRequest = Mathf.Round(timeFromStartRequest * 2) / 2;
+            Parameter[] parameters = new[] {
+                new Parameter("count", interstitialAdsLoadSuccess.ToString()),
+                new Parameter("request_time", timeFromStartRequest.ToString("F1")),
+            };
+            ABIFirebaseManager.Instance.LogFirebaseEvent(ad_inter_load, parameters);
 #if UNITY_APPSFLYER
             ABIAppsflyerManager.TrackInterstitial_LoadedSuccess();
 #endif
+        }
+        public void TrackAdsInterstitial_LoadedFail(string error, float timeFromStartRequest)
+        {
+            //round time to 0.5 
+            timeFromStartRequest = Mathf.Round(timeFromStartRequest * 2) / 2;
+            Parameter[] parameters = new[] {
+                new Parameter("error", error),
+                new Parameter("request_time", timeFromStartRequest.ToString("F1")),
+            };
+            ABIFirebaseManager.Instance.LogFirebaseEvent(ad_inter_load_fail, parameters);
         }
         public void TrackAdsInterstitial_ShowSuccess() {
             ABIFirebaseManager.Instance.LogFirebaseEvent(ad_inter_show);
@@ -152,6 +174,10 @@ namespace SDK {
         }
         public void TrackAdsInterstitial_ShowFail() {
             ABIFirebaseManager.Instance.LogFirebaseEvent(ad_inter_fail);
+        }
+        public void TrackAdsInterstitial_ShowFailByLoad()
+        {
+            ABIFirebaseManager.Instance.LogFirebaseEvent(ad_inter_show_fail_by_load);
         }
         public void TrackAdsInterstitial_ClickOnButton() {
             ABIFirebaseManager.Instance.LogFirebaseEvent(ad_inter_click);
