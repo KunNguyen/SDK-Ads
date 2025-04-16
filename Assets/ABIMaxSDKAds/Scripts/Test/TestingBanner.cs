@@ -8,7 +8,7 @@ public class TestingBanner : MonoBehaviour
 {
     public Text m_TextStatus;
     public void OnLoadBanner() {
-        AdsManager.Instance.RequestBanner();
+        AdsManager.Instance.RequestBannerAds();
     }
     public void OnShowBanner() {
         AdsManager.Instance.ShowBannerAds();

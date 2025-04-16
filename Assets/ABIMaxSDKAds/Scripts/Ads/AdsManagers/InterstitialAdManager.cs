@@ -12,6 +12,7 @@ namespace SDK.AdsManagers
      {
           [field: SerializeField] public float MaxCappingAdsCooldown { get; set; }
           [field: SerializeField] public float CappingAdsCooldown { get; set; }
+          [field: SerializeField] public int LevelToShowInterstitial { get; set; } = 0;
           private CancellationTokenSource StopCooldownCTS { get; set; } = new CancellationTokenSource();
           private DateTime StartRequestTime{ get; set; }
 
@@ -44,6 +45,11 @@ namespace SDK.AdsManagers
                          ABIFirebaseManager.Instance.GetConfigValue(Keys.key_remote_interstitial_capping_time);
                     MaxCappingAdsCooldown = (float)configValue.DoubleValue;
                     Debug.Log("=============== Max Interstitial Capping Time " + MaxCappingAdsCooldown);
+               }
+               {
+                    LevelToShowInterstitial =
+                         (int)ABIFirebaseManager.Instance.GetConfigDouble(Keys.key_remote_interstitial_level);
+                    Debug.Log("=============== Level Pass Show Interstitial " + LevelToShowInterstitial);
                }
           }
 

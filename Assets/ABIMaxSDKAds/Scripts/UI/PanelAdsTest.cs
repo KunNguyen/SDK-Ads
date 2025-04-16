@@ -79,7 +79,7 @@ public class PanelAdsTest : MonoBehaviour
 
     private void Update()
     {
-        if (AdsManager.Instance.IsBannerShowing())
+        if (AdsManager.Instance.BannerAdManager.IsShowingAd)
         {
             m_TextBannerStatus.text = "Banner Ad Showing";
         }
@@ -105,7 +105,7 @@ public class PanelAdsTest : MonoBehaviour
         }
         m_TextInterstitialStatus.text = AdsManager.Instance.IsInterstitialAdLoaded() ? "Interstitial Ad Loaded" : "Interstitial Ad Not Loaded";
         m_TextRewardedStatus.text = AdsManager.Instance.IsRewardVideoLoaded() ? "Rewarded Ad Loaded" : "Rewarded Ad Not Loaded";
-        m_TextBannerCountTime.text = AdsManager.Instance.BannerCountTime.ToString(CultureInfo.InvariantCulture);
+        m_TextBannerCountTime.text = AdsManager.Instance.BannerAdManager.BannerAutoResetTime.ToString(CultureInfo.InvariantCulture);
     }
 
     public void ShowBanner()
@@ -120,7 +120,7 @@ public class PanelAdsTest : MonoBehaviour
     public void ShowCollapsibleBanner()
     {
         AdsManager.Instance.HideBannerAds();
-        AdsManager.Instance.ShowCollapsibleBannerAds(false, null);
+        AdsManager.Instance.ShowCollapsibleBannerAds(null);
     }
     public void HideCollapsibleBanner()
     {

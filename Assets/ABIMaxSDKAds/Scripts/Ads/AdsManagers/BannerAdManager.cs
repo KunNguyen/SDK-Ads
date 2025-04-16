@@ -10,8 +10,7 @@ namespace SDK.AdsManagers
      {
           
           [field: SerializeField] public bool IsAutoRefreshBanner { get; set; } = false;
-          [field: SerializeField] private float BannerAutoResetTime { get; set; } = 15f;
-          [field: SerializeField] public bool IsBannerShowing { get; set; } = false;
+          [field: SerializeField] public float BannerAutoResetTime { get; set; } = 15f;
           private CancellationTokenSource AutoResetCancellationTokenSource { get; set; }
 
           public override void Init(AdsMediationType adsMediationType)
@@ -50,10 +49,10 @@ namespace SDK.AdsManagers
           
           private async Task WaitForBannerAutoReset()
           {
-               while(!AutoResetCancellationTokenSource.IsCancellationRequested && !IsRemoveAds() && !IsCheatAds() && IsBannerShowing)
+               while(!AutoResetCancellationTokenSource.IsCancellationRequested && !IsRemoveAds() && !IsCheatAds() && IsShowingAd)
                {
                     await Task.Delay((int)(BannerAutoResetTime * 1000), AutoResetCancellationTokenSource.Token);
-                    if (IsBannerShowing)
+                    if (IsShowingAd)
                     {
                          DestroyAd();
                          RequestAd();
@@ -75,13 +74,13 @@ namespace SDK.AdsManagers
           public override void Show()
           {
                Debug.Log("Banner ShowAd");
-               IsBannerShowing = true;
+               IsShowingAd = true;
                MediationController.ShowBannerAds();
           }
           public override void Hide()
           {
                Debug.Log("Banner HideAd");
-               IsBannerShowing = false;
+               IsShowingAd = false;
                MediationController.HideBannerAds();
           }
           
@@ -105,7 +104,7 @@ namespace SDK.AdsManagers
           {
                base.DestroyAd();
                Debug.Log("Banner DestroyAd");
-               IsBannerShowing = false;
+               IsShowingAd = false;
                MediationController.DestroyBannerAds();
           }
 

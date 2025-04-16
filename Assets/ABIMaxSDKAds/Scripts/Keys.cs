@@ -9,9 +9,10 @@ namespace ABI {
           internal static readonly string key_remote_resume_ads_type = "show_open_ads_resume";
           internal static readonly string key_remote_aoa_show_first_time_active = "show_open_ads_first_open";
 
-          internal static readonly string key_remote_ads_resume_ads_active = "resume_ads";
+          internal static readonly string key_remote_ads_resume_ads_active = "ads_resume_active";
           internal static readonly string key_remote_ads_resume_capping_time = "ads_resume_capping_time";
           internal static readonly string key_remote_ads_resume_pause_time = "ads_resume_pause_time";
+          internal static readonly string key_remote_ads_resume_ads_type = "ads_resume_type";
         
           internal static readonly string key_remote_interstitial_level = "level_show_inter";
           internal static readonly string key_remote_interstitial_capping_time = "ads_interval";

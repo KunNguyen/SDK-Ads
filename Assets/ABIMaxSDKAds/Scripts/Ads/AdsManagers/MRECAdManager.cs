@@ -1,3 +1,4 @@
+using ABI;
 using SDK.AdsManagers.Interface;
 using UnityEngine;
 using UnityEngine.Events;
@@ -6,11 +7,21 @@ namespace SDK.AdsManagers
 {
      public class MRECAdManager : UnitAdManager, IBannerAdUnit
      {
+          public bool IsActiveByRemote { get; set; } = false;
           public override void Init(AdsMediationType adsMediationType)
           {
                if(AdsMediationType!= adsMediationType) return;
                if (IsRemoveAds() || IsCheatAds()) return;
                MediationController.InitRMecAds(OnAdLoadSuccess, OnAdLoadFail, OnAdClicked, OnAdExpanded,OnAdCollapsed);
+          }
+
+          public override void UpdateRemoteConfig()
+          {
+               base.UpdateRemoteConfig();
+               {
+                    IsActiveByRemote = ABIFirebaseManager.Instance.GetConfigBool(Keys.key_remote_mrec_active);
+                    Debug.Log("=============== Active MREC Ads " + IsActiveByRemote);
+               }
           }
 
           public override void RequestAd()
@@ -50,12 +61,12 @@ namespace SDK.AdsManagers
 
           public void OnAdCollapsed()
           {
-               Debug.Log("MREC OnAdCollapsed");
+               Debug.Log("MRec OnAdCollapsed");
                
           }
           public void OnAdExpanded()
           {
-               Debug.Log("MREC OnAdExpanded");
+               Debug.Log("MRec OnAdExpanded");
                
           }
      }

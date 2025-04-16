@@ -1,3 +1,5 @@
+using ABI;
+using Firebase.RemoteConfig;
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -11,7 +13,7 @@ namespace SDK.AdsManagers
 
           [field: SerializeField] public UnitAdManager InterruptAdManager { get; set; }
           private int InterruptCount { get; set; } = 0;
-          private const int MaxInterruptCount = 3;
+          private int MaxInterruptCount = 3;
           private bool IsWatchedSuccess { get; set; } = false;
           private UnityAction<bool> AdRewardClosedCallback = null;
 
@@ -23,6 +25,23 @@ namespace SDK.AdsManagers
                     OnAdLoadSuccess,
                     OnAdLoadFail,
                     OnAdStartShow);
+          }
+
+          public override void UpdateRemoteConfig()
+          {
+               base.UpdateRemoteConfig();
+               {
+                    ConfigValue configValue =
+                         ABIFirebaseManager.Instance.GetConfigValue(Keys.key_remote_inter_reward_interspersed);
+                    IsActiveInterruptReward = configValue.BooleanValue;
+                    Debug.Log("=============== Active " + IsActiveInterruptReward);
+               }
+               {
+                    ConfigValue configValue =
+                         ABIFirebaseManager.Instance.GetConfigValue(Keys.key_remote_inter_reward_interspersed_time);
+                    MaxInterruptCount = (int)configValue.DoubleValue;
+                    Debug.Log("=============== MAX Reward InterruptCount" + MaxInterruptCount);
+               }
           }
 
           public override void RequestAd()

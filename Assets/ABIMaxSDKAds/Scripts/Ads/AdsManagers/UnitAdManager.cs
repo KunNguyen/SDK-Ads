@@ -35,7 +35,10 @@ namespace SDK.AdsManagers
           }
 
           public abstract void Init(AdsMediationType adsMediationType);
-          public abstract void RequestAd();
+
+          public virtual void RequestAd()
+          {
+          }
 
           public virtual void CallToShowAd(
                string placementName = "",

@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using SDK.AdsManagers.Interface;
 using UnityEngine;
+using UnityEngine.Events;
 
 namespace SDK.AdsManagers
 {
@@ -11,8 +12,8 @@ namespace SDK.AdsManagers
           [field: SerializeField] public bool IsOpenOnStart { get; set; } = false;
           [field: SerializeField] public bool IsAutoRefresh { get; set; } = false;
           [field: SerializeField] public bool IsExpanded { get; set; } = false;
-          [field: SerializeField] private float AutoResetTime { get; set; } = 15f;
-          private CancellationTokenSource AutoResetCancellationTokenSource { get; set; }
+          [field: SerializeField] public float AutoRefreshTime { get; set; } = 15f;
+          private CancellationTokenSource AutoRefreshCancellationTokenSource { get; set; }
 
           public override void Init(AdsMediationType adsMediationType)
           {
@@ -31,25 +32,26 @@ namespace SDK.AdsManagers
                if (!IsOpenOnStart) yield break;
                RequestAd();
                Show();
+               StartAutoReset();
           }
           public void StartAutoReset()
           {
                if (!IsAutoRefresh) return;
                StopAutoReset();
-               AutoResetCancellationTokenSource = new CancellationTokenSource();
+               AutoRefreshCancellationTokenSource = new CancellationTokenSource();
                _ = WaitForBannerAutoReset();
           }
           public void StopAutoReset()
           {
-               AutoResetCancellationTokenSource?.Cancel();
-               AutoResetCancellationTokenSource?.Dispose();
-               AutoResetCancellationTokenSource = new CancellationTokenSource();
+               AutoRefreshCancellationTokenSource?.Cancel();
+               AutoRefreshCancellationTokenSource?.Dispose();
+               AutoRefreshCancellationTokenSource = new CancellationTokenSource();
           }
           private async Task WaitForBannerAutoReset()
           {
-               while (!AutoResetCancellationTokenSource.IsCancellationRequested && !IsRemoveAds() && !IsCheatAds() && IsShowingAd)
+               while (!AutoRefreshCancellationTokenSource.IsCancellationRequested && !IsRemoveAds() && !IsCheatAds() && IsShowingAd)
                {
-                    await Task.Delay((int)(AutoResetTime * 1000), AutoResetCancellationTokenSource.Token);
+                    await Task.Delay((int)(AutoRefreshTime * 1000), AutoRefreshCancellationTokenSource.Token);
                     if (IsShowingAd)
                     {
                          DestroyAd();
@@ -63,10 +65,24 @@ namespace SDK.AdsManagers
                MediationController.RequestCollapsibleBannerAds(IsOpenOnStart);
           }
 
+          public override void CallToShowAd(string placementName = "", UnityAction closedCallback = null, UnityAction showSuccessCallback = null,
+               UnityAction showFailCallback = null, bool isTracking = true, bool isSkipCapping = false)
+          {
+               base.CallToShowAd(placementName, closedCallback, showSuccessCallback, showFailCallback, isTracking, isSkipCapping);
+               if (IsRemoveAds() || IsCheatAds()) return;
+               Show();
+          }
+
           public override void Show()
           {
                MediationController.ShowCollapsibleBannerAds();
+               IsShowingAd = true;
                StartAutoReset();
+          }
+
+          public void Show(UnityAction closedCallback)
+          {
+               MediationController.ShowCollapsibleBannerAds();
           }
           public override void Hide()
           {
@@ -84,6 +100,11 @@ namespace SDK.AdsManagers
                return !IsRemoveAds() && !IsCheatAds() && IsLoaded();
           }
 
+          public override void OnAdLoadSuccess()
+          {
+               base.OnAdLoadSuccess();
+               StartAutoReset();
+          }
           public void OnAdCollapsed()
           {
                Debug.Log("CollapsibleBanner OnAdCollapsed");
@@ -96,6 +117,7 @@ namespace SDK.AdsManagers
           }
           public void OnAdDestroyed()
           {
+               IsShowingAd = false;
           }
           public void OnAdHide()
           {

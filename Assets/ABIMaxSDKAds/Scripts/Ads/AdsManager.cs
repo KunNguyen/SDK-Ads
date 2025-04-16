@@ -7,6 +7,7 @@ using ABI;
 using UnityEngine.Events;
 using Firebase.RemoteConfig;
 using SDK.AdsManagers;
+using SDK.AdsManagers.Interface;
 using Sirenix.OdinInspector;
 using UnityEditor;
 using UnityEngine.Serialization;
@@ -88,40 +89,15 @@ namespace SDK
 
         private void UpdateRemoteConfigs()
         {
-            
-            {
-                ConfigValue configValue =
-                    ABIFirebaseManager.Instance.GetConfigValue(Keys.key_remote_inter_reward_interspersed);
-                m_IsActiveInterruptReward = configValue.BooleanValue;
-                Debug.Log("=============== Active " + m_IsActiveInterruptReward);
-            }
-            {
-                ConfigValue configValue =
-                    ABIFirebaseManager.Instance.GetConfigValue(Keys.key_remote_inter_reward_interspersed_time);
-                m_MaxRewardInterruptCount = (int)configValue.DoubleValue;
-                Debug.Log("=============== MAX Reward InteruptCount" + m_MaxRewardInterruptCount);
-            }
-            {
-                m_LevelPassToShowInterstitial =
-                    (int)ABIFirebaseManager.Instance.GetConfigDouble(Keys.key_remote_interstitial_level);
-                Debug.Log("=============== Level Pass Show Interstitial " + m_LevelPassToShowInterstitial);
-            }
-            {
-                IsActiveMRECAds = ABIFirebaseManager.Instance.GetConfigBool(Keys.key_remote_mrec_active);
-                Debug.Log("=============== Active MREC Ads " + IsActiveMRECAds);
-            }
-
-            UpdateAOARemoteConfig();
-            UpdateRemoteConfigResumeAds();
             IsUpdateRemoteConfigSuccess = true;
+            InterstitialAdManager.UpdateRemoteConfig();
+            RewardAdManager.UpdateRemoteConfig();
+            BannerAdManager.UpdateRemoteConfig();
+            CollapsibleBannerAdManager.UpdateRemoteConfig();
+            MRecAdManager.UpdateRemoteConfig();
+            AppOpenAdManager.UpdateRemoteConfig();
+            ResumeAdsManager.UpdateRemoteConfig();
         }
-
-        private void Update()
-        {
-            float dt = Time.deltaTime;
-            UpdateCollapsibleBanner(dt);
-        }
-
         private void Init()
         {
             StartCoroutine(coWaitForFirebaseInitialization());
@@ -231,7 +207,7 @@ namespace SDK
             InitBannerAds(adsMediationType);
             InitCollapsibleBanner(adsMediationType);
             InitMRecAds(adsMediationType);
-            
+            InitAppOpenAds(adsMediationType);
         }
 
         private void LoadRemoveAds()
@@ -388,12 +364,11 @@ namespace SDK
                         : new List<string>();
                 admobMediationController.IsCollapsibleBannerShowingOnStart =
                     m_SDKSetup.isShowingOnStartCollapsibleBanner;
-                IsAutoCloseCollapsibleBanner = m_SDKSetup.isAutoCloseCollapsibleBanner;
-                m_AutoCloseTimeCollapsibleBanner = m_SDKSetup.autoCloseTime;
+                CollapsibleBannerAdManager.IsAutoRefresh = m_SDKSetup.isAutoCloseCollapsibleBanner;
+                
 
-                IsAutoRefreshCollapsibleBanner = m_SDKSetup.isAutoRefreshCollapsibleBanner;
-                IsAutoRefreshExtendCollapsibleBanner = m_SDKSetup.isAutoRefreshExtendCollapsibleBanner;
-                m_AutoRefreshTimeCollapsibleBanner = m_SDKSetup.autoRefreshTime;
+                CollapsibleBannerAdManager.IsAutoRefresh = m_SDKSetup.isAutoRefreshCollapsibleBanner;
+                CollapsibleBannerAdManager.AutoRefreshTime= m_SDKSetup.autoRefreshTime;
 
                 admobMediationController.m_CollapsibleBannerPosition = m_SDKSetup.adsPositionCollapsibleBanner;
             }
@@ -492,7 +467,7 @@ namespace SDK
 
         #region Banner Ads
         private AdsConfig BannerAdsConfig => GetAdsConfig(AdsType.BANNER);
-        [field: SerializeField] private BannerAdManager BannerAdManager { get; set; }
+        [field: SerializeField] public BannerAdManager BannerAdManager { get; set; }
 
         private void SetupBannerAds()
         {
@@ -509,6 +484,11 @@ namespace SDK
         {
             Debug.Log("Init Banner");
             BannerAdManager.Init(adsMediationType);
+        }
+
+        public void RequestBannerAds()
+        {
+            BannerAdManager.RequestAd();
         }
         public void ShowBannerAds()
         {
@@ -532,9 +512,8 @@ namespace SDK
         #endregion
 
         #region Collapsible Banner
-
-        [field: SerializeField] public CollapsibleBannerAdManager CollapsibleBannerAdManager { get; set; }
         private AdsConfig CollapsibleBannerAdsConfig => GetAdsConfig(AdsType.COLLAPSIBLE_BANNER);
+        [field: SerializeField] public CollapsibleBannerAdManager CollapsibleBannerAdManager { get; set; }
 
         private UnityAction m_CollapsibleBannerCloseCallback;
 
@@ -564,59 +543,15 @@ namespace SDK
         {
             return CollapsibleBannerAdManager.IsShowingAd;
         }
-
-        private void UpdateCollapsibleBanner(float dt)
-        {
-            i
-
-            if (IsAutoRefreshCollapsibleBanner)
-            {
-                if (m_RefreshTimeCounterCollapsibleBanner > 0)
-                {
-                    m_RefreshTimeCounterCollapsibleBanner -= dt;
-                    if (m_RefreshTimeCounterCollapsibleBanner <= 0)
-                    {
-                        if (IsAutoRefreshExtendCollapsibleBanner)
-                        {
-                            ShowCollapsibleBannerAds();
-                        }
-                        else
-                        {
-                            RefreshCollapsibleBanner();
-                        }
-
-                        m_RefreshTimeCounterCollapsibleBanner = 0;
-                    }
-                }
-            }
-        }
-
-        // ReSharper disable Unity.PerformanceAnalysis
-        public void RequestCollapsibleBanner()
-        {
-            CollapsibleBannerAdManager.RequestAd();
-        }
-
-        public void RefreshCollapsibleBanner()
-        {
-            if (!CollapsibleBannerAdsConfig.isActive || IsRemoveAds) return;
-            GetSelectedMediation(AdsType.COLLAPSIBLE_BANNER)?.RefreshCollapsibleBannerAds();
-        }
-
-        public void ShowCollapsibleBannerAds(bool isAutoClose = false, UnityAction closeCallback = null)
+        public void ShowCollapsibleBannerAds(UnityAction closeCallback = null)
         {
             Debug.Log(("Call Show Collapsible Banner Ads"));
-            if (IsCheatAds || IsRemoveAds) return;
-            if (GetSelectedMediation(AdsType.COLLAPSIBLE_BANNER) == null) return;
-            IsAutoCloseCollapsibleBanner = isAutoClose;
-            m_CollapsibleBannerCloseCallback = closeCallback;
-            m_RefreshTimeCounterCollapsibleBanner = 0;
-            GetSelectedMediation(AdsType.COLLAPSIBLE_BANNER).ShowCollapsibleBannerAds();
+            CollapsibleBannerAdManager.CallToShowAd("", closeCallback);
         }
 
         public void HideCollapsibleBannerAds()
         {
-            GetSelectedMediation(AdsType.COLLAPSIBLE_BANNER)?.HideCollapsibleBannerAds();
+            CollapsibleBannerAdManager.Hide();
         }
 
         public void DestroyCollapsibleBanner()
@@ -626,54 +561,8 @@ namespace SDK
 
         public bool IsCollapsibleBannerLoaded()
         {
-            AdsMediationController mediation = GetSelectedMediation(AdsType.COLLAPSIBLE_BANNER);
-            return mediation != null && mediation.IsCollapsibleBannerLoaded();
+            return CollapsibleBannerAdManager.IsLoaded();
         }
-
-        private void OnCollapsibleBannerLoadedSucess()
-        {
-            Debug.Log("Collapsible Banner Loaded");
-            m_RefreshTimeCounterCollapsibleBanner = m_AutoRefreshTimeCollapsibleBanner;
-        }
-
-        private void OnCollapsibleBannerLoadedFail()
-        {
-            Debug.Log("Collapsible Banner Load Fail");
-        }
-
-        private void OnCollapsibleBannerExpanded()
-        {
-            Debug.Log("Collapsible Banner Expanded");
-            IsExpandedCollapsibleBanner = true;
-            IsShowingCollapsibleBanner = true;
-            m_RefreshTimeCounterCollapsibleBanner = 0;
-        }
-
-        private void OnCollapsibleBannerCollapsed()
-        {
-            Debug.Log("Collapsible Banner Collapsed");
-            IsExpandedCollapsibleBanner = false;
-            m_CloseTimeCounterCollapsibleBanner = m_AutoCloseTimeCollapsibleBanner;
-            m_RefreshTimeCounterCollapsibleBanner = m_AutoRefreshTimeCollapsibleBanner;
-        }
-
-        private void OnCollapsibleBannerDestroyed()
-        {
-            Debug.Log("Collapsible Banner Destroyed");
-            IsShowingCollapsibleBanner = false;
-        }
-
-        private void OnCollapsibleBannerHide()
-        {
-            Debug.Log("Collapsible Banner Hide");
-            IsShowingCollapsibleBanner = false;
-        }
-
-        public bool IsCollapsibleBannerShowingTimeOut()
-        {
-            return m_CloseTimeCounterCollapsibleBanner <= 0;
-        }
-
         #endregion
 
         #region Reward Ads
@@ -750,54 +639,34 @@ namespace SDK
         #region App Open Ads
 
         private AdsConfig AppOpenAdsConfig => GetAdsConfig(AdsType.APP_OPEN);
+        [field: SerializeField] public AppOpenAdManager AppOpenAdManager { get; set; }
 
-        private bool isActiveAppOpenAds = true;
-        private bool isActiveShowAdsFirstTime = true;
-        private bool isDoneShowAdsFirstTime = false;
-        private double adsResumeCappingTime = 0;
-        private double pauseTimeNeedToShowAds = 5;
-        private DateTime m_CloseAdsTime = DateTime.Now;
-        private DateTime m_StartPauseTime = DateTime.Now;
-        private bool m_IsShowingAds;
+        [field: SerializeField] public bool IsShowingAds { get; set; }
 
-        private bool IsShowingAds
+
+        private void SetupAppOpenAds()
         {
-            get => m_IsShowingAds;
-            set
-            {
-                m_IsShowingAds = value;
-                Debug.Log("Set Showing Ads = " + value);
-            }
-        }
+            AppOpenAdManager.Setup(
+                AppOpenAdsConfig,
+                m_SDKSetup,
+                GetSelectedMediation(AdsType.APP_OPEN));
 
-        private void SetupAppOpenAds(AdsMediationType adsMediationType)
-        {
-            if (IsCheatAds || IsRemoveAds) return;
-            if (adsMediationType != m_SDKSetup.appOpenAdsMediationType) return;
-            Debug.Log("Setup App Open Ads");
-            AppOpenAdsConfig.isActive = m_SDKSetup.IsActiveAdsType(AdsType.APP_OPEN);
-            if (!m_SDKSetup.IsActiveAdsType(AdsType.APP_OPEN)) return;
-            foreach (AdsMediationController t in AppOpenAdsConfig.adsMediations)
-            {
-                t.InitAppOpenAds(OnAppOpenAdLoadedEvent, OnAppOpenAdLoadFailedEvent, OnAppOpenAdClosedEvent,
-                    OnAppOpenAdDisplayedEvent, OnAppOpenAdFailedToDisplayEvent);
-            }
-
-            StartCoroutine(coCheckingShowAppOpenAds());
+            AppOpenAdManager.IsRemoveAds = () => IsRemoveAds;
+            AppOpenAdManager.IsCheatAds = () => IsCheatAds;
+            
             Debug.Log("Setup App Open Ads Done");
+        }
+        private void InitAppOpenAds(AdsMediationType adsMediationType)
+        {
+            Debug.Log("Init App Open Ads");
+            AppOpenAdManager.Init(adsMediationType);
         }
 
         private void ShowAppOpenAds()
         {
-            if (IsCheatAds || IsRemoveAds) return;
-            if (IsAppOpenAdsReady())
-            {
-                Debug.Log("Start Show App Open Ads");
-                MarkShowingAds(true);
-                GetSelectedMediation(AdsType.APP_OPEN).ShowAppOpenAds();
-            }
+            AppOpenAdManager.CallToShowAd();
         }
-
+        
         private void DelayShowAppOpenAds()
         {
             StartCoroutine(coDelayShowAppOpenAds());
@@ -822,99 +691,11 @@ namespace SDK
 
         private void RequestAppOpenAds()
         {
-            if (IsRemoveAds) return;
-            GetSelectedMediation(AdsType.APP_OPEN).RequestAppOpenAds();
+            AppOpenAdManager.RequestAd();
         }
-
-        private bool IsAppOpenAdsReady()
-        {
-            if (GetSelectedMediation(AdsType.APP_OPEN) == null)
-            {
-                Debug.Log("App Open Mediation Null");
-                return false;
-            }
-
-            return IsActiveAppOpenAds() && IsAppOpenAdsLoaded();
-        }
-
-        private bool IsActiveAppOpenAds()
-        {
-            if (!IsActiveResumeAdsRemoteConfig) return false;
-            if (IsShowingAds) return false;
-            float totalTimeBetweenShow = (float)(DateTime.Now - m_CloseAdsTime).TotalSeconds;
-            Debug.Log("Total Time Between Show = " + totalTimeBetweenShow + " Need = " + adsResumeCappingTime);
-            return !(totalTimeBetweenShow < adsResumeCappingTime);
-        }
-
         private bool IsAppOpenAdsLoaded()
         {
-            return GetSelectedMediation(AdsType.APP_OPEN) != null &&
-                   GetSelectedMediation(AdsType.APP_OPEN).IsAppOpenAdsLoaded();
-        }
-
-        private void UpdateAOARemoteConfig()
-        {
-            {
-                ConfigValue configValue = ABIFirebaseManager.Instance.GetConfigValue(ABI.Keys.key_remote_aoa_active);
-                isActiveAppOpenAds = configValue.BooleanValue;
-                Debug.Log("App Open Ads Active = " + isActiveAppOpenAds);
-            }
-
-            {
-                ConfigValue configValue =
-                    ABIFirebaseManager.Instance.GetConfigValue(ABI.Keys.key_remote_aoa_show_first_time_active);
-                isActiveShowAdsFirstTime = configValue.BooleanValue;
-                Debug.Log("AOA active show first time = " + isActiveShowAdsFirstTime);
-            }
-        }
-
-        IEnumerator coCheckingShowAppOpenAds()
-        {
-            float startCheckingTime = Time.realtimeSinceStartup;
-            while (Time.realtimeSinceStartup < 10f)
-            {
-
-                if (isDoneShowAdsFirstTime) break;
-                if (ABIFirebaseManager.Instance.IsFirebaseRemoteFetchingSuccess)
-                {
-                    Debug.Log("Is Active App Open Ads = " + isActiveAppOpenAds + " Is First Open = " + IsFirstOpen +
-                              " Is Active Show First Time = " + isActiveShowAdsFirstTime + " Is AOA Loaded = " +
-                              IsAppOpenAdsLoaded());
-                    if (!isActiveAppOpenAds || IsRemoveAds) break;
-                    if (IsFirstOpen)
-                    {
-                        if (isActiveShowAdsFirstTime)
-                        {
-                            if (IsAppOpenAdsLoaded())
-                            {
-                                ShowAdsFirstTime();
-                                break;
-                            }
-                        }
-                    }
-                    else
-                    {
-                        if (IsAppOpenAdsLoaded())
-                        {
-                            ShowAdsFirstTime();
-                            break;
-                        }
-                    }
-                }
-
-                yield return new WaitForSeconds(0.2f);
-            }
-
-            Debug.Log("AOA Done Checking --- Start Time = " + startCheckingTime + " End Time = " +
-                      Time.realtimeSinceStartup);
-        }
-
-        private void ShowAdsFirstTime()
-        {
-            Debug.Log("-------------------Show Ads First Time-------------------");
-            isDoneShowAdsFirstTime = true;
-            ForceShowAppOpenAds();
-
+            return AppOpenAdManager.IsLoaded();
         }
 
         private void MarkShowingAds(bool isShowing)
@@ -935,41 +716,11 @@ namespace SDK
             IsShowingAds = false;
         }
 
-        private void OnAppOpenAdLoadedEvent()
-        {
-            Debug.Log("AdsManager AOA Loaded");
-        }
-
-        private void OnAppOpenAdLoadFailedEvent()
-        {
-            Debug.Log("AdsManager AOA Load Fail");
-        }
-
-        private void OnAppOpenAdClosedEvent()
-        {
-            Debug.Log("AdsManager Closed app open ad");
-            MarkShowingAds(false);
-            m_CloseAdsTime = DateTime.Now;
-            RequestAppOpenAds();
-        }
-
-        private void OnAppOpenAdDisplayedEvent()
-        {
-            Debug.Log("AdsManager Displayed app open ad");
-            MarkShowingAds(true);
-            ResetAdsInterstitialCappingTime();
-        }
-
-        private void OnAppOpenAdFailedToDisplayEvent()
-        {
-            Debug.Log("AdsManager Failed to display app open ad");
-            MarkShowingAds(false);
-        }
-
         #endregion
 
         #region Resume Ads
 
+        [field: SerializeField] public ResumeAdManager ResumeAdsManager { get; set; }
         public bool IsActiveResumeAdsIngame = false;
         private bool IsActiveResumeAdsRemoteConfig = false;
 
@@ -1023,35 +774,6 @@ namespace SDK
         {
             Debug.Log("Close Loading Panel");
         }
-
-        private void UpdateRemoteConfigResumeAds()
-        {
-            {
-                ConfigValue configValue =
-                    ABIFirebaseManager.Instance.GetConfigValue(ABI.Keys.key_remote_ads_resume_ads_active);
-                IsActiveResumeAdsRemoteConfig = configValue.BooleanValue;
-                Debug.Log("=============== Resume Ads Active = " + IsActiveResumeAdsRemoteConfig);
-            }
-            {
-                bool value = ABIFirebaseManager.Instance.GetConfigBool(Keys.key_remote_resume_ads_type);
-                resumeAdsType = value ? AdsType.APP_OPEN : AdsType.INTERSTITIAL;
-                Debug.Log("=============== Resume Ads Type " + resumeAdsType);
-            }
-            {
-                ConfigValue configValue =
-                    ABIFirebaseManager.Instance.GetConfigValue(ABI.Keys.key_remote_ads_resume_capping_time);
-                adsResumeCappingTime = configValue.DoubleValue;
-                Debug.Log("=============== Ads Resume Capping Time = " + adsResumeCappingTime);
-            }
-
-            {
-                ConfigValue configValue =
-                    ABIFirebaseManager.Instance.GetConfigValue(ABI.Keys.key_remote_ads_resume_pause_time);
-                pauseTimeNeedToShowAds = configValue.DoubleValue;
-                Debug.Log("=============== Ads Resume Pause Time To Show Ads = " + pauseTimeNeedToShowAds);
-            }
-        }
-
         #endregion
 
         private void OnAdRevenuePaidEvent(ImpressionData impressionData)
@@ -1065,28 +787,7 @@ namespace SDK
 
         private void OnApplicationPause(bool paused)
         {
-            Debug.Log("OnApplicationPause " + paused +
-                      "Resume Ads Type = " + resumeAdsType +
-                      " Is Showing Ads = " + IsShowingAds);
-            switch (paused)
-            {
-                case true:
-                    m_StartPauseTime = DateTime.Now;
-                    break;
-                case false when (DateTime.Now - m_StartPauseTime).TotalSeconds > pauseTimeNeedToShowAds:
-                {
-                    if (Time.realtimeSinceStartup > 30 && !IsShowingAds)
-                    {
-                        ShowResumeAds();
-                    }
-                    else
-                    {
-                        IsShowingAds = false;
-                    }
-
-                    break;
-                }
-            }
+            ResumeAdsManager.OnPause(paused);
         }
 
         [System.Serializable]
