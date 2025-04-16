@@ -13,7 +13,13 @@ namespace SDK.AdsManagers
           [field: SerializeField] public bool IsActive { get; set; }
           [field: SerializeField] public bool IsReady { get; set; } = false;
           [field: SerializeField] public string Placement { get; set; }
-          [field: SerializeField] public bool IsShowingAd { get; set; } = false;
+
+          [field: SerializeField]
+          public bool IsShowingAd
+          {
+               get => IsShowingAdChecking();
+               protected set => MarkShowingAds?.Invoke(value);
+          }
 
           protected UnityAction AdCloseCallback;
           protected UnityAction AdLoadSuccessCallback;
@@ -22,6 +28,7 @@ namespace SDK.AdsManagers
           protected UnityAction AdShowFailCallback;
           
           public UnityAction<bool> MarkShowingAds { get; set; }
+          public AdChecking IsShowingAdChecking { get; set; }
           public AdChecking IsCheatAds { get; set; }
           public AdChecking IsRemoveAds { get; set; }
 

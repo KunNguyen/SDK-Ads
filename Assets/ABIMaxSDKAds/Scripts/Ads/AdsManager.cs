@@ -4,6 +4,7 @@ using UnityEngine;
 using System;
 using System.Threading.Tasks;
 using ABI;
+using ABIMaxSDKAds.Scripts;
 using UnityEngine.Events;
 using Firebase.RemoteConfig;
 using SDK.AdsManagers;
@@ -51,6 +52,7 @@ namespace SDK
         private bool IsActiveMRECAds;
         public bool IsFirstOpen;
         public bool IsLinkRewardWithRemoveAds;
+        [field: SerializeField] public bool IsShowingAds { get; set; }
 
         public AdsType resumeAdsType;
 
@@ -78,7 +80,7 @@ namespace SDK
             m_IsActiveInterruptReward = true;
             LoadRemoveAds();
             IsFirstOpen = PlayerPrefs.GetInt("first_open", 0) == 0;
-            Debug.Log("Is First Open " + IsFirstOpen);
+            DebugAds.Log("Is First Open " + IsFirstOpen);
             PlayerPrefs.SetInt("first_open", 1);
         }
 
@@ -127,7 +129,7 @@ namespace SDK
 
         private void InitAdsMediation()
         {
-            Debug.Log("Init Ads Mediation");
+            DebugAds.Log("Init Ads Mediation");
             {
                 AdsMediationController adsMediationController = GetSelectedMediation(AdsType.INTERSTITIAL);
                 if (adsMediationController != null && !adsMediationController.IsInited)
@@ -179,7 +181,7 @@ namespace SDK
 
         public void SetupUnitAdManager()
         {
-            Debug.Log("Init Ads Type");
+            DebugAds.Log("Init Ads Type");
             //Setup Interstitial
             SetupInterstitialAds();
 
@@ -252,6 +254,23 @@ namespace SDK
                 _ => null
             };
         }
+        private void MarkShowingAds(bool isShowing)
+        {
+            if (isShowing)
+            {
+                IsShowingAds = true;
+            }
+            else
+            {
+                EventManager.AddEventNextFrame(() => { StartCoroutine(coWaitingMarkShowingAdsDone()); });
+            }
+        }
+
+        IEnumerator coWaitingMarkShowingAdsDone()
+        {
+            yield return new WaitForSeconds(2f);
+            IsShowingAds = false;
+        }
 
         #endregion
 
@@ -320,7 +339,7 @@ namespace SDK
 
 #if UNITY_EDITOR
             EditorUtility.SetDirty(maxMediationController);
-            Debug.Log("Update Max Mediation Done");
+            DebugAds.Log("Update Max Mediation Done");
 #endif
 #endif
         }
@@ -385,7 +404,7 @@ namespace SDK
                     : new List<string>();
 #if UNITY_EDITOR
             EditorUtility.SetDirty(admobMediationController);
-            Debug.Log("Update Admob Mediation Done");
+            DebugAds.Log("Update Admob Mediation Done");
 #endif
 #endif
         }
@@ -411,7 +430,7 @@ namespace SDK
             isAutoRefreshBannerByCode = m_SDKSetup.isAutoRefreshBannerByCode;
 #if UNITY_EDITOR
             EditorUtility.SetDirty(ironSourceMediationController);
-            Debug.Log("Update IronSource Mediation Done");
+            DebugAds.Log("Update IronSource Mediation Done");
 #endif
 #endif
         }
@@ -431,11 +450,13 @@ namespace SDK
                 GetSelectedMediation(AdsType.INTERSTITIAL));
             InterstitialAdManager.IsRemoveAds = () => IsRemoveAds;
             InterstitialAdManager.IsCheatAds = () => IsCheatAds;
+            InterstitialAdManager.MarkShowingAds = MarkShowingAds;
+            InterstitialAdManager.IsShowingAdChecking = () => IsShowingAds;
         }
         private void InitInterstitial(AdsMediationType adsMediationType)
         {
             InterstitialAdManager.Init(adsMediationType);
-            Debug.Log("Setup Interstitial Done");
+            DebugAds.Log("Setup Interstitial Done");
         }
         public void ShowInterstitial(
             UnityAction closedCallback = null, 
@@ -460,7 +481,7 @@ namespace SDK
         }
         public bool IsPassLevelToShowInterstitial(int level)
         {
-            Debug.Log("currentLevel: " + level + " Level need passed " + m_LevelPassToShowInterstitial);
+            DebugAds.Log("currentLevel: " + level + " Level need passed " + m_LevelPassToShowInterstitial);
             return level >= m_LevelPassToShowInterstitial;
         }
         #endregion
@@ -471,7 +492,7 @@ namespace SDK
 
         private void SetupBannerAds()
         {
-            Debug.Log("Setup Banner");
+            DebugAds.Log("Setup Banner");
             BannerAdManager.Setup(
                 BannerAdsConfig,
                 m_SDKSetup,
@@ -482,7 +503,7 @@ namespace SDK
         }
         private void InitBannerAds(AdsMediationType adsMediationType)
         {
-            Debug.Log("Init Banner");
+            DebugAds.Log("Init Banner");
             BannerAdManager.Init(adsMediationType);
         }
 
@@ -492,12 +513,12 @@ namespace SDK
         }
         public void ShowBannerAds()
         {
-            Debug.Log(("Call Show Banner Ads"));
+            DebugAds.Log(("Call Show Banner Ads"));
             BannerAdManager.Show();
         }
         public void HideBannerAds()
         {
-            Debug.Log(("Call Hide Banner Ads"));
+            DebugAds.Log(("Call Hide Banner Ads"));
             BannerAdManager.Hide();
         }
 
@@ -519,7 +540,7 @@ namespace SDK
 
         private void SetupCollapsibleBannerAds()
         {
-            Debug.Log("Setup Collapsible Banner");
+            DebugAds.Log("Setup Collapsible Banner");
             CollapsibleBannerAdManager.Setup(
                 CollapsibleBannerAdsConfig,
                 m_SDKSetup,
@@ -530,7 +551,7 @@ namespace SDK
         }
         private void InitCollapsibleBanner(AdsMediationType adsMediationType)
         {
-            Debug.Log("Init Collapsible Banner");
+            DebugAds.Log("Init Collapsible Banner");
             CollapsibleBannerAdManager.Init(adsMediationType);
             
         }
@@ -545,7 +566,7 @@ namespace SDK
         }
         public void ShowCollapsibleBannerAds(UnityAction closeCallback = null)
         {
-            Debug.Log(("Call Show Collapsible Banner Ads"));
+            DebugAds.Log(("Call Show Collapsible Banner Ads"));
             CollapsibleBannerAdManager.CallToShowAd("", closeCallback);
         }
 
@@ -576,6 +597,8 @@ namespace SDK
             RewardAdManager.Setup(RewardVideoAdsConfig, m_SDKSetup, GetSelectedMediation(AdsType.REWARDED));
             RewardAdManager.IsRemoveAds = () => IsRemoveAds;
             RewardAdManager.IsCheatAds = () => IsCheatAds;
+            RewardAdManager.MarkShowingAds = MarkShowingAds;
+            RewardAdManager.IsShowingAdChecking = () => IsShowingAds;
         }
         private void InitRewardedVideo(AdsMediationType adsMediationType)
         {
@@ -602,14 +625,14 @@ namespace SDK
         [field: SerializeField] private MRECAdManager MRecAdManager { get; set; }
         private void SetupMRecAds()
         {
-            Debug.Log("Setup MRec");
+            DebugAds.Log("Setup MRec");
             MRecAdManager.Setup(MRecAdsConfig, m_SDKSetup, GetSelectedMediation(AdsType.MREC));
             MRecAdManager.IsRemoveAds = () => IsRemoveAds;
             MRecAdManager.IsCheatAds = () => IsCheatAds;
         }
         private void InitMRecAds(AdsMediationType adsMediationType)
         {
-            Debug.Log("Init MRec");
+            DebugAds.Log("Init MRec");
             MRecAdManager.Init(adsMediationType);
         }
         public void ShowMRecAds()
@@ -619,7 +642,7 @@ namespace SDK
         }
         public void HideMRecAds()
         {
-            Debug.Log("Call Hide MRec Ads");
+            DebugAds.Log("Call Hide MRec Ads");
             MRecAdManager.Hide();
         }
         public bool IsMRecShowing()
@@ -640,10 +663,6 @@ namespace SDK
 
         private AdsConfig AppOpenAdsConfig => GetAdsConfig(AdsType.APP_OPEN);
         [field: SerializeField] public AppOpenAdManager AppOpenAdManager { get; set; }
-
-        [field: SerializeField] public bool IsShowingAds { get; set; }
-
-
         private void SetupAppOpenAds()
         {
             AppOpenAdManager.Setup(
@@ -653,12 +672,14 @@ namespace SDK
 
             AppOpenAdManager.IsRemoveAds = () => IsRemoveAds;
             AppOpenAdManager.IsCheatAds = () => IsCheatAds;
+            AppOpenAdManager.MarkShowingAds = MarkShowingAds;
+            AppOpenAdManager.IsShowingAdChecking = () => IsShowingAds;
             
-            Debug.Log("Setup App Open Ads Done");
+            DebugAds.Log("Setup App Open Ads Done");
         }
         private void InitAppOpenAds(AdsMediationType adsMediationType)
         {
-            Debug.Log("Init App Open Ads");
+            DebugAds.Log("Init App Open Ads");
             AppOpenAdManager.Init(adsMediationType);
         }
 
@@ -677,18 +698,6 @@ namespace SDK
             yield return new WaitForSeconds(0.3f);
             ShowAppOpenAds();
         }
-
-        private void ForceShowAppOpenAds()
-        {
-            if (IsCheatAds || IsRemoveAds) return;
-            if (IsAppOpenAdsLoaded())
-            {
-                MarkShowingAds(true);
-                Debug.Log("Start Force Show App Open Ads");
-                GetSelectedMediation(AdsType.APP_OPEN).ShowAppOpenAds();
-            }
-        }
-
         private void RequestAppOpenAds()
         {
             AppOpenAdManager.RequestAd();
@@ -697,38 +706,15 @@ namespace SDK
         {
             return AppOpenAdManager.IsLoaded();
         }
-
-        private void MarkShowingAds(bool isShowing)
-        {
-            if (isShowing)
-            {
-                IsShowingAds = true;
-            }
-            else
-            {
-                EventManager.AddEventNextFrame(() => { StartCoroutine(coWaitingMarkShowingAdsDone()); });
-            }
-        }
-
-        IEnumerator coWaitingMarkShowingAdsDone()
-        {
-            yield return new WaitForSeconds(2f);
-            IsShowingAds = false;
-        }
-
         #endregion
 
         #region Resume Ads
 
         [field: SerializeField] public ResumeAdManager ResumeAdsManager { get; set; }
-        public bool IsActiveResumeAdsIngame = false;
-        private bool IsActiveResumeAdsRemoteConfig = false;
 
         private async void ShowResumeAds()
         {
-            if (!IsActiveResumeAdsIngame) return;
-            if (!IsActiveResumeAdsRemoteConfig) return;
-            Debug.Log("Show Resume Ads");
+            DebugAds.Log("Show Resume Ads");
             switch (resumeAdsType)
             {
                 case AdsType.INTERSTITIAL:
@@ -767,18 +753,18 @@ namespace SDK
 
         private async Task ShowLoadingPanel()
         {
-            Debug.Log("Show Loading Panel");
+            DebugAds.Log("Show Loading Panel");
         }
 
         private void CloseLoadingPanel()
         {
-            Debug.Log("Close Loading Panel");
+            DebugAds.Log("Close Loading Panel");
         }
         #endregion
 
         private void OnAdRevenuePaidEvent(ImpressionData impressionData)
         {
-            Debug.Log("Paid Ad Revenue - Ads Type = " + impressionData.ad_type);
+            DebugAds.Log("Paid Ad Revenue - Ads Type = " + impressionData.ad_type);
             ABIAnalyticsManager.TrackAdImpression(impressionData);
 #if UNITY_APPSFLYER
             ABIAppsflyerManager.TrackAppsflyerAdRevenue(impressionData);
