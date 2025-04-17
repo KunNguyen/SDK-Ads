@@ -7,20 +7,21 @@
 //
 
 #if UNITY_IOS || UNITY_IPHONE
-
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEditor.Callbacks;
 #if UNITY_2019_3_OR_NEWER
 using UnityEditor.iOS.Xcode.Extensions;
 #endif
 using UnityEditor.iOS.Xcode;
+using UnityEditor.PackageManager;
 using UnityEngine;
-using Debug = UnityEngine.Debug;
 using UnityEngine.Networking;
 
 namespace AppLovinMax.Scripts.IntegrationManager.Editor
@@ -35,73 +36,37 @@ namespace AppLovinMax.Scripts.IntegrationManager.Editor
     {
         private const string OutputFileName = "AppLovinQualityServiceSetup.rb";
 
-#if UNITY_2019_3_OR_NEWER
+#if !UNITY_2019_3_OR_NEWER
+        private const string UnityMainTargetName = "Unity-iPhone";
+#endif
+        // Use a priority of 90 to have AppLovin embed frameworks after Pods are installed (EDM finishes installing Pods at priority 60) and before Firebase Crashlytics runs their scripts (at priority 100).
+        private const int AppLovinEmbedFrameworksPriority = 90;
+
         private const string TargetUnityIphonePodfileLine = "target 'Unity-iPhone' do";
         private const string UseFrameworksPodfileLine = "use_frameworks!";
         private const string UseFrameworksDynamicPodfileLine = "use_frameworks! :linkage => :dynamic";
         private const string UseFrameworksStaticPodfileLine = "use_frameworks! :linkage => :static";
-#else
-        private const string UnityMainTargetName = "Unity-iPhone";
-#endif
-        private const string LegacyResourcesDirectoryName = "Resources";
+
+        private const string ResourcesDirectoryName = "Resources";
         private const string AppLovinMaxResourcesDirectoryName = "AppLovinMAXResources";
         private const string AppLovinAdvertisingAttributionEndpoint = "https://postbacks-app.com";
 
         private const string AppLovinSettingsPlistFileName = "AppLovin-Settings.plist";
+
+        private const string KeySdkKey = "SdkKey";
+
+        private const string AppLovinVerboseLoggingOnKey = "AppLovinVerboseLoggingOn";
+
         private const string KeyConsentFlowInfo = "ConsentFlowInfo";
         private const string KeyConsentFlowEnabled = "ConsentFlowEnabled";
         private const string KeyConsentFlowTermsOfService = "ConsentFlowTermsOfService";
         private const string KeyConsentFlowPrivacyPolicy = "ConsentFlowPrivacyPolicy";
+        private const string KeyConsentFlowShowTermsAndPrivacyPolicyAlertInGDPR = "ConsentFlowShowTermsAndPrivacyPolicyAlertInGDPR";
         private const string KeyConsentFlowDebugUserGeography = "ConsentFlowDebugUserGeography";
 
-        private static List<string> DynamicLibrariesToEmbed
-        {
-            get
-            {
-                var dynamicLibrariesToEmbed = new List<string>
-                {
-                    "AppLovinSDK.xcframework",
-                    "DTBiOSSDK.xcframework",
-                    "FBAEMKit.xcframework",
-                    "FBSDKCoreKit_Basics.xcframework",
-                    "FBSDKCoreKit.xcframework",
-                    "FBSDKGamingServicesKit.xcframework",
-                    "FBSDKLoginKit.xcframework",
-                    "FBSDKShareKit.xcframework",
-                    "HyprMX.xcframework",
-                    "Maio.xcframework",
-                    "MobileFuseSDK.xcframework",
-                    "MolocoSDK.xcframework",
-                    "OMSDK_Appodeal.xcframework",
-                    "OMSDK_Ogury.xcframework",
-                    "OMSDK_Pubnativenet.xcframework",
-                    "OMSDK_Smaato.xcframework"
-                };
+        private const string KeyAppLovinSdkKeyToRemove = "AppLovinSdkKey";
 
-                // LinkedIn Audience Network SDK is distributed as a static library starting version 1.2.0
-                if (AppLovinIntegrationManager.IsAdapterOlderThanMinVersionInstalled("LinkedIn", "1.2.0.0"))
-                {
-                    dynamicLibrariesToEmbed.Add("LinkedinAudienceNetwork.xcframework");
-                }
-
-                // Fyber/IA SDK is distributed as a static library starting version 8.2.7
-                if (AppLovinIntegrationManager.IsAdapterOlderThanMinVersionInstalled("Fyber", "8.2.7.0"))
-                {
-                    dynamicLibrariesToEmbed.Add("IASDKCore.xcframework");
-                }
-
-                return dynamicLibrariesToEmbed;
-            }
-        }
-
-        private static string PluginMediationDirectory
-        {
-            get
-            {
-                var pluginParentDir = AppLovinIntegrationManager.MediationSpecificPluginParentDirectory;
-                return Path.Combine(pluginParentDir, "MaxSdk/Mediation/");
-            }
-        }
+        private static readonly Regex PodfilePodLineRegex = new Regex("pod \'([^\']*)\'");
 
         /// <summary>
         /// Adds AppLovin Quality Service to the iOS project once the project has been exported.
@@ -175,7 +140,7 @@ namespace AppLovinMax.Scripts.IntegrationManager.Editor
             }
         }
 
-        [PostProcessBuildAttribute(int.MaxValue)]
+        [PostProcessBuild(AppLovinEmbedFrameworksPriority)]
         public static void MaxPostProcessPbxProject(BuildTarget buildTarget, string buildPath)
         {
             var projectPath = PBXProject.GetPBXProjectPath(buildPath);
@@ -191,23 +156,14 @@ namespace AppLovinMax.Scripts.IntegrationManager.Editor
 #endif
             EmbedDynamicLibrariesIfNeeded(buildPath, project, unityMainTargetGuid);
 
-            var internalSettingsEnabled = AppLovinInternalSettings.Instance.ConsentFlowEnabled;
-            var userTrackingUsageDescriptionDe = internalSettingsEnabled ? AppLovinInternalSettings.Instance.UserTrackingUsageDescriptionDe : AppLovinSettings.Instance.UserTrackingUsageDescriptionDe;
-            LocalizeUserTrackingDescriptionIfNeeded(userTrackingUsageDescriptionDe, "de", buildPath, project, unityMainTargetGuid);
-            var userTrackingUsageDescriptionEn = internalSettingsEnabled ? AppLovinInternalSettings.Instance.UserTrackingUsageDescriptionEn : AppLovinSettings.Instance.UserTrackingUsageDescriptionEn;
-            LocalizeUserTrackingDescriptionIfNeeded(userTrackingUsageDescriptionEn, "en", buildPath, project, unityMainTargetGuid);
-            var userTrackingUsageDescriptionEs = internalSettingsEnabled ? AppLovinInternalSettings.Instance.UserTrackingUsageDescriptionEs : AppLovinSettings.Instance.UserTrackingUsageDescriptionEs;
-            LocalizeUserTrackingDescriptionIfNeeded(userTrackingUsageDescriptionEs, "es", buildPath, project, unityMainTargetGuid);
-            var userTrackingUsageDescriptionFr = internalSettingsEnabled ? AppLovinInternalSettings.Instance.UserTrackingUsageDescriptionFr : AppLovinSettings.Instance.UserTrackingUsageDescriptionFr;
-            LocalizeUserTrackingDescriptionIfNeeded(userTrackingUsageDescriptionFr, "fr", buildPath, project, unityMainTargetGuid);
-            var userTrackingUsageDescriptionJa = internalSettingsEnabled ? AppLovinInternalSettings.Instance.UserTrackingUsageDescriptionJa : AppLovinSettings.Instance.UserTrackingUsageDescriptionJa;
-            LocalizeUserTrackingDescriptionIfNeeded(userTrackingUsageDescriptionJa, "ja", buildPath, project, unityMainTargetGuid);
-            var userTrackingUsageDescriptionKo = internalSettingsEnabled ? AppLovinInternalSettings.Instance.UserTrackingUsageDescriptionKo : AppLovinSettings.Instance.UserTrackingUsageDescriptionKo;
-            LocalizeUserTrackingDescriptionIfNeeded(userTrackingUsageDescriptionKo, "ko", buildPath, project, unityMainTargetGuid);
-            var userTrackingUsageDescriptionZhHans = internalSettingsEnabled ? AppLovinInternalSettings.Instance.UserTrackingUsageDescriptionZhHans : AppLovinSettings.Instance.UserTrackingUsageDescriptionZhHans;
-            LocalizeUserTrackingDescriptionIfNeeded(userTrackingUsageDescriptionZhHans, "zh-Hans", buildPath, project, unityMainTargetGuid);
-            var userTrackingUsageDescriptionZhHant = internalSettingsEnabled ? AppLovinInternalSettings.Instance.UserTrackingUsageDescriptionZhHant : AppLovinSettings.Instance.UserTrackingUsageDescriptionZhHant;
-            LocalizeUserTrackingDescriptionIfNeeded(userTrackingUsageDescriptionZhHant, "zh-Hant", buildPath, project, unityMainTargetGuid);
+            LocalizeUserTrackingDescriptionIfNeeded(AppLovinInternalSettings.Instance.UserTrackingUsageDescriptionDe, "de", buildPath, project, unityMainTargetGuid);
+            LocalizeUserTrackingDescriptionIfNeeded(AppLovinInternalSettings.Instance.UserTrackingUsageDescriptionEn, "en", buildPath, project, unityMainTargetGuid);
+            LocalizeUserTrackingDescriptionIfNeeded(AppLovinInternalSettings.Instance.UserTrackingUsageDescriptionEs, "es", buildPath, project, unityMainTargetGuid);
+            LocalizeUserTrackingDescriptionIfNeeded(AppLovinInternalSettings.Instance.UserTrackingUsageDescriptionFr, "fr", buildPath, project, unityMainTargetGuid);
+            LocalizeUserTrackingDescriptionIfNeeded(AppLovinInternalSettings.Instance.UserTrackingUsageDescriptionJa, "ja", buildPath, project, unityMainTargetGuid);
+            LocalizeUserTrackingDescriptionIfNeeded(AppLovinInternalSettings.Instance.UserTrackingUsageDescriptionKo, "ko", buildPath, project, unityMainTargetGuid);
+            LocalizeUserTrackingDescriptionIfNeeded(AppLovinInternalSettings.Instance.UserTrackingUsageDescriptionZhHans, "zh-Hans", buildPath, project, unityMainTargetGuid);
+            LocalizeUserTrackingDescriptionIfNeeded(AppLovinInternalSettings.Instance.UserTrackingUsageDescriptionZhHant, "zh-Hant", buildPath, project, unityMainTargetGuid);
 
             AddSwiftSupport(buildPath, project, unityFrameworkTargetGuid, unityMainTargetGuid);
             AddYandexSettingsIfNeeded(project, unityMainTargetGuid);
@@ -219,31 +175,16 @@ namespace AppLovinMax.Scripts.IntegrationManager.Editor
         {
             // Check that the Pods directory exists (it might not if a publisher is building with Generate Podfile setting disabled in EDM).
             var podsDirectory = Path.Combine(buildPath, "Pods");
-            if (!Directory.Exists(podsDirectory)) return;
+            if (!Directory.Exists(podsDirectory) || !ShouldEmbedDynamicLibraries(buildPath)) return;
 
-            var dynamicLibraryPathsPresentInProject = new List<string>();
-            foreach (var dynamicLibraryToSearch in DynamicLibrariesToEmbed)
-            {
-                // both .framework and .xcframework are directories, not files
-                var directories = Directory.GetDirectories(podsDirectory, dynamicLibraryToSearch, SearchOption.AllDirectories);
-                if (directories.Length <= 0) continue;
-
-                var dynamicLibraryAbsolutePath = directories[0];
-                var index = dynamicLibraryAbsolutePath.LastIndexOf("Pods");
-                var relativePath = dynamicLibraryAbsolutePath.Substring(index);
-                dynamicLibraryPathsPresentInProject.Add(relativePath);
-            }
-
-            if (dynamicLibraryPathsPresentInProject.Count <= 0) return;
+            var dynamicLibraryPathsToEmbed = GetDynamicLibraryPathsToEmbed(podsDirectory, buildPath);
+            if (dynamicLibraryPathsToEmbed == null || dynamicLibraryPathsToEmbed.Count == 0) return;
 
 #if UNITY_2019_3_OR_NEWER
-            if (ShouldEmbedDynamicLibraries(buildPath))
+            foreach (var dynamicLibraryPath in dynamicLibraryPathsToEmbed)
             {
-                foreach (var dynamicLibraryPath in dynamicLibraryPathsPresentInProject)
-                {
-                    var fileGuid = project.AddFile(dynamicLibraryPath, dynamicLibraryPath);
-                    project.AddFileToEmbedFrameworks(targetGuid, fileGuid);
-                }
+                var fileGuid = project.AddFile(dynamicLibraryPath, dynamicLibraryPath);
+                project.AddFileToEmbedFrameworks(targetGuid, fileGuid);
             }
 #else
             string runpathSearchPaths;
@@ -258,11 +199,158 @@ namespace AppLovinMax.Scripts.IntegrationManager.Editor
 #endif
         }
 
+        /// <summary>
+        /// |-----------------------------------------------------------------------------------------------------------------------------------------------------|
+        /// |         embed             |  use_frameworks! (:linkage => :dynamic)  |  use_frameworks! :linkage => :static  |  `use_frameworks!` line not present  |
+        /// |---------------------------|------------------------------------------|---------------------------------------|--------------------------------------|
+        /// | Unity-iPhone present      | Do not embed dynamic libraries           | Embed dynamic libraries               | Do not embed dynamic libraries       |
+        /// | Unity-iPhone not present  | Embed dynamic libraries                  | Embed dynamic libraries               | Embed dynamic libraries              |
+        /// |-----------------------------------------------------------------------------------------------------------------------------------------------------|
+        /// </summary>
+        /// <param name="buildPath">An iOS build path</param>
+        /// <returns>Whether or not the dynamic libraries should be embedded.</returns>
+        private static bool ShouldEmbedDynamicLibraries(string buildPath)
+        {
+            var podfilePath = Path.Combine(buildPath, "Podfile");
+            if (!File.Exists(podfilePath)) return false;
+
+            // If the Podfile doesn't have a `Unity-iPhone` target, we should embed the dynamic libraries.
+            var lines = File.ReadAllLines(podfilePath);
+            var containsUnityIphoneTarget = lines.Any(line => line.Contains(TargetUnityIphonePodfileLine));
+            if (!containsUnityIphoneTarget) return true;
+
+            // If the Podfile does not have a `use_frameworks! :linkage => static` line, we should not embed the dynamic libraries.
+            var useFrameworksStaticLineIndex = Array.FindIndex(lines, line => line.Contains(UseFrameworksStaticPodfileLine));
+            if (useFrameworksStaticLineIndex == -1) return false;
+
+            // If more than one of the `use_frameworks!` lines are present, CocoaPods will use the last one.
+            var useFrameworksLineIndex = Array.FindIndex(lines, line => line.Trim() == UseFrameworksPodfileLine); // Check for exact line to avoid matching `use_frameworks! :linkage => static/dynamic`
+            var useFrameworksDynamicLineIndex = Array.FindIndex(lines, line => line.Contains(UseFrameworksDynamicPodfileLine));
+
+            // Check if `use_frameworks! :linkage => :static` is the last line of the three. If it is, we should embed the dynamic libraries.
+            return useFrameworksLineIndex < useFrameworksStaticLineIndex && useFrameworksDynamicLineIndex < useFrameworksStaticLineIndex;
+        }
+
+        private static List<string> GetDynamicLibraryPathsToEmbed(string podsDirectory, string buildPath)
+        {
+            var podfilePath = Path.Combine(buildPath, "Podfile");
+            var dynamicLibraryFrameworksToEmbed = GetDynamicLibraryFrameworksToEmbed(podfilePath);
+
+            return GetDynamicLibraryPathsInProjectToEmbed(podsDirectory, dynamicLibraryFrameworksToEmbed);
+        }
+
+        private static List<string> GetDynamicLibraryFrameworksToEmbed(string podfilePath)
+        {
+            var dynamicLibrariesToEmbed = GetDynamicLibrariesToEmbed();
+
+            var podsInUnityIphoneTarget = GetPodNamesInUnityIphoneTarget(podfilePath);
+            var dynamicLibrariesToIgnore = dynamicLibrariesToEmbed.Where(dynamicLibraryToEmbed => podsInUnityIphoneTarget.Contains(dynamicLibraryToEmbed.PodName)).ToList();
+
+            // Determine frameworks to embed based on the dynamic libraries to embed and ignore
+            var dynamicLibraryFrameworksToIgnore = dynamicLibrariesToIgnore.SelectMany(library => library.FrameworkNames).Distinct().ToList();
+            return dynamicLibrariesToEmbed.SelectMany(library => library.FrameworkNames).Except(dynamicLibraryFrameworksToIgnore).Distinct().ToList();
+        }
+
+        private static List<DynamicLibraryToEmbed> GetDynamicLibrariesToEmbed()
+        {
+            var pluginData = AppLovinIntegrationManager.LoadPluginDataSync();
+            if (pluginData == null)
+            {
+                MaxSdkLogger.E("Failed to load plugin data. Dynamic libraries will not be embedded.");
+                return null;
+            }
+
+            // Get the dynamic libraries to embed for each network
+            var librariesToAdd = pluginData.MediatedNetworks
+                .Where(network => network.DynamicLibrariesToEmbed != null)
+                .SelectMany(network => network.DynamicLibrariesToEmbed
+                    .Where(libraryToEmbed => IsRequiredNetworkVersionInstalled(libraryToEmbed, network)))
+                .ToList();
+
+            // Get the dynamic libraries to embed for AppLovin MAX
+            if (pluginData.AppLovinMax.DynamicLibrariesToEmbed != null)
+            {
+                librariesToAdd.AddRange(pluginData.AppLovinMax.DynamicLibrariesToEmbed);
+            }
+
+            // Get the dynamic libraries to embed for third parties
+            if (pluginData.ThirdPartyDynamicLibrariesToEmbed != null)
+            {
+                // TODO: Add version check for third party dynamic libraries.
+                librariesToAdd.AddRange(pluginData.ThirdPartyDynamicLibrariesToEmbed);
+            }
+
+            return librariesToAdd;
+        }
+
+        private static List<string> GetPodNamesInUnityIphoneTarget(string podfilePath)
+        {
+            var lines = File.ReadAllLines(podfilePath);
+            var podNamesInUnityIphone = new List<string>();
+
+            var insideUnityIphoneTarget = false;
+            foreach (var line in lines)
+            {
+                // Loop until we find the `target 'Unity-iPhone'` line
+                if (insideUnityIphoneTarget)
+                {
+                    if (line.Trim() == "end") break;
+
+                    if (PodfilePodLineRegex.IsMatch(line))
+                    {
+                        var podName = PodfilePodLineRegex.Match(line).Groups[1].Value;
+                        podNamesInUnityIphone.Add(podName);
+                    }
+                }
+                else if (line.Contains(TargetUnityIphonePodfileLine))
+                {
+                    insideUnityIphoneTarget = true;
+                }
+            }
+
+            return podNamesInUnityIphone;
+        }
+
+        private static bool IsRequiredNetworkVersionInstalled(DynamicLibraryToEmbed libraryToEmbed, Network network)
+        {
+            var currentIosVersion = network.CurrentVersions.Ios;
+            if (string.IsNullOrEmpty(currentIosVersion)) return false;
+
+            var minIosVersion = libraryToEmbed.MinVersion;
+            var maxIosVersion = libraryToEmbed.MaxVersion;
+
+            var greaterThanOrEqualToMinVersion = string.IsNullOrEmpty(minIosVersion) || MaxSdkUtils.CompareVersions(currentIosVersion, minIosVersion) != MaxSdkUtils.VersionComparisonResult.Lesser;
+            var lessThanOrEqualToMaxVersion = string.IsNullOrEmpty(maxIosVersion) || MaxSdkUtils.CompareVersions(currentIosVersion, maxIosVersion) != MaxSdkUtils.VersionComparisonResult.Greater;
+
+            return greaterThanOrEqualToMinVersion && lessThanOrEqualToMaxVersion;
+        }
+
+        private static List<string> GetDynamicLibraryPathsInProjectToEmbed(string podsDirectory, List<string> dynamicLibrariesToEmbed)
+        {
+            var dynamicLibraryPathsPresentInProject = new List<string>();
+            foreach (var dynamicLibraryToSearch in dynamicLibrariesToEmbed)
+            {
+                // both .framework and .xcframework are directories, not files
+                var directories = Directory.GetDirectories(podsDirectory, dynamicLibraryToSearch, SearchOption.AllDirectories);
+                if (directories.Length <= 0) continue;
+
+                var dynamicLibraryAbsolutePath = directories[0];
+                var relativePath = GetDynamicLibraryRelativePath(dynamicLibraryAbsolutePath);
+                dynamicLibraryPathsPresentInProject.Add(relativePath);
+            }
+
+            return dynamicLibraryPathsPresentInProject;
+        }
+
+        private static string GetDynamicLibraryRelativePath(string dynamicLibraryAbsolutePath)
+        {
+            var index = dynamicLibraryAbsolutePath.LastIndexOf("Pods", StringComparison.Ordinal);
+            return dynamicLibraryAbsolutePath.Substring(index);
+        }
+
         private static void LocalizeUserTrackingDescriptionIfNeeded(string localizedUserTrackingDescription, string localeCode, string buildPath, PBXProject project, string targetGuid)
         {
-            // Use the legacy resources directory name if the build is being appended (the "Resources" directory already exists if it is an incremental build).
-            var resourcesDirectoryName = Directory.Exists(Path.Combine(buildPath, LegacyResourcesDirectoryName)) ? LegacyResourcesDirectoryName : AppLovinMaxResourcesDirectoryName;
-            var resourcesDirectoryPath = Path.Combine(buildPath, resourcesDirectoryName);
+            var resourcesDirectoryPath = Path.Combine(buildPath, AppLovinMaxResourcesDirectoryName);
             var localeSpecificDirectoryName = localeCode + ".lproj";
             var localeSpecificDirectoryPath = Path.Combine(resourcesDirectoryPath, localeSpecificDirectoryName);
             var infoPlistStringsFilePath = Path.Combine(localeSpecificDirectoryPath, "InfoPlist.strings");
@@ -273,6 +361,15 @@ namespace AppLovinMax.Scripts.IntegrationManager.Editor
                 if (!File.Exists(infoPlistStringsFilePath)) return;
 
                 File.Delete(infoPlistStringsFilePath);
+                return;
+            }
+
+            // Log an error if we detect a localization file for this language in the `Resources` directory
+            var legacyResourcedDirectoryPath = Path.Combine(buildPath, ResourcesDirectoryName);
+            var localeSpecificLegacyDirectoryPath = Path.Combine(legacyResourcedDirectoryPath, localeSpecificDirectoryName);
+            if (Directory.Exists(localeSpecificLegacyDirectoryPath))
+            {
+                MaxSdkLogger.UserError("Detected existing localization resource for \"" + localeCode + "\" locale. Skipping localization for User Tracking Usage Description. Please disable localization in AppLovin Integration manager and add the localizations to your existing resource.");
                 return;
             }
 
@@ -320,7 +417,7 @@ namespace AppLovinMax.Scripts.IntegrationManager.Editor
                 File.WriteAllText(infoPlistStringsFilePath, "/* Localized versions of Info.plist keys - Generated by AL MAX plugin */\n" + localizedDescriptionLine);
             }
 
-            var localeSpecificDirectoryRelativePath = Path.Combine(resourcesDirectoryName, localeSpecificDirectoryName);
+            var localeSpecificDirectoryRelativePath = Path.Combine(AppLovinMaxResourcesDirectoryName, localeSpecificDirectoryName);
             var guid = project.AddFolderReference(localeSpecificDirectoryRelativePath, localeSpecificDirectoryRelativePath);
             project.AddFileToBuild(targetGuid, guid);
         }
@@ -329,11 +426,8 @@ namespace AppLovinMax.Scripts.IntegrationManager.Editor
         {
             if (string.IsNullOrEmpty(localizedUserTrackingDescription)) return true;
 
-            var settings = AppLovinSettings.Instance;
             var internalSettings = AppLovinInternalSettings.Instance;
-
-            return (!internalSettings.ConsentFlowEnabled || !internalSettings.UserTrackingUsageLocalizationEnabled)
-                   && (!settings.ConsentFlowEnabled || !settings.UserTrackingUsageLocalizationEnabled);
+            return !internalSettings.ConsentFlowEnabled || !internalSettings.UserTrackingUsageLocalizationEnabled;
         }
 
         private static void AddSwiftSupport(string buildPath, PBXProject project, string unityFrameworkTargetGuid, string unityMainTargetGuid)
@@ -343,7 +437,7 @@ namespace AppLovinMax.Scripts.IntegrationManager.Editor
 
             // Add Swift file
             CreateSwiftFile(swiftFilePath);
-            var swiftFileGuid = project.AddFile(swiftFileRelativePath, swiftFileRelativePath, PBXSourceTree.Source);
+            var swiftFileGuid = project.AddFile(swiftFileRelativePath, swiftFileRelativePath);
             project.AddFileToBuild(unityFrameworkTargetGuid, swiftFileGuid);
 
             // Add Swift version property if needed
@@ -373,33 +467,23 @@ namespace AppLovinMax.Scripts.IntegrationManager.Editor
             }
         }
 
-        [PostProcessBuildAttribute(int.MaxValue)]
+        [PostProcessBuild(int.MaxValue)]
         public static void MaxPostProcessPlist(BuildTarget buildTarget, string path)
         {
             var plistPath = Path.Combine(path, "Info.plist");
             var plist = new PlistDocument();
             plist.ReadFromFile(plistPath);
 
-            SetSdkKeyIfNeeded(plist);
             SetAttributionReportEndpointIfNeeded(plist);
 
             EnableVerboseLoggingIfNeeded(plist);
             AddGoogleApplicationIdIfNeeded(plist);
 
-            AddSdkSettingsIfNeeded(plist, path);
-            EnableTermsFlowIfNeeded(plist);
+            AddSdkSettings(plist, path);
             AddSkAdNetworksInfoIfNeeded(plist);
+            RemoveSdkKeyIfNeeded(plist);
 
             plist.WriteToFile(plistPath);
-        }
-
-        private static void SetSdkKeyIfNeeded(PlistDocument plist)
-        {
-            var sdkKey = AppLovinSettings.Instance.SdkKey;
-            if (string.IsNullOrEmpty(sdkKey)) return;
-
-            const string AppLovinVerboseLoggingOnKey = "AppLovinSdkKey";
-            plist.root.SetString(AppLovinVerboseLoggingOnKey, sdkKey);
         }
 
         private static void SetAttributionReportEndpointIfNeeded(PlistDocument plist)
@@ -426,10 +510,9 @@ namespace AppLovinMax.Scripts.IntegrationManager.Editor
             if (!EditorPrefs.HasKey(MaxSdkLogger.KeyVerboseLoggingEnabled)) return;
 
             var enabled = EditorPrefs.GetBool(MaxSdkLogger.KeyVerboseLoggingEnabled);
-            const string AppLovinVerboseLoggingOnKey = "AppLovinVerboseLoggingOn";
             if (enabled)
             {
-                plist.root.SetBoolean(AppLovinVerboseLoggingOnKey, enabled);
+                plist.root.SetBoolean(AppLovinVerboseLoggingOnKey, true);
             }
             else
             {
@@ -439,14 +522,14 @@ namespace AppLovinMax.Scripts.IntegrationManager.Editor
 
         private static void AddGoogleApplicationIdIfNeeded(PlistDocument plist)
         {
-            if (!AppLovinIntegrationManager.IsAdapterInstalled("Google") && !AppLovinIntegrationManager.IsAdapterInstalled("GoogleAdManager")) return;
+            if (!AppLovinPackageManager.IsAdapterInstalled("Google") && !AppLovinPackageManager.IsAdapterInstalled("GoogleAdManager")) return;
 
             const string googleApplicationIdentifier = "GADApplicationIdentifier";
             var appId = AppLovinSettings.Instance.AdMobIosAppId;
             // Log error if the App ID is not set.
             if (string.IsNullOrEmpty(appId) || !appId.StartsWith("ca-app-pub-"))
             {
-                Debug.LogError("[AppLovin MAX] Google App ID is not set. Please enter a valid app ID within the AppLovin Integration Manager window.");
+                MaxSdkLogger.UserError("[AppLovin MAX] Google App ID is not set. Please enter a valid app ID within the AppLovin Integration Manager window.");
                 return;
             }
 
@@ -455,22 +538,19 @@ namespace AppLovinMax.Scripts.IntegrationManager.Editor
 
         private static void AddYandexSettingsIfNeeded(PBXProject project, string unityMainTargetGuid)
         {
-            if (!AppLovinIntegrationManager.IsAdapterInstalled("Yandex")) return;
+            if (!AppLovinPackageManager.IsAdapterInstalled("Yandex")) return;
 
             if (MaxSdkUtils.CompareVersions(PlayerSettings.iOS.targetOSVersionString, "12.0") == MaxSdkUtils.VersionComparisonResult.Lesser)
             {
-                Debug.LogWarning("Your iOS target version is under the minimum required version by Yandex. Please update it to 12.0 or newer in your ProjectSettings and rebuild your project.");
+                MaxSdkLogger.UserWarning("Your iOS target version is under the minimum required version by Yandex. Please update it to 12.0 or newer in your ProjectSettings and rebuild your project.");
                 return;
             }
 
             project.SetBuildProperty(unityMainTargetGuid, "GENERATE_INFOPLIST_FILE", "NO");
         }
 
-        private static void AddSdkSettingsIfNeeded(PlistDocument infoPlist, string buildPath)
+        private static void AddSdkSettings(PlistDocument infoPlist, string buildPath)
         {
-            // Right now internal settings is only needed for Consent Flow. Remove this setting once we add more settings.
-            if (!AppLovinInternalSettings.Instance.ConsentFlowEnabled) return;
-
             var sdkSettingsPlistPath = Path.Combine(buildPath, AppLovinSettingsPlistFileName);
             var sdkSettingsPlist = new PlistDocument();
             if (File.Exists(sdkSettingsPlistPath))
@@ -478,6 +558,10 @@ namespace AppLovinMax.Scripts.IntegrationManager.Editor
                 sdkSettingsPlist.ReadFromFile(sdkSettingsPlistPath);
             }
 
+            // Add the SDK key to the SDK settings plist.
+            sdkSettingsPlist.root.SetString(KeySdkKey, AppLovinSettings.Instance.SdkKey);
+
+            // Add consent flow settings if needed.
             EnableConsentFlowIfNeeded(sdkSettingsPlist, infoPlist);
 
             sdkSettingsPlist.WriteToFile(sdkSettingsPlistPath);
@@ -492,7 +576,7 @@ namespace AppLovinMax.Scripts.IntegrationManager.Editor
             var unityMainTargetGuid = project.TargetGuidByName(UnityMainTargetName);
 #endif
 
-            var guid = project.AddFile(AppLovinSettingsPlistFileName, AppLovinSettingsPlistFileName, PBXSourceTree.Source);
+            var guid = project.AddFile(AppLovinSettingsPlistFileName, AppLovinSettingsPlistFileName);
             project.AddFileToBuild(unityMainTargetGuid, guid);
             project.WriteToFile(projectPath);
         }
@@ -500,6 +584,8 @@ namespace AppLovinMax.Scripts.IntegrationManager.Editor
         private static void EnableConsentFlowIfNeeded(PlistDocument applovinSettingsPlist, PlistDocument infoPlist)
         {
             var consentFlowEnabled = AppLovinInternalSettings.Instance.ConsentFlowEnabled;
+            if (!consentFlowEnabled) return;
+
             var userTrackingUsageDescription = AppLovinInternalSettings.Instance.UserTrackingUsageDescriptionEn;
             var privacyPolicyUrl = AppLovinInternalSettings.Instance.ConsentFlowPrivacyPolicyUrl;
             if (string.IsNullOrEmpty(userTrackingUsageDescription) || string.IsNullOrEmpty(privacyPolicyUrl))
@@ -521,6 +607,9 @@ namespace AppLovinMax.Scripts.IntegrationManager.Editor
                 consentFlowInfoRoot.SetString(KeyConsentFlowTermsOfService, termsOfServiceUrl);
             }
 
+            var shouldShowTermsAndPrivacyPolicyAlertInGdpr = AppLovinInternalSettings.Instance.ShouldShowTermsAndPrivacyPolicyAlertInGDPR;
+            consentFlowInfoRoot.SetBoolean(KeyConsentFlowShowTermsAndPrivacyPolicyAlertInGDPR, shouldShowTermsAndPrivacyPolicyAlertInGdpr);
+
             var debugUserGeography = AppLovinInternalSettings.Instance.DebugUserGeography;
             if (debugUserGeography == MaxSdkBase.ConsentFlowUserGeography.Gdpr)
             {
@@ -528,40 +617,6 @@ namespace AppLovinMax.Scripts.IntegrationManager.Editor
             }
 
             infoPlist.root.SetString("NSUserTrackingUsageDescription", userTrackingUsageDescription);
-        }
-
-        private static void EnableTermsFlowIfNeeded(PlistDocument plist)
-        {
-            // Check if terms flow is enabled. No need to update info.plist if consent flow is disabled.
-            var consentFlowEnabled = AppLovinSettings.Instance.ConsentFlowEnabled;
-            if (!consentFlowEnabled) return;
-
-            // Check if terms flow is enabled for this format.
-            var consentFlowPlatform = AppLovinSettings.Instance.ConsentFlowPlatform;
-            if (consentFlowPlatform != Platform.All && consentFlowPlatform != Platform.iOS) return;
-
-            var userTrackingUsageDescription = AppLovinSettings.Instance.UserTrackingUsageDescriptionEn;
-            var privacyPolicyUrl = AppLovinSettings.Instance.ConsentFlowPrivacyPolicyUrl;
-            if (string.IsNullOrEmpty(userTrackingUsageDescription) || string.IsNullOrEmpty(privacyPolicyUrl))
-            {
-                AppLovinIntegrationManager.ShowBuildFailureDialog("You cannot use the AppLovin SDK's consent flow without defining a Privacy Policy URL and the `User Tracking Usage Description` in the AppLovin Integration Manager. \n\n" +
-                                                                  "Both values must be included to enable the SDK's consent flow.");
-
-                // No need to update the info.plist here. Default consent flow state will be determined on the SDK side.
-                return;
-            }
-
-            var consentFlowInfoRoot = plist.root.CreateDict("AppLovinConsentFlowInfo");
-            consentFlowInfoRoot.SetBoolean("AppLovinConsentFlowEnabled", consentFlowEnabled);
-            consentFlowInfoRoot.SetString("AppLovinConsentFlowPrivacyPolicy", privacyPolicyUrl);
-
-            var termsOfServiceUrl = AppLovinSettings.Instance.ConsentFlowTermsOfServiceUrl;
-            if (!string.IsNullOrEmpty(termsOfServiceUrl))
-            {
-                consentFlowInfoRoot.SetString("AppLovinConsentFlowTermsOfService", termsOfServiceUrl);
-            }
-
-            plist.root.SetString("NSUserTrackingUsageDescription", userTrackingUsageDescription);
         }
 
         private static void AddSkAdNetworksInfoIfNeeded(PlistDocument plist)
@@ -624,24 +679,13 @@ namespace AppLovinMax.Scripts.IntegrationManager.Editor
 
         private static SkAdNetworkData GetSkAdNetworkData()
         {
-            var uriBuilder = new UriBuilder("https://unity.applovin.com/max/1.0/skadnetwork_ids");
-
             // Get the list of installed ad networks to be passed up
-            var maxMediationDirectory = PluginMediationDirectory;
-            if (Directory.Exists(maxMediationDirectory))
+            var installedNetworks = AppLovinPackageManager.GetInstalledMediationNetworks();
+            var uriBuilder = new UriBuilder("https://unity.applovin.com/max/1.0/skadnetwork_ids");
+            var adNetworks = string.Join(",", installedNetworks.ToArray());
+            if (MaxSdkUtils.IsValidString(adNetworks))
             {
-                var mediationNetworkDirectories = Directory.GetDirectories(maxMediationDirectory);
-                var installedNetworks = mediationNetworkDirectories.Select(Path.GetFileName).ToList();
-                if (AppLovinSettings.Instance.AddApsSkAdNetworkIds)
-                {
-                    installedNetworks.Add("AmazonPublisherServices");
-                }
-
-                var adNetworks = string.Join(",", installedNetworks.ToArray());
-                if (!string.IsNullOrEmpty(adNetworks))
-                {
-                    uriBuilder.Query += string.Format("ad_networks={0}", adNetworks);
-                }
+                uriBuilder.Query += string.Format("ad_networks={0}", adNetworks);
             }
 
             using (var unityWebRequest = UnityWebRequest.Get(uriBuilder.ToString()))
@@ -672,39 +716,12 @@ namespace AppLovinMax.Scripts.IntegrationManager.Editor
             }
         }
 
-#if UNITY_2019_3_OR_NEWER
-        /// <summary>
-        /// |-----------------------------------------------------------------------------------------------------------------------------------------------------|
-        /// |         embed             |  use_frameworks! (:linkage => :dynamic)  |  use_frameworks! :linkage => :static  |  `use_frameworks!` line not present  |
-        /// |---------------------------|------------------------------------------|---------------------------------------|--------------------------------------|
-        /// | Unity-iPhone present      | Do not embed dynamic libraries           | Embed dynamic libraries               | Do not embed dynamic libraries       |
-        /// | Unity-iPhone not present  | Embed dynamic libraries                  | Embed dynamic libraries               | Embed dynamic libraries              |
-        /// |-----------------------------------------------------------------------------------------------------------------------------------------------------|
-        /// </summary>
-        /// <param name="buildPath">An iOS build path</param>
-        /// <returns>Whether or not the dynamic libraries should be embedded.</returns>
-        private static bool ShouldEmbedDynamicLibraries(string buildPath)
+        private static void RemoveSdkKeyIfNeeded(PlistDocument plist)
         {
-            var podfilePath = Path.Combine(buildPath, "Podfile");
-            if (!File.Exists(podfilePath)) return false;
+            if (!plist.root.values.ContainsKey(KeyAppLovinSdkKeyToRemove)) return;
 
-            // If the Podfile doesn't have a `Unity-iPhone` target, we should embed the dynamic libraries.
-            var lines = File.ReadAllLines(podfilePath);
-            var containsUnityIphoneTarget = lines.Any(line => line.Contains(TargetUnityIphonePodfileLine));
-            if (!containsUnityIphoneTarget) return true;
-
-            // If the Podfile does not have a `use_frameworks! :linkage => static` line, we should not embed the dynamic libraries.
-            var useFrameworksStaticLineIndex = Array.FindIndex(lines, line => line.Contains(UseFrameworksStaticPodfileLine));
-            if (useFrameworksStaticLineIndex == -1) return false;
-
-            // If more than one of the `use_frameworks!` lines are present, CocoaPods will use the last one.
-            var useFrameworksLineIndex = Array.FindIndex(lines, line => line.Trim() == UseFrameworksPodfileLine); // Check for exact line to avoid matching `use_frameworks! :linkage => static/dynamic`
-            var useFrameworksDynamicLineIndex = Array.FindIndex(lines, line => line.Contains(UseFrameworksDynamicPodfileLine));
-
-            // Check if `use_frameworks! :linkage => :static` is the last line of the three. If it is, we should embed the dynamic libraries.
-            return useFrameworksLineIndex < useFrameworksStaticLineIndex && useFrameworksDynamicLineIndex < useFrameworksStaticLineIndex;
+            plist.root.values.Remove(KeyAppLovinSdkKeyToRemove);
         }
-#endif
     }
 }
 

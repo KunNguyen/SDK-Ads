@@ -3770,6 +3770,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6685391519484111099, guid: 72fec712b86322e4a86060c37a805d29,
         type: 3}
+      propertyPath: <AdsConfigs>k__BackingField.Array.size
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 6685391519484111099, guid: 72fec712b86322e4a86060c37a805d29,
+        type: 3}
       propertyPath: m_RewardVideoAdsConfig.adsMediationType
       value: 2
       objectReference: {fileID: 0}
@@ -3813,10 +3818,125 @@ PrefabInstance:
       propertyPath: m_CollapsibleBannerAdsConfig.adsMediationType
       value: 2
       objectReference: {fileID: 0}
+    - target: {fileID: 6685391519484111099, guid: 72fec712b86322e4a86060c37a805d29,
+        type: 3}
+      propertyPath: <AdsConfigs>k__BackingField.Array.data[1].adsType
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6685391519484111099, guid: 72fec712b86322e4a86060c37a805d29,
+        type: 3}
+      propertyPath: <AdsConfigs>k__BackingField.Array.data[2].adsType
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 6685391519484111099, guid: 72fec712b86322e4a86060c37a805d29,
+        type: 3}
+      propertyPath: <AdsConfigs>k__BackingField.Array.data[3].adsType
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 6685391519484111099, guid: 72fec712b86322e4a86060c37a805d29,
+        type: 3}
+      propertyPath: <AdsConfigs>k__BackingField.Array.data[4].adsType
+      value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 6685391519484111099, guid: 72fec712b86322e4a86060c37a805d29,
+        type: 3}
+      propertyPath: <AdsConfigs>k__BackingField.Array.data[5].adsType
+      value: 5
+      objectReference: {fileID: 0}
+    - target: {fileID: 6685391519484111099, guid: 72fec712b86322e4a86060c37a805d29,
+        type: 3}
+      propertyPath: <AdsConfigs>k__BackingField.Array.data[0].isActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6685391519484111099, guid: 72fec712b86322e4a86060c37a805d29,
+        type: 3}
+      propertyPath: <AdsConfigs>k__BackingField.Array.data[1].isActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6685391519484111099, guid: 72fec712b86322e4a86060c37a805d29,
+        type: 3}
+      propertyPath: <AdsConfigs>k__BackingField.Array.data[2].isActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6685391519484111099, guid: 72fec712b86322e4a86060c37a805d29,
+        type: 3}
+      propertyPath: <AdsConfigs>k__BackingField.Array.data[3].isActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6685391519484111099, guid: 72fec712b86322e4a86060c37a805d29,
+        type: 3}
+      propertyPath: <AdsConfigs>k__BackingField.Array.data[4].isActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6685391519484111099, guid: 72fec712b86322e4a86060c37a805d29,
+        type: 3}
+      propertyPath: <AdsConfigs>k__BackingField.Array.data[5].isActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6685391519484111099, guid: 72fec712b86322e4a86060c37a805d29,
+        type: 3}
+      propertyPath: <AdsConfigs>k__BackingField.Array.data[0].maxReloadTime
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 6685391519484111099, guid: 72fec712b86322e4a86060c37a805d29,
+        type: 3}
+      propertyPath: <AdsConfigs>k__BackingField.Array.data[1].maxReloadTime
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 6685391519484111099, guid: 72fec712b86322e4a86060c37a805d29,
+        type: 3}
+      propertyPath: <AdsConfigs>k__BackingField.Array.data[2].maxReloadTime
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 6685391519484111099, guid: 72fec712b86322e4a86060c37a805d29,
+        type: 3}
+      propertyPath: <AdsConfigs>k__BackingField.Array.data[3].maxReloadTime
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 6685391519484111099, guid: 72fec712b86322e4a86060c37a805d29,
+        type: 3}
+      propertyPath: <AdsConfigs>k__BackingField.Array.data[4].maxReloadTime
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 6685391519484111099, guid: 72fec712b86322e4a86060c37a805d29,
+        type: 3}
+      propertyPath: <AdsConfigs>k__BackingField.Array.data[5].maxReloadTime
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 6685391519484111099, guid: 72fec712b86322e4a86060c37a805d29,
+        type: 3}
+      propertyPath: <AdsConfigs>k__BackingField.Array.data[0].adsMediationType
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6685391519484111099, guid: 72fec712b86322e4a86060c37a805d29,
+        type: 3}
+      propertyPath: <AdsConfigs>k__BackingField.Array.data[1].adsMediationType
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6685391519484111099, guid: 72fec712b86322e4a86060c37a805d29,
+        type: 3}
+      propertyPath: <AdsConfigs>k__BackingField.Array.data[2].adsMediationType
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6685391519484111099, guid: 72fec712b86322e4a86060c37a805d29,
+        type: 3}
+      propertyPath: <AdsConfigs>k__BackingField.Array.data[3].adsMediationType
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6685391519484111099, guid: 72fec712b86322e4a86060c37a805d29,
+        type: 3}
+      propertyPath: <AdsConfigs>k__BackingField.Array.data[4].adsMediationType
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6685391519484111099, guid: 72fec712b86322e4a86060c37a805d29,
+        type: 3}
+      propertyPath: <AdsConfigs>k__BackingField.Array.data[5].adsMediationType
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 6685391520706141682, guid: 72fec712b86322e4a86060c37a805d29,
         type: 3}
       propertyPath: m_BannerPosition
-      value: 1
+      value: 7
       objectReference: {fileID: 0}
     - target: {fileID: 6685391520706141682, guid: 72fec712b86322e4a86060c37a805d29,
         type: 3}

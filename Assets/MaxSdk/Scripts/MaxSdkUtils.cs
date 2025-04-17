@@ -489,77 +489,6 @@ public class MaxSdkUtils
     }
 
     /// <summary>
-    /// Compares AppLovin MAX Unity mediation adapter plugin versions. Returns <see cref="VersionComparisonResult.Lesser"/>, <see cref="VersionComparisonResult.Equal"/>,
-    /// or <see cref="VersionComparisonResult.Greater"/> as the first version is less than, equal to, or greater than the second.
-    ///
-    /// If a version for a specific platform is only present in one of the provided versions, the one that contains it is considered newer.
-    /// </summary>
-    /// <param name="versionA">The first version to be compared.</param>
-    /// <param name="versionB">The second version to be compared.</param>
-    /// <returns>
-    /// <see cref="VersionComparisonResult.Lesser"/> if versionA is less than versionB.
-    /// <see cref="VersionComparisonResult.Equal"/> if versionA and versionB are equal.
-    /// <see cref="VersionComparisonResult.Greater"/> if versionA is greater than versionB.
-    /// </returns>
-    public static VersionComparisonResult CompareUnityMediationVersions(string versionA, string versionB)
-    {
-        if (versionA.Equals(versionB)) return VersionComparisonResult.Equal;
-
-        // Unity version would be of format:      android_w.x.y.z_ios_a.b.c.d
-        // For Android only versions it would be: android_w.x.y.z
-        // For iOS only version it would be:      ios_a.b.c.d
-
-        // After splitting into their respective components, the versions would be at the odd indices.
-        var versionAComponents = versionA.Split('_').ToList();
-        var versionBComponents = versionB.Split('_').ToList();
-
-        var androidComparison = VersionComparisonResult.Equal;
-        if (versionA.Contains("android") && versionB.Contains("android"))
-        {
-            var androidVersionA = versionAComponents[1];
-            var androidVersionB = versionBComponents[1];
-            androidComparison = CompareVersions(androidVersionA, androidVersionB);
-
-            // Remove the Android version component so that iOS versions can be processed.
-            versionAComponents.RemoveRange(0, 2);
-            versionBComponents.RemoveRange(0, 2);
-        }
-        else if (versionA.Contains("android"))
-        {
-            androidComparison = VersionComparisonResult.Greater;
-
-            // Remove the Android version component so that iOS versions can be processed.
-            versionAComponents.RemoveRange(0, 2);
-        }
-        else if (versionB.Contains("android"))
-        {
-            androidComparison = VersionComparisonResult.Lesser;
-
-            // Remove the Android version component so that iOS version can be processed.
-            versionBComponents.RemoveRange(0, 2);
-        }
-
-        var iosComparison = VersionComparisonResult.Equal;
-        if (versionA.Contains("ios") && versionB.Contains("ios"))
-        {
-            var iosVersionA = versionAComponents[1];
-            var iosVersionB = versionBComponents[1];
-            iosComparison = CompareVersions(iosVersionA, iosVersionB);
-        }
-        else if (versionA.Contains("ios"))
-        {
-            iosComparison = VersionComparisonResult.Greater;
-        }
-        else if (versionB.Contains("ios"))
-        {
-            iosComparison = VersionComparisonResult.Lesser;
-        }
-
-        // If either one of the Android or iOS version is greater, the entire version should be greater.
-        return (androidComparison == VersionComparisonResult.Greater || iosComparison == VersionComparisonResult.Greater) ? VersionComparisonResult.Greater : VersionComparisonResult.Lesser;
-    }
-
-    /// <summary>
     /// Compares its two arguments for order.  Returns <see cref="VersionComparisonResult.Lesser"/>, <see cref="VersionComparisonResult.Equal"/>,
     /// or <see cref="VersionComparisonResult.Greater"/> as the first version is less than, equal to, or greater than the second.
     /// </summary>
@@ -581,7 +510,7 @@ public class MaxSdkUtils
         var versionABetaNumber = 0;
         if (isVersionABeta)
         {
-            var components = versionA.Split(new[] { "-beta" }, StringSplitOptions.None);
+            var components = versionA.Split(new[] {"-beta"}, StringSplitOptions.None);
             versionA = components[0];
             versionABetaNumber = int.TryParse(components[1], out piece) ? piece : 0;
         }
@@ -590,7 +519,7 @@ public class MaxSdkUtils
         var versionBBetaNumber = 0;
         if (isVersionBBeta)
         {
-            var components = versionB.Split(new[] { "-beta" }, StringSplitOptions.None);
+            var components = versionB.Split(new[] {"-beta"}, StringSplitOptions.None);
             versionB = components[0];
             versionBBetaNumber = int.TryParse(components[1], out piece) ? piece : 0;
         }

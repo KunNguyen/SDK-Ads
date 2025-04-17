@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -14,7 +15,6 @@ namespace SDK.AdsManagers
           [field: SerializeField] public bool IsReady { get; set; } = false;
           [field: SerializeField] public string Placement { get; set; }
 
-          [field: SerializeField]
           public bool IsShowingAd
           {
                get => IsShowingAdChecking();
@@ -27,7 +27,10 @@ namespace SDK.AdsManagers
           protected UnityAction AdShowSuccessCallback;
           protected UnityAction AdShowFailCallback;
           
+          
           public UnityAction<bool> MarkShowingAds { get; set; }
+          public Task ShowLoadingPanel { get; set; } 
+          public UnityAction CloseLoadingPanel { get; set; }
           public AdChecking IsShowingAdChecking { get; set; }
           public AdChecking IsCheatAds { get; set; }
           public AdChecking IsRemoveAds { get; set; }

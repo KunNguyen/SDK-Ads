@@ -12,7 +12,7 @@ typedef void (*ALUnityBackgroundCallback)(const char* args);
 
 @interface MAUnityAdManager : NSObject
 
-- (ALSdk *)initializeSdkWithSettings:(ALSdkSettings *)settings backgroundCallback:(ALUnityBackgroundCallback)unityBackgroundCallback andCompletionHandler:(ALSdkInitializationCompletionHandler)completionHandler;
+- (void)initializeSdkWithConfiguration:(ALSdkInitializationConfiguration *)initConfig andCompletionHandler:(ALSdkInitializationCompletionHandler)completionHandler;
 
 - (void)createBannerWithAdUnitIdentifier:(nullable NSString *)adUnitIdentifier atPosition:(nullable NSString *)bannerPosition;
 - (void)createBannerWithAdUnitIdentifier:(nullable NSString *)adUnitIdentifier x:(CGFloat)xOffset y:(CGFloat)yOffset;
@@ -67,17 +67,8 @@ typedef void (*ALUnityBackgroundCallback)(const char* args);
 - (void)setRewardedAdExtraParameterForAdUnitIdentifier:(nullable NSString *)adUnitIdentifier key:(nullable NSString *)key value:(nullable NSString *)value;
 - (void)setRewardedAdLocalExtraParameterForAdUnitIdentifier:(nullable NSString *)adUnitIdentifier key:(nullable NSString *)key value:(nullable id)value;
 
-- (void)loadRewardedInterstitialAdWithAdUnitIdentifier:(nullable NSString *)adUnitIdentifier;
-- (BOOL)isRewardedInterstitialAdReadyWithAdUnitIdentifier:(nullable NSString *)adUnitIdentifier;
-- (void)showRewardedInterstitialAdWithAdUnitIdentifier:(nullable NSString *)adUnitIdentifier placement:(nullable NSString *)placement customData:(nullable NSString *)customData;
-- (void)setRewardedInterstitialAdExtraParameterForAdUnitIdentifier:(nullable NSString *)adUnitIdentifier key:(nullable NSString *)key value:(nullable NSString *)value;
-- (void)setRewardedInterstitialAdLocalExtraParameterForAdUnitIdentifier:(nullable NSString *)adUnitIdentifier key:(nullable NSString *)key value:(nullable id)value;
-
 // Event Tracking
 - (void)trackEvent:(nullable NSString *)event parameters:(nullable NSString *)parameters;
-
-// Ad Info
-- (NSString *)adInfoForAdUnitIdentifier:(nullable NSString *)adUnitIdentifier;
 
 // Ad Value
 - (NSString *)adValueForAdUnitIdentifier:(nullable NSString *)adUnitIdentifier withKey:(nullable NSString *)key;
@@ -91,6 +82,8 @@ typedef void (*ALUnityBackgroundCallback)(const char* args);
 // Utils
 + (NSString *)serializeParameters:(NSDictionary<NSString *, id> *)dict;
 + (NSDictionary<NSString *, id> *)deserializeParameters:(nullable NSString *)serialized;
+
++ (void)setUnityBackgroundCallback:(ALUnityBackgroundCallback)unityBackgroundCallback;
 
 /**
  * Creates an instance of @c MAUnityAdManager if needed and returns the singleton instance.

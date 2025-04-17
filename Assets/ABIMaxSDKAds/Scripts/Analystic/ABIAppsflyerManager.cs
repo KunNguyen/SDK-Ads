@@ -9,7 +9,11 @@ using AppsFlyerSDK;
 
 namespace SDK
 {
-#if UNITY_APPSFLYER
+#if !UNITY_APPSFLYER
+    public class ABIAppsflyerManager : MonoBehaviour
+    {
+    }
+#else
     [ScriptOrder(-150)]
     public class ABIAppsflyerManager : MonoBehaviour, IAppsFlyerConversionData
     {

@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <dependencies>
     <androidPackages>
-        <androidPackage spec="com.applovin.mediation:ironsource-adapter:8.0.0.0.0">
+        <androidPackage spec="com.applovin.mediation:ironsource-adapter:8.7.0.0.0">
             <repositories>
                 <repository>https://android-sdk.is.com/</repository>
             </repositories>
         </androidPackage>
     </androidPackages>
     <iosPods>
-        <iosPod name="AppLovinMediationIronSourceAdapter" version="8.0.0.0.0" />
+        <iosPod name="AppLovinMediationIronSourceAdapter" version="8.8.0.0.0" />
     </iosPods>
 </dependencies>

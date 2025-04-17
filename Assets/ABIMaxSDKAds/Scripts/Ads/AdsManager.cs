@@ -30,7 +30,8 @@ namespace SDK
         REWARDED,
         MREC,
         APP_OPEN,
-        COLLAPSIBLE_BANNER
+        COLLAPSIBLE_BANNER,
+        RESUME_ADS
     }
 
     [ScriptOrder(-99)]
@@ -40,25 +41,17 @@ namespace SDK
 
         public bool IsCheatAds;
         public static AdsManager Instance { get; private set; }
-
         public SDKSetup m_SDKSetup;
-        private int m_LevelPassToShowInterstitial = 2;
-        private int m_RewardInterruptCountTime = 0;
-        private int m_MaxRewardInterruptCount = 6;
-        private bool m_IsActiveInterruptReward = false;
-        private bool IsUpdateRemoteConfigSuccess = false;
-        private bool IsInitedAdsType;
-        private bool IsRemoveAds;
-        private bool IsActiveMRECAds;
-        public bool IsFirstOpen;
-        public bool IsLinkRewardWithRemoveAds;
+        [field: SerializeField] private int LevelPassToShowInterstitial { get; set; } = 2;
+        [field: SerializeField] private bool IsUpdateRemoteConfigSuccess { get; set; } = false;
+        [field: SerializeField] private bool IsRemoveAds { get; set; }
+        [field: SerializeField] public bool IsFirstOpen { get; set; }
+        [field: SerializeField] public  bool IsReady { get; set; }
         [field: SerializeField] public bool IsShowingAds { get; set; }
 
-        public AdsType resumeAdsType;
-
-        public AdsMediationType m_MainAdsMediationType = AdsMediationType.MAX;
-        public List<AdsConfig> m_AdsConfigs = new List<AdsConfig>();
-        public List<AdsMediationController> m_AdsMediationControllers = new List<AdsMediationController>();
+        [field: SerializeField] public AdsMediationType MainAdsMediationType { get; set; }= AdsMediationType.MAX;
+        [field: SerializeField] public List<AdsConfig> AdsConfigs { get; set; } = new List<AdsConfig>();
+        [field: SerializeField] public List<AdsMediationController> AdsMediationControllers { get; set; } = new List<AdsMediationController>();
 
         private const string key_local_remove_ads = "key_local_remove_ads";
 
@@ -77,7 +70,6 @@ namespace SDK
             Instance = this;
             DontDestroyOnLoad(gameObject);
             EventManager.StartListening("UpdateRemoteConfigs", UpdateRemoteConfigs);
-            m_IsActiveInterruptReward = true;
             LoadRemoveAds();
             IsFirstOpen = PlayerPrefs.GetInt("first_open", 0) == 0;
             DebugAds.Log("Is First Open " + IsFirstOpen);
@@ -98,12 +90,11 @@ namespace SDK
             CollapsibleBannerAdManager.UpdateRemoteConfig();
             MRecAdManager.UpdateRemoteConfig();
             AppOpenAdManager.UpdateRemoteConfig();
-            ResumeAdsManager.UpdateRemoteConfig();
+            ResumeAdManager.UpdateRemoteConfig();
         }
         private void Init()
         {
             StartCoroutine(coWaitForFirebaseInitialization());
-
         }
 
         IEnumerator coWaitForFirebaseInitialization()
@@ -120,7 +111,7 @@ namespace SDK
 
         private void InitConfig()
         {
-            foreach (AdsConfig adsConfig in m_AdsConfigs)
+            foreach (AdsConfig adsConfig in AdsConfigs)
             {
                 AdsMediationType adsMediationType = m_SDKSetup.GetAdsMediationType(adsConfig.adsType);
                 adsConfig.Init(GetAdsMediationController(adsMediationType), OnAdRevenuePaidEvent);
@@ -199,8 +190,6 @@ namespace SDK
 
             //Setup AppOpenAds
             SetupAppOpenAds();
-
-            IsInitedAdsType = true;
         }
         public  void InitAds(AdsMediationType adsMediationType)
         {
@@ -210,6 +199,8 @@ namespace SDK
             InitCollapsibleBanner(adsMediationType);
             InitMRecAds(adsMediationType);
             InitAppOpenAds(adsMediationType);
+            InitResumeAdManager();
+            IsReady = true;
         }
 
         private void LoadRemoveAds()
@@ -227,7 +218,7 @@ namespace SDK
 
         private AdsConfig GetAdsConfig(AdsType adsType)
         {
-            return m_AdsConfigs.Find(x => x.adsType == adsType);
+            return AdsConfigs.Find(x => x.adsType == adsType);
         }
 
         private AdsMediationController GetSelectedMediation(AdsType adsType)
@@ -248,9 +239,9 @@ namespace SDK
         {
             return adsMediationType switch
             {
-                AdsMediationType.MAX => m_AdsMediationControllers[0],
-                AdsMediationType.ADMOB => m_AdsMediationControllers[1],
-                AdsMediationType.IRONSOURCE => m_AdsMediationControllers[2],
+                AdsMediationType.MAX => AdsMediationControllers[0],
+                AdsMediationType.ADMOB => AdsMediationControllers[1],
+                AdsMediationType.IRONSOURCE => AdsMediationControllers[2],
                 _ => null
             };
         }
@@ -285,14 +276,14 @@ namespace SDK
         public void UpdateAdsMediationConfig(SDKSetup sdkSetup)
         {
             m_SDKSetup = sdkSetup;
-            m_MainAdsMediationType = m_SDKSetup.adsMediationType;
-            foreach (AdsConfig adsConfig in m_AdsConfigs)
+            MainAdsMediationType = m_SDKSetup.adsMediationType;
+            foreach (AdsConfig adsConfig in AdsConfigs)
             {
                 AdsMediationType adsMediationType = m_SDKSetup.GetAdsMediationType(adsConfig.adsType);
                 adsConfig.adsMediationType = adsMediationType;
             }
 
-            IsLinkRewardWithRemoveAds = m_SDKSetup.IsLinkToRemoveAds;
+            RewardAdManager.IsLinkRewardWithRemoveAds = m_SDKSetup.IsLinkToRemoveAds;
             UpdateMaxMediation();
             UpdateAdmobMediation();
             UpdateIronSourceMediation();
@@ -353,7 +344,7 @@ namespace SDK
             if (admobMediationController == null) return;
             if (m_SDKSetup.interstitialAdsMediationType == adsMediationType)
             {
-                m_MainAdsMediationType = adsMediationType;
+                MainAdsMediationType = adsMediationType;
                 admobMediationController.m_AdmobAdSetup.InterstitialAdUnitIDList =
                     m_SDKSetup.admobAdsSetup.InterstitialAdUnitIDList;
             }
@@ -481,8 +472,8 @@ namespace SDK
         }
         public bool IsPassLevelToShowInterstitial(int level)
         {
-            DebugAds.Log("currentLevel: " + level + " Level need passed " + m_LevelPassToShowInterstitial);
-            return level >= m_LevelPassToShowInterstitial;
+            DebugAds.Log("currentLevel: " + level + " Level need passed " + LevelPassToShowInterstitial);
+            return level >= LevelPassToShowInterstitial;
         }
         #endregion
 
@@ -622,7 +613,7 @@ namespace SDK
         #region MRec Ads
 
         private AdsConfig MRecAdsConfig => GetAdsConfig(AdsType.MREC);
-        [field: SerializeField] private MRECAdManager MRecAdManager { get; set; }
+        [field: SerializeField] public MRECAdManager MRecAdManager { get; set; }
         private void SetupMRecAds()
         {
             DebugAds.Log("Setup MRec");
@@ -709,51 +700,23 @@ namespace SDK
         #endregion
 
         #region Resume Ads
+        
+        [field: SerializeField] public ResumeAdManager ResumeAdManager { get; set; }
 
-        [field: SerializeField] public ResumeAdManager ResumeAdsManager { get; set; }
-
-        private async void ShowResumeAds()
+        public void InitResumeAdManager()
         {
-            DebugAds.Log("Show Resume Ads");
-            switch (resumeAdsType)
-            {
-                case AdsType.INTERSTITIAL:
-                {
-                    await ShowLoadingPanel();
-                    if (IsReadyToShowInterstitial())
-                    {
-                        ShowInterstitial(
-                            CloseLoadingPanel,
-                            CloseLoadingPanel,
-                            CloseLoadingPanel);
-                        return;
-                    }
-                    else
-                    {
-                        CloseLoadingPanel();
-                        return;
-                    }
-
-                    break;
-                }
-                case AdsType.APP_OPEN:
-                {
-                    if (AppOpenAdsConfig.isActive)
-                    {
-                        DelayShowAppOpenAds();
-                        return;
-                    }
-
-                    break;
-                }
-            }
-
-            IsShowingAds = false;
+            ResumeAdManager.IsActive = false;
+            ResumeAdManager.IsShowingAdChecking = () => IsShowingAds;
+            ResumeAdManager.IsCheatAds = () => IsCheatAds;
+            ResumeAdManager.ShowLoadingPanel = ShowLoadingPanel();
+            ResumeAdManager.CloseLoadingPanel = CloseLoadingPanel;
         }
+        
 
         private async Task ShowLoadingPanel()
         {
             DebugAds.Log("Show Loading Panel");
+            await Task.Delay(1000);
         }
 
         private void CloseLoadingPanel()
@@ -773,7 +736,7 @@ namespace SDK
 
         private void OnApplicationPause(bool paused)
         {
-            ResumeAdsManager.OnPause(paused);
+            ResumeAdManager.OnPause(paused);
         }
 
         [System.Serializable]

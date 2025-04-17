@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <dependencies>
     <androidPackages>
-        <androidPackage spec="com.applovin.mediation:yandex-adapter:6.4.1.0" />
+        <androidPackage spec="com.applovin.mediation:yandex-adapter:7.12.1.0" />
     </androidPackages>
     <iosPods>
-        <iosPod name="AppLovinMediationYandexAdapter" version="6.1.0.3" />
+        <iosPod name="AppLovinMediationYandexAdapter" version="7.12.1.0" />
     </iosPods>
 </dependencies>

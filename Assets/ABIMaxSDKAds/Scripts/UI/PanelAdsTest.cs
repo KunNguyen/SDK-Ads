@@ -79,6 +79,7 @@ public class PanelAdsTest : MonoBehaviour
 
     private void Update()
     {
+        if (!AdsManager.Instance.IsReady) return;
         if (AdsManager.Instance.BannerAdManager.IsShowingAd)
         {
             m_TextBannerStatus.text = "Banner Ad Showing";

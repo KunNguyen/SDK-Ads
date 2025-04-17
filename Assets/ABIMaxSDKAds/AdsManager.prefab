@@ -1,5 +1,64 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!1 &2819741587092388011
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3961693842403633499}
+  - component: {fileID: 7149778340613795241}
+  m_Layer: 0
+  m_Name: RewardAdManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3961693842403633499
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2819741587092388011}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5018669287161327495}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &7149778340613795241
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2819741587092388011}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6ebbd3b88ba24f7ca562eae0f64ea81a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  <MediationController>k__BackingField: {fileID: 0}
+  <SDKSetup>k__BackingField: {fileID: 0}
+  <AdsConfig>k__BackingField:
+    adsType: 0
+    adsMediationType: 1
+    isActive: 1
+    maxReloadTime: 3
+    adsMediations: []
+  <AdsMediationType>k__BackingField: 0
+  <IsActive>k__BackingField: 0
+  <IsReady>k__BackingField: 0
+  <Placement>k__BackingField: 
+  <IsLinkRewardWithRemoveAds>k__BackingField: 1
+  <IsActiveInterruptReward>k__BackingField: 0
+  <InterruptAdManager>k__BackingField: {fileID: 0}
 --- !u!1 &2822602354715014201
 GameObject:
   m_ObjectHideFlags: 0
@@ -24,6 +83,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2822602354715014201}
+  serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
@@ -32,8 +92,8 @@ Transform:
   - {fileID: 2822602355967738162}
   - {fileID: 7793412898556780354}
   - {fileID: 7021003410549637068}
+  - {fileID: 5018669287161327495}
   m_Father: {fileID: 0}
-  m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &2822602354715014200
 MonoBehaviour:
@@ -49,48 +109,25 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   IsCheatAds: 0
   m_SDKSetup: {fileID: 11400000, guid: 249da539afb5e6d4ebc977a0cfeea499, type: 2}
-  IsLinkRewardWithRemoveAds: 0
-  m_MainAdsMediationType: 2
-  m_AdsConfigs:
-  - adsType: 2
-    adsMediationType: 2
-    isActive: 1
-    maxReloadTime: 3
-    adsMediations: []
-  - adsType: 1
-    adsMediationType: 2
-    isActive: 1
-    maxReloadTime: 3
-    adsMediations: []
-  - adsType: 0
-    adsMediationType: 2
-    isActive: 1
-    maxReloadTime: 3
-    adsMediations: []
-  - adsType: 5
-    adsMediationType: 2
-    isActive: 1
-    maxReloadTime: 3
-    adsMediations: []
-  - adsType: 3
-    adsMediationType: 0
-    isActive: 1
-    maxReloadTime: 3
-    adsMediations: []
-  - adsType: 4
-    adsMediationType: 0
-    isActive: 1
-    maxReloadTime: 3
-    adsMediations: []
-  m_AdsMediationControllers:
+  <LevelPassToShowInterstitial>k__BackingField: 2
+  <IsUpdateRemoteConfigSuccess>k__BackingField: 0
+  <IsRemoveAds>k__BackingField: 0
+  <IsFirstOpen>k__BackingField: 0
+  <IsReady>k__BackingField: 0
+  <IsShowingAds>k__BackingField: 0
+  <MainAdsMediationType>k__BackingField: 1
+  <AdsConfigs>k__BackingField: []
+  <AdsMediationControllers>k__BackingField:
   - {fileID: 2822602355967738161}
   - {fileID: 5196014125470475834}
   - {fileID: 4438890547479628587}
-  IsAutoRefreshCollapsibleBanner: 0
-  IsAutoRefreshExtendCollapsibleBanner: 0
-  m_AutoRefreshTimeCollapsibleBanner: 0
-  IsAutoCloseCollapsibleBanner: 0
-  m_AutoCloseTimeCollapsibleBanner: 20
+  <InterstitialAdManager>k__BackingField: {fileID: 9132237946308442928}
+  <BannerAdManager>k__BackingField: {fileID: 5049510003584445776}
+  <CollapsibleBannerAdManager>k__BackingField: {fileID: 5573320739325500279}
+  <RewardAdManager>k__BackingField: {fileID: 7149778340613795241}
+  <MRecAdManager>k__BackingField: {fileID: 4934694578441453522}
+  <AppOpenAdManager>k__BackingField: {fileID: 6175679813834998635}
+  <ResumeAdManager>k__BackingField: {fileID: 1156291136395092052}
 --- !u!1 &2822602355967738163
 GameObject:
   m_ObjectHideFlags: 0
@@ -115,13 +152,13 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2822602355967738163}
+  serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 2822602354715014199}
-  m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &2822602355967738161
 MonoBehaviour:
@@ -153,6 +190,66 @@ MonoBehaviour:
     appOpenAdUnitID:
       AndroidID: 
   m_BannerPosition: 0
+--- !u!1 &3204194498440044683
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5214877652318451515}
+  - component: {fileID: 5573320739325500279}
+  m_Layer: 0
+  m_Name: CollapsibleAdManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5214877652318451515
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3204194498440044683}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5018669287161327495}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &5573320739325500279
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3204194498440044683}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: adbce839f8d74235bea5dc34e39a7dd3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  <MediationController>k__BackingField: {fileID: 0}
+  <SDKSetup>k__BackingField: {fileID: 0}
+  <AdsConfig>k__BackingField:
+    adsType: 0
+    adsMediationType: 1
+    isActive: 1
+    maxReloadTime: 3
+    adsMediations: []
+  <AdsMediationType>k__BackingField: 0
+  <IsActive>k__BackingField: 0
+  <IsReady>k__BackingField: 0
+  <Placement>k__BackingField: 
+  <IsOpenOnStart>k__BackingField: 0
+  <IsAutoRefresh>k__BackingField: 0
+  <IsExpanded>k__BackingField: 0
+  <AutoRefreshTime>k__BackingField: 15
 --- !u!1 &3518085839382689767
 GameObject:
   m_ObjectHideFlags: 0
@@ -177,13 +274,13 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3518085839382689767}
+  serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 2822602354715014199}
-  m_RootOrder: 1
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &5196014125470475834
 MonoBehaviour:
@@ -220,6 +317,162 @@ MonoBehaviour:
   IsBannerShowingOnStart: 1
   m_CollapsibleBannerPosition: 1
   IsCollapsibleBannerShowingOnStart: 0
+  m_MRECPosition: 0
+--- !u!1 &4527321062299242044
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5018669287161327495}
+  m_Layer: 0
+  m_Name: UnitAdManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5018669287161327495
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4527321062299242044}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 496923170525527665}
+  - {fileID: 1452800646412204340}
+  - {fileID: 5214877652318451515}
+  - {fileID: 3961693842403633499}
+  - {fileID: 7922329180234129381}
+  - {fileID: 1521567796695750486}
+  - {fileID: 6103457840077079656}
+  m_Father: {fileID: 2822602354715014199}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &6070520423432021370
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1521567796695750486}
+  - component: {fileID: 6175679813834998635}
+  m_Layer: 0
+  m_Name: AppOpenAdManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1521567796695750486
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6070520423432021370}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5018669287161327495}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &6175679813834998635
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6070520423432021370}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e65f3dea6b3e4ae5995d79a6e6673188, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  <MediationController>k__BackingField: {fileID: 0}
+  <SDKSetup>k__BackingField: {fileID: 0}
+  <AdsConfig>k__BackingField:
+    adsType: 0
+    adsMediationType: 1
+    isActive: 1
+    maxReloadTime: 3
+    adsMediations: []
+  <AdsMediationType>k__BackingField: 0
+  <IsActive>k__BackingField: 0
+  <IsReady>k__BackingField: 0
+  <Placement>k__BackingField: 
+  <IsActiveByRemoteConfig>k__BackingField: 1
+  <IsFirstOpen>k__BackingField: 1
+  <IsActiveShowAdsFirstTime>k__BackingField: 1
+--- !u!1 &7428529802205168951
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1452800646412204340}
+  - component: {fileID: 5049510003584445776}
+  m_Layer: 0
+  m_Name: BannerAdManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1452800646412204340
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7428529802205168951}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5018669287161327495}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &5049510003584445776
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7428529802205168951}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9495d699701d4ca89089116e86c44154, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  <MediationController>k__BackingField: {fileID: 0}
+  <SDKSetup>k__BackingField: {fileID: 0}
+  <AdsConfig>k__BackingField:
+    adsType: 0
+    adsMediationType: 1
+    isActive: 1
+    maxReloadTime: 3
+    adsMediations: []
+  <AdsMediationType>k__BackingField: 0
+  <IsActive>k__BackingField: 0
+  <IsReady>k__BackingField: 0
+  <Placement>k__BackingField: 
+  <IsAutoRefreshBanner>k__BackingField: 0
+  <BannerAutoResetTime>k__BackingField: 15
 --- !u!1 &8353138578966223628
 GameObject:
   m_ObjectHideFlags: 0
@@ -244,13 +497,13 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 8353138578966223628}
+  serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 2822602354715014199}
-  m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &4438890547479628587
 MonoBehaviour:
@@ -266,3 +519,178 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_IsActive: 0
   IsInited: 0
+--- !u!1 &8490865075576442836
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6103457840077079656}
+  - component: {fileID: 1156291136395092052}
+  m_Layer: 0
+  m_Name: ResumeAdManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6103457840077079656
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8490865075576442836}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5018669287161327495}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1156291136395092052
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8490865075576442836}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 24dd91523a66404c97ec7bec154b449c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  <MediationController>k__BackingField: {fileID: 0}
+  <SDKSetup>k__BackingField: {fileID: 0}
+  <AdsConfig>k__BackingField:
+    adsType: 0
+    adsMediationType: 1
+    isActive: 1
+    maxReloadTime: 3
+    adsMediations: []
+  <AdsMediationType>k__BackingField: 0
+  <IsActive>k__BackingField: 0
+  <IsReady>k__BackingField: 0
+  <Placement>k__BackingField: 
+  <AdsType>k__BackingField: 0
+  <PauseTimeNeedToShowAds>k__BackingField: 5
+  <AdsResumeCappingTime>k__BackingField: 5
+  <DelayTimeToShowAds>k__BackingField: 0.3
+--- !u!1 &8544845992787380392
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 496923170525527665}
+  - component: {fileID: 9132237946308442928}
+  m_Layer: 0
+  m_Name: InterstitialAdManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &496923170525527665
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8544845992787380392}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5018669287161327495}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &9132237946308442928
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8544845992787380392}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 448d7fe096ff4aaf86c7d668df84eb11, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  <MediationController>k__BackingField: {fileID: 0}
+  <SDKSetup>k__BackingField: {fileID: 0}
+  <AdsConfig>k__BackingField:
+    adsType: 0
+    adsMediationType: 1
+    isActive: 1
+    maxReloadTime: 3
+    adsMediations: []
+  <AdsMediationType>k__BackingField: 0
+  <IsActive>k__BackingField: 0
+  <IsReady>k__BackingField: 0
+  <Placement>k__BackingField: 
+  <MaxCappingAdsCooldown>k__BackingField: 0
+  <CappingAdsCooldown>k__BackingField: 0
+  <LevelToShowInterstitial>k__BackingField: 0
+--- !u!1 &8628556824229148138
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7922329180234129381}
+  - component: {fileID: 4934694578441453522}
+  m_Layer: 0
+  m_Name: MRecAdManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7922329180234129381
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8628556824229148138}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5018669287161327495}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &4934694578441453522
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8628556824229148138}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b8b2139893148bfbb1b46d04c5cbc0f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  <MediationController>k__BackingField: {fileID: 0}
+  <SDKSetup>k__BackingField: {fileID: 0}
+  <AdsConfig>k__BackingField:
+    adsType: 0
+    adsMediationType: 1
+    isActive: 1
+    maxReloadTime: 3
+    adsMediations: []
+  <AdsMediationType>k__BackingField: 0
+  <IsActive>k__BackingField: 0
+  <IsReady>k__BackingField: 0
+  <Placement>k__BackingField: 

@@ -53,7 +53,7 @@ MonoBehaviour:
   rewardedAdsMediationType: 1
   IsLinkToRemoveAds: 1
   bannerAdsMediationType: 1
-  maxBannerAdsPosition: 1
+  maxBannerAdsPosition: 7
   admobBannerAdsPosition: 0
   isBannerShowingOnStart: 1
   isAutoRefreshBannerByCode: 0

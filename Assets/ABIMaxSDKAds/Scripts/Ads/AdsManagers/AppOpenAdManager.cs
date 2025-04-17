@@ -11,11 +11,6 @@ namespace SDK.AdsManagers
           [field: SerializeField] public bool IsActiveByRemoteConfig { get; set; } = true;
           [field: SerializeField] public bool IsFirstOpen { get; set; } = true;
           [field: SerializeField] public bool IsActiveShowAdsFirstTime { get; set; } = true;
-          [field: SerializeField] public bool IsActiveResumeAds { get; set; } = true;
-          
-          [field: SerializeField] public DateTime CloseAdsTime { get; set; }
-          [field: SerializeField] public float PauseTimeNeedToShowAds { get; set; }
-          [field: SerializeField] public float AdResumeCappingTime { get; set; } = 0f;
           public override void Init(AdsMediationType adsMediationType)
           {
                if (AdsMediationType != adsMediationType) return;
@@ -78,7 +73,7 @@ namespace SDK.AdsManagers
           {
                base.CallToShowAd(placementName, closedCallback, showSuccessCallback, showFailCallback, isTracking, isSkipCapping);
                if(IsCheatAds() || IsRemoveAds()) return;
-               
+               Show();
           }
 
           public override void RequestAd()
@@ -100,7 +95,6 @@ namespace SDK.AdsManagers
           public override void OnAdClose()
           {
                base.OnAdClose();
-               CloseAdsTime = DateTime.Now;
                RequestAd();
           }
 

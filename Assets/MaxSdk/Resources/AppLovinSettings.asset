@@ -15,22 +15,7 @@ MonoBehaviour:
   qualityServiceEnabled: 1
   sdkKey: uJa4sGbT3zSQ9zw2o_CzJrxzsUI682WXsNFOfDGoT0Z5SsqQSWN52AZi7P0UtoN13VRe_MgEZodmMuzDKQwf0d
   setAttributionReportEndpoint: 0
-  addApsSkAdNetworkIds: 0
   customGradleVersionUrl: 
   customGradleToolsVersion: 
-  consentFlowEnabled: 0
-  consentFlowPlatform: 0
-  consentFlowPrivacyPolicyUrl: 
-  consentFlowTermsOfServiceUrl: 
-  userTrackingUsageDescriptionEn: 
-  userTrackingUsageLocalizationEnabled: 0
-  userTrackingUsageDescriptionDe: 
-  userTrackingUsageDescriptionEs: 
-  userTrackingUsageDescriptionFr: 
-  userTrackingUsageDescriptionJa: 
-  userTrackingUsageDescriptionKo: 
-  userTrackingUsageDescriptionZhHans: 
-  userTrackingUsageDescriptionZhHant: 
-  adMobAndroidAppId: ca-app-pub-9819920607806935~4395939413
+  adMobAndroidAppId: ca-app-pub-6955836496511243~8159002098
   adMobIosAppId: 
-  showInternalSettingsInIntegrationManager: 0
