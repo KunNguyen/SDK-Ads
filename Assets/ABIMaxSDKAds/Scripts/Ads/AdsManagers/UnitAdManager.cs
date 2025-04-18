@@ -15,7 +15,7 @@ namespace SDK.AdsManagers
           [field: SerializeField] public bool IsReady { get; set; } = false;
           [field: SerializeField] public string Placement { get; set; }
 
-          public bool IsShowingAd
+          public virtual bool IsShowingAd
           {
                get => IsShowingAdChecking();
                protected set => MarkShowingAds?.Invoke(value);
@@ -39,6 +39,7 @@ namespace SDK.AdsManagers
           {
                SDKSetup = sdkSetup;
                AdsConfig = adsConfig;
+               IsActive = adsConfig.isActive;
                AdsConfig.isActive = SDKSetup.IsActiveAdsType(AdsConfig.adsType);
                AdsMediationType = adsConfig.adsMediationType;
                MediationController = mediationController;

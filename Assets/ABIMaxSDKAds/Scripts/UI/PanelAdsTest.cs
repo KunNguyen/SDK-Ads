@@ -36,11 +36,11 @@ public class PanelAdsTest : MonoBehaviour
         {
             if (IsShowingMREC)
             {
-                HideMrec();
+                HideMRec();
             }
             else
             {
-                ShowMrec();
+                ShowMRec();
             }
             IsShowingMREC = !IsShowingMREC;
         });
@@ -94,7 +94,7 @@ public class PanelAdsTest : MonoBehaviour
         }
         else
         {
-            m_TextCollapsibleBannerStatus.text = AdsManager.Instance.IsBannerLoaded() ? "Collapsible Banner Ad Loaded" : "Collapsible Banner Ad Not Loaded";
+            m_TextCollapsibleBannerStatus.text = AdsManager.Instance.IsCollapsibleBannerLoaded() ? "Collapsible Banner Ad Loaded" : "Collapsible Banner Ad Not Loaded";
         }
         if (AdsManager.Instance.IsMRecShowing())
         {
@@ -137,11 +137,11 @@ public class PanelAdsTest : MonoBehaviour
     {
         AdsManager.Instance.ShowRewardVideo(null,null);
     }
-    public void ShowMrec()
+    public void ShowMRec()
     {
         AdsManager.Instance.ShowMRecAds();
     }
-    public void HideMrec()
+    public void HideMRec()
     {
         AdsManager.Instance.HideMRecAds();
     }

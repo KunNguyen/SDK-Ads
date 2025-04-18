@@ -538,13 +538,11 @@ namespace SDK
                 GetSelectedMediation(AdsType.COLLAPSIBLE_BANNER));
             CollapsibleBannerAdManager.IsRemoveAds = () => IsRemoveAds;
             CollapsibleBannerAdManager.IsCheatAds = () => IsCheatAds;
-            HideCollapsibleBannerAds();
         }
         private void InitCollapsibleBanner(AdsMediationType adsMediationType)
         {
             DebugAds.Log("Init Collapsible Banner");
             CollapsibleBannerAdManager.Init(adsMediationType);
-            
         }
         public bool IsCollapsibleBannerExpended()
         {

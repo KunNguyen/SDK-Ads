@@ -16,16 +16,21 @@ namespace SDK.AdsManagers
           public override void Init(AdsMediationType adsMediationType)
           {
                if(AdsMediationType != adsMediationType) return;
-               if (IsRemoveAds()) return;
-               MediationController.InitBannerAds(
-                    OnAdLoadSuccess,
-                    OnAdLoadFail,
-                    OnAdCollapsed,
-                    OnAdExpanded,
-                    OnAdShowSuccess,
-                    OnAdShowFailed,
-                    OnAdClicked);
+               if (IsRemoveAds() || IsCheatAds()) return;
+               foreach (AdsMediationController t in AdsConfig.adsMediations)
+               {
+                    t.InitBannerAds(
+                         OnAdLoadSuccess,
+                         OnAdLoadFail,
+                         OnAdCollapsed,
+                         OnAdExpanded,
+                         OnAdShowSuccess,
+                         OnAdShowFailed,
+                         OnAdClicked);
+               }
           }
+
+          public override bool IsShowingAd { get; protected set; }
 
           public override void RequestAd()
           {
@@ -65,10 +70,7 @@ namespace SDK.AdsManagers
           {
                base.CallToShowAd(placementName, closedCallback, showSuccessCallback, showFailCallback, isTracking, isSkipCapping);
                Debug.Log("Banner CallToShowAd");
-               if (IsCheatAds() && IsRemoveAds())
-               {
-                    return;
-               }
+               if (IsCheatAds() || IsRemoveAds())return;
                Show();
           }
           public override void Show()
@@ -86,7 +88,7 @@ namespace SDK.AdsManagers
           
           public override void OnAdShowSuccess()
           {
-               
+               IsShowingAd = true;
           }
           public override void OnAdShowFailed()
           {
@@ -110,7 +112,7 @@ namespace SDK.AdsManagers
 
           public override bool IsLoaded()
           {
-               return MediationController.IsBannerLoaded();
+               return MediationController != null && MediationController.IsBannerLoaded();
           }
 
           public override bool IsAdReady()

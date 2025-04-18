@@ -12,8 +12,12 @@ namespace SDK.AdsManagers
           {
                if(AdsMediationType!= adsMediationType) return;
                if (IsRemoveAds() || IsCheatAds()) return;
-               MediationController.InitRMecAds(OnAdLoadSuccess, OnAdLoadFail, OnAdClicked, OnAdExpanded,OnAdCollapsed);
+               foreach (AdsMediationController t in AdsConfig.adsMediations)
+               {
+                    t.InitRMecAds(OnAdLoadSuccess, OnAdLoadFail, OnAdClicked, OnAdExpanded,OnAdCollapsed);
+               }
           }
+          public override bool IsShowingAd { get; protected set; }
 
           public override void UpdateRemoteConfig()
           {
@@ -26,7 +30,7 @@ namespace SDK.AdsManagers
 
           public override void RequestAd()
           {
-               if (IsRemoveAds()) return;
+               if (IsRemoveAds() || IsCheatAds()) return;
                MediationController.RequestMRecAds();
           }
 
@@ -46,7 +50,7 @@ namespace SDK.AdsManagers
           
           public override void Show()
           {
-               MediationController.ShowMRecAds();
+               MediationController?.ShowMRecAds();
           }
 
           public override bool IsLoaded()

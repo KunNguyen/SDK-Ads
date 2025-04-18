@@ -1,4 +1,7 @@
+using System;
+using System.Threading.Tasks;
 using ABI;
+using ABIMaxSDKAds.Scripts;
 using Firebase.RemoteConfig;
 using UnityEngine;
 using UnityEngine.Events;
@@ -16,15 +19,40 @@ namespace SDK.AdsManagers
           private int MaxInterruptCount = 3;
           private bool IsWatchedSuccess { get; set; } = false;
           private UnityAction<bool> AdRewardClosedCallback = null;
+          private float ReloadTime { get; set; } = 2f;
+          private int RetryAttempt { get; set; } = 0;
+          private bool IsLoading = false;
 
           public override void Init(AdsMediationType adsMediationType)
           {
+               DebugAds.Log("Start Init Reward Ad");
                if(AdsMediationType != adsMediationType) return;
-               MediationController.InitRewardVideoAd(
-                    OnAdClosed,
-                    OnAdLoadSuccess,
-                    OnAdLoadFail,
-                    OnAdStartShow);
+               if (!IsActive || IsRemoveAds() || IsCheatAds()) return;
+               foreach (AdsMediationController t in AdsConfig.adsMediations)
+               {
+                    t.InitRewardVideoAd(
+                         OnAdClosed,
+                         OnAdLoadSuccess,
+                         OnAdLoadFail,
+                         OnAdStartShow);
+               }
+               // Start Auto Reload Reward Ad
+               _ = AutoReloadRewardAd();
+               DebugAds.Log("Init Reward Ad Done");
+          }
+          
+          private async Task AutoReloadRewardAd() 
+          {
+               while (true)
+               {
+                    DebugAds.Log("Auto Reloading Reward Ad " + IsLoaded() + " " + IsLoading + " " + IsRemoveAds() + " " + IsCheatAds() + " " + IsShowingAd);
+                    if (!IsLoaded() && !IsLoading && !IsRemoveAds() && !IsCheatAds() && !IsShowingAd)
+                    {
+                         IsLoading = true;
+                         RequestAd();
+                    }
+                    await Task.Delay(TimeSpan.FromSeconds(10f));
+               }
           }
 
           public override void UpdateRemoteConfig()
@@ -53,7 +81,7 @@ namespace SDK.AdsManagers
           public void CallToShowRewardAd(string placementName = "", UnityAction<bool> closedCallback = null,
                UnityAction showSuccessCallback = null,
                UnityAction showFailCallback = null, bool isTracking = true, bool isSkipCapping = false)
-          {
+          {     
                IsWatchedSuccess = false;
                AdRewardClosedCallback = closedCallback;
                CallToShowAd(placementName, null, showSuccessCallback, showFailCallback, isTracking,
@@ -93,10 +121,23 @@ namespace SDK.AdsManagers
                     }
                }
           }
+          public override void OnAdLoadSuccess()
+          {
+               base.OnAdLoadSuccess();
+               DebugAds.Log("Load Reward Ad Success");
+               IsLoading = false;
+          }
+          
+          public override void OnAdLoadFail()
+          {
+               base.OnAdLoadFail();
+               DebugAds.Log("Load Reward Ad Failed");
+               IsLoading = false;
+          }
 
           private void OnAdStartShow()
           {
-               
+               IsShowingAd = true;
           }
           private void OnRewardVideoEarnSuccess()
           {
@@ -108,6 +149,7 @@ namespace SDK.AdsManagers
 
           private void OnAdClosed(bool isWatched)
           {
+               IsShowingAd = false;
                AdRewardClosedCallback?.Invoke(isWatched);
           }
 
@@ -130,7 +172,7 @@ namespace SDK.AdsManagers
           }
           public override bool IsLoaded()
           {
-               return MediationController.IsRewardVideoLoaded();
+               return MediationController!= null && MediationController.IsRewardVideoLoaded();
           }
           public override bool IsAdReady()
           {

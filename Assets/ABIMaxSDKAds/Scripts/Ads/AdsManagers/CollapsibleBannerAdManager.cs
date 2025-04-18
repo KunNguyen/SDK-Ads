@@ -17,13 +17,19 @@ namespace SDK.AdsManagers
 
           public override void Init(AdsMediationType adsMediationType)
           {
-               MediationController.InitCollapsibleBannerAds(
-                    OnAdLoadSuccess,
-                    OnAdLoadFail,
-                    OnAdCollapsed,
-                    OnAdExpanded,
-                    OnAdDestroyed,
-                    OnAdHide);
+               if (AdsMediationType != adsMediationType) return;
+               if(IsRemoveAds() || IsCheatAds()) return;
+               foreach (AdsMediationController t in AdsConfig.adsMediations)
+               {
+                    t.InitCollapsibleBannerAds(
+                         OnAdLoadSuccess,
+                         OnAdLoadFail,
+                         OnAdCollapsed,
+                         OnAdExpanded,
+                         OnAdDestroyed,
+                         OnAdHide);
+               }
+               Hide();
                StartCoroutine(coCheckingShowCollapsibleBannerAdsOnStart());
           }
           IEnumerator coCheckingShowCollapsibleBannerAdsOnStart()
@@ -92,7 +98,7 @@ namespace SDK.AdsManagers
 
           public override bool IsLoaded()
           {
-               return MediationController.IsCollapsibleBannerLoaded();
+               return MediationController != null &&  MediationController.IsCollapsibleBannerLoaded();
           }
 
           public override bool IsAdReady()

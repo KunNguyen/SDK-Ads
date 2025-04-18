@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using ABIMaxSDKAds.Scripts;
 using UnityEngine;
 using UnityEngine.Events;
 namespace SDK {
@@ -19,10 +20,10 @@ namespace SDK {
         {
             if (IsInited) return;
             base.Init();
-            Debug.Log("unity-script: MyAppStart Start called");
+            DebugAds.Log("unity-script: MyAppStart Start called");
             MaxSdkCallbacks.OnSdkInitializedEvent += sdkConfiguration => {
                 // AppLovin SDK is initialized, configure and start loading ads.
-                Debug.Log("MAX SDK Initialized");
+                DebugAds.Log("MAX SDK Initialized");
                 AdsManager.Instance.InitAds(AdsMediationType.MAX);
                 MaxSdk.ShowMediationDebugger();
             };
@@ -48,7 +49,7 @@ namespace SDK {
         #region Interstitial
         public override void InitInterstitialAd(UnityAction adClosedCallback, UnityAction adLoadSuccessCallback, UnityAction adLoadFailedCallback, UnityAction adShowSuccessCallback, UnityAction adShowFailCallback) {
             base.InitInterstitialAd(adClosedCallback, adLoadSuccessCallback, adLoadFailedCallback, adShowSuccessCallback, adShowFailCallback);
-            Debug.Log("Init MAX Interstitial");
+            DebugAds.Log("Init MAX Interstitial");
             // Attach callbacks
             MaxSdkCallbacks.Interstitial.OnAdLoadedEvent += OnInterstitialLoadedEvent;
             MaxSdkCallbacks.Interstitial.OnAdLoadFailedEvent += OnInterstitialLoadFailedEvent;
@@ -56,41 +57,38 @@ namespace SDK {
             MaxSdkCallbacks.Interstitial.OnAdHiddenEvent += OnInterstitialDismissedEvent;
             MaxSdkCallbacks.Interstitial.OnAdRevenuePaidEvent += (adUnitID, adInfo) => { OnAdRevenuePaidEvent(AdsType.INTERSTITIAL, adUnitID, adInfo);};
             MaxSdkCallbacks.Interstitial.OnAdDisplayedEvent += OnInterstitialAdShowSucceededEvent;
-
-            // Load the first interstitial
-            RequestInterstitialAd();
         }
         public override void RequestInterstitialAd() {
             base.RequestInterstitialAd();
-            Debug.Log("Request MAX Interstitial");
+            DebugAds.Log("Request MAX Interstitial");
             MaxSdk.LoadInterstitial(m_MaxAdConfig.InterstitialAdUnitID);
         }
         public override void ShowInterstitialAd() {
             base.ShowInterstitialAd();
-            Debug.Log("Show MAX Interstitial");
+            DebugAds.Log("Show MAX Interstitial");
             MaxSdk.ShowInterstitial(m_MaxAdConfig.InterstitialAdUnitID);
         }
         public override bool IsInterstitialLoaded() {
             return MaxSdk.IsInterstitialReady(m_MaxAdConfig.InterstitialAdUnitID);
         }
         void OnInterstitialLoadedEvent(string adUnitId, MaxSdkBase.AdInfo adInfo) {
-            Debug.Log("Load MAX Interstitial Success");
+            DebugAds.Log("Load MAX Interstitial Success");
             m_InterstitialAdLoadSuccessCallback?.Invoke();
         }
         void OnInterstitialLoadFailedEvent(string adUnitId, MaxSdkBase.ErrorInfo errorInfo) {
-            Debug.Log("Load MAX Interstitial Fail");
+            DebugAds.Log("Load MAX Interstitial Fail");
             m_InterstitialAdLoadFailCallback?.Invoke();
         }
         void InterstitialFailedToDisplayEvent(string adUnitId, MaxSdkBase.ErrorInfo errorInfo, MaxSdkBase.AdInfo adInfo) {
-            Debug.Log("unity-script: I got InterstitialAdShowFailedEvent, code :  " + errorInfo.Code + ", description : " + errorInfo.Message);
+            DebugAds.Log("unity-script: I got InterstitialAdShowFailedEvent, code :  " + errorInfo.Code + ", description : " + errorInfo.Message);
             m_InterstitialAdShowFailCallback?.Invoke();
         }
         void OnInterstitialDismissedEvent(string adUnitId, MaxSdkBase.AdInfo adInfo) {
-            Debug.Log("Interstitial dismissed");
+            DebugAds.Log("Interstitial dismissed");
             m_InterstitialAdCloseCallback?.Invoke();
         }
         void OnInterstitialAdShowSucceededEvent(string adUnitId, MaxSdkBase.AdInfo adInfo) {
-            Debug.Log("unity-script: I got InterstitialAdShowSuccee");
+            DebugAds.Log("unity-script: I got InterstitialAdShowSuccee");
             m_InterstitialAdShowSuccessCallback?.Invoke();
         }
         #endregion
@@ -99,7 +97,7 @@ namespace SDK {
         public override void InitRewardVideoAd(UnityAction<bool> videoClosed, UnityAction videoLoadSuccess, UnityAction videoLoadFailed, UnityAction videoStart) {
             base.InitRewardVideoAd(videoClosed, videoLoadSuccess, videoLoadFailed, videoStart);
 
-            Debug.Log("Init MAX RewardedVideoAd");
+            DebugAds.Log("Init MAX RewardedVideoAd");
             MaxSdkCallbacks.Rewarded.OnAdDisplayedEvent += Rewarded_OnAdStartedEvent;
             MaxSdkCallbacks.Rewarded.OnAdDisplayFailedEvent += Rewarded_OnAdShowFailedEvent;
             MaxSdkCallbacks.Rewarded.OnAdClickedEvent += Rewarded_OnAdClickedEvent;
@@ -114,7 +112,7 @@ namespace SDK {
 
         public override void RequestRewardVideoAd() {
             base.RequestRewardVideoAd();
-            Debug.Log("Request MAX RewardedVideoAd");
+            DebugAds.Log("Request MAX RewardedVideoAd");
 #if UNITY_EDITOR
             Rewarded_OnAdLoadedFailEvent("", null);
 #else
@@ -141,25 +139,23 @@ namespace SDK {
 
         /************* RewardedVideo Delegates *************/
         private void Rewarded_OnAdLoadedEvent(string adUnitID, MaxSdkBase.AdInfo adInfo) {
-            Debug.Log("RewardedVideoAd MAX Loaded Success");
+            DebugAds.Log("MAX Ads: RewardedVideoAd MAX Loaded Success");
             m_RewardedVideoLoadSuccessCallback?.Invoke();
         }
         private void Rewarded_OnAdLoadedFailEvent(string adUnitID, MaxSdkBase.ErrorInfo adError) {
-            Debug.Log("RewardedVideoAd MAX Loaded Fail");
+            DebugAds.Log("MAX Ads: RewardedVideoAd MAX Loaded Fail");
             m_RewardedVideoLoadFailedCallback?.Invoke();
         }
         void Rewarded_OnAdRewardedEvent(string adUnitID, MaxSdkBase.Reward reward, MaxSdkBase.AdInfo adInfo)
         {
-#if !UNITY_EDITOR
-        Debug.Log("unity-script: I got RewardedVideoAdRewardedEvent");
-#endif
+        DebugAds.Log("MAX Ads: I got RewardedVideoAdRewardedEvent");
             m_IsWatchSuccess = true;
             switch (Application.platform)
             {
                 case RuntimePlatform.Android:
                 {
                     if (m_RewardedVideoEarnSuccessCallback != null) {
-                        Debug.Log("Watch video Success Callback!");
+                        DebugAds.Log("MAX Ads: Watch video Success Callback!");
                         m_RewardedVideoEarnSuccessCallback();
                         m_RewardedVideoEarnSuccessCallback = null;
                     }
@@ -169,7 +165,7 @@ namespace SDK {
                 case RuntimePlatform.IPhonePlayer:
                 {
                     if (m_RewardedVideoEarnSuccessCallback != null) {
-                        Debug.Log("Watch video Success Callback!");
+                        DebugAds.Log("MAX Ads: Watch video Success Callback!");
                         EventManager.AddEventNextFrame(m_RewardedVideoEarnSuccessCallback);
                         m_RewardedVideoEarnSuccessCallback = null;
                     }
@@ -178,7 +174,7 @@ namespace SDK {
             }
         }
         void Rewarded_OnAdClosedEvent(string adUnitID, MaxSdkBase.AdInfo adInfo) {
-            Debug.Log("unity-script: I got RewardedVideoAdClosedEvent");
+            DebugAds.Log("MAX Ads: I got RewardedVideoAdClosedEvent");
             if (m_RewardedVideoEarnSuccessCallback != null && m_IsWatchSuccess) {
                 EventManager.AddEventNextFrame(m_RewardedVideoEarnSuccessCallback);
                 m_RewardedVideoEarnSuccessCallback = null;
@@ -187,19 +183,19 @@ namespace SDK {
             m_RewardedVideoCloseCallback?.Invoke(m_IsWatchSuccess);
         }
         void Rewarded_OnAdStartedEvent(string adUnitID, MaxSdkBase.AdInfo adInfo) {
-            Debug.Log("unity-script: I got RewardedVideoAdStartedEvent");
+            DebugAds.Log("MAX Ads: I got RewardedVideoAdStartedEvent");
             m_RewardedVideoShowStartCallback?.Invoke();
         }
         void RewardedVideoAdEndedEvent() {
-            Debug.Log("unity-script: I got RewardedVideoAdEndedEvent");
+            DebugAds.Log("MAX Ads: I got RewardedVideoAdEndedEvent");
             m_IsWatchSuccess = true;
         }
         void Rewarded_OnAdShowFailedEvent(string adUnitID, MaxSdkBase.ErrorInfo errorInfo, MaxSdkBase.AdInfo adInfo) {
-            Debug.Log("unity-script: I got RewardedVideoAdShowFailedEvent, code :  " + errorInfo.Code + ", description : " + errorInfo.Message);
+            DebugAds.Log("MAX Ads: I got RewardedVideoAdShowFailedEvent, code :  " + errorInfo.Code + ", description : " + errorInfo.Message);
             m_RewardedVideoLoadFailedCallback?.Invoke();
         }
         void Rewarded_OnAdClickedEvent(string adUnitID, MaxSdkBase.AdInfo adInfo) {
-            Debug.Log("unity-script: I got RewardedVideoAdClickedEvent");
+            DebugAds.Log("MAX Ads: I got RewardedVideoAdClickedEvent");
         }
         #endregion
 
@@ -223,7 +219,7 @@ namespace SDK {
                 bannerAdsDisplayed,
                 bannerAdsDisplayedFailedCallback,
                 bannerAdsClickedCallback);
-            Debug.Log("Banner MAX Init ID = " + m_MaxAdConfig.BannerAdUnitID);
+            DebugAds.Log("Banner MAX Init ID = " + m_MaxAdConfig.BannerAdUnitID);
             MaxSdk.CreateBanner(m_MaxAdConfig.BannerAdUnitID, m_BannerPosition);
             MaxSdk.SetBannerBackgroundColor(m_MaxAdConfig.BannerAdUnitID, Color.black);
             
@@ -237,13 +233,13 @@ namespace SDK {
 
         public override void ShowBannerAds() {
             base.ShowBannerAds();
-            Debug.Log("MAX Mediation Banner Call Show");
+            DebugAds.Log("MAX Mediation Banner Call Show");
             MaxSdk.ShowBanner(m_MaxAdConfig.BannerAdUnitID);
         }
         public override void HideBannerAds()
         {
             base.HideBannerAds();
-            Debug.Log("MAX Mediation Banner Call Hide");
+            DebugAds.Log("MAX Mediation Banner Call Hide");
             MaxSdk.HideBanner(m_MaxAdConfig.BannerAdUnitID);
         }
 
@@ -253,29 +249,29 @@ namespace SDK {
         }
 
         private void BannerAdLoadedEvent(string adUnitID, MaxSdkBase.AdInfo adInfo) {
-            Debug.Log("MAX Mediation Banner Loaded Success");
+            DebugAds.Log("MAX Mediation Banner Loaded Success");
             m_BannerAdLoadedSuccessCallback?.Invoke();
             m_IsBannerLoaded = true;
         }
         private void BannerAdLoadFailedEvent(string adUnitID, MaxSdkBase.ErrorInfo errorInfo)
         {
-            Debug.Log("MAX Mediation Banner Loaded Fail");
+            DebugAds.Log("MAX Mediation Banner Loaded Fail");
             m_BannerAdLoadedFailCallback?.Invoke();
             m_IsBannerLoaded = false;
         }
         private void BannerAdClickedEvent(string adUnitID, MaxSdkBase.AdInfo adInfo)
         {
-            Debug.Log("MAX Mediation Banner Clicked");
+            DebugAds.Log("MAX Mediation Banner Clicked");
             m_BannerAdsClickedCallback?.Invoke();
         }
         private void OnBannerAdCollapsedEvent(string adUnitID, MaxSdkBase.AdInfo adInfo)
         {
-            Debug.Log("MAX Mediation Banner Collapsed");
+            DebugAds.Log("MAX Mediation Banner Collapsed");
             m_BannerAdsCollapsedCallback?.Invoke();
         }
         private void OnBannerAdExpandedEvent(string adUnitID, MaxSdkBase.AdInfo adInfo)
         {
-            Debug.Log("MAX Mediation Banner Expanded");
+            DebugAds.Log("MAX Mediation Banner Expanded");
             m_BannerAdsExpandedCallback?.Invoke();
         }
         #endregion
@@ -285,7 +281,7 @@ namespace SDK {
         public override void InitRMecAds(UnityAction adLoadedCallback, UnityAction adLoadFailedCallback, UnityAction adClickedCallback, UnityAction adExpandedCallback, UnityAction adCollapsedCallback)
         {
             base.InitRMecAds(adLoadedCallback, adLoadFailedCallback, adClickedCallback, adExpandedCallback, adCollapsedCallback);
-            Debug.Log("MAX Start Init MREC");
+            DebugAds.Log("MAX Start Init MREC");
             MaxSdkCallbacks.MRec.OnAdLoadedEvent      += OnMRecAdLoadedEvent;
             MaxSdkCallbacks.MRec.OnAdLoadFailedEvent  += OnMRecAdLoadFailedEvent;
             MaxSdkCallbacks.MRec.OnAdClickedEvent     += OnMRecAdClickedEvent;
@@ -297,7 +293,7 @@ namespace SDK {
         public override void RequestMRecAds()
         {
             base.RequestMRecAds();
-            Debug.Log("MAX Mediation MREC Call Request");
+            DebugAds.Log("MAX Mediation MREC Call Request");
             MaxSdk.LoadMRec(m_MaxAdConfig.MrecAdUnitID);
         }
         public override bool IsMRecLoaded()
@@ -306,13 +302,13 @@ namespace SDK {
         }
         private void OnMRecAdLoadedEvent(string adUnitId, MaxSdkBase.AdInfo adInfo)
         {
-            Debug.Log("MAX Mediation MREC Loaded Success");
+            DebugAds.Log("MAX Mediation MREC Loaded Success");
             m_IsMRecLoaded = true;
             m_MRecAdLoadedCallback?.Invoke();
         }
         private void OnMRecAdLoadFailedEvent(string adUnitId, MaxSdkBase.ErrorInfo error)
         {
-            Debug.Log("MAX Mediation MREC Loaded Fail");
+            DebugAds.Log("MAX Mediation MREC Loaded Fail");
             m_IsMRecLoaded = false;
             m_MRecAdLoadFailCallback?.Invoke();
         }
@@ -372,12 +368,12 @@ namespace SDK {
         }
         private void OnAppOpenAdLoadedEvent(string adUnitID, MaxSdkBase.AdInfo adInfo)
         {
-            Debug.Log("MAX Mediation App Open Ads Loaded Success");
+            DebugAds.Log("MAX Mediation App Open Ads Loaded Success");
             m_AppOpenAdLoadedCallback?.Invoke();
         }
         private void OnAppOpenAdLoadFailedEvent(string adUnitID, MaxSdkBase.ErrorInfo errorInfo)
         {
-            Debug.Log("MAX Mediation App Open Ads Loaded Fail");
+            DebugAds.Log("MAX Mediation App Open Ads Loaded Fail");
             m_AppOpenAdLoadFailedCallback?.Invoke();
         }
         private void OnAppOpenAdClickedEvent(string adUnitID, MaxSdkBase.AdInfo adInfo)
@@ -385,17 +381,17 @@ namespace SDK {
         }
         private void OnAppOpenAdDisplayedEvent(string adUnitID, MaxSdkBase.AdInfo adInfo)
         {
-            Debug.Log("MAX Mediation App Open Ads Displayed");
+            DebugAds.Log("MAX Mediation App Open Ads Displayed");
             m_AppOpenAdDisplayedCallback?.Invoke();
         }
         private void OnAppOpenAdDisplayFailedEvent(string adUnitID, MaxSdkBase.ErrorInfo errorInfo, MaxSdkBase.AdInfo adInfo)
         {
-            Debug.Log("MAX Mediation App Open Ads Displayed Fail");
+            DebugAds.Log("MAX Mediation App Open Ads Displayed Fail");
             m_AppOpenAdFailedToDisplayCallback?.Invoke();
         }
         private void OnAppOpenAdHiddenEvent(string adUnitID, MaxSdkBase.AdInfo adInfo)
         {
-            Debug.Log("MAX Mediation App Open Ads Hidden");
+            DebugAds.Log("MAX Mediation App Open Ads Hidden");
             m_AppOpenAdClosedCallback?.Invoke();
         }
         #endregion

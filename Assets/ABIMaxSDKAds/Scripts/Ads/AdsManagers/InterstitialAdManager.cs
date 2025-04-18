@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using ABI;
+using ABIMaxSDKAds.Scripts;
 using Firebase.RemoteConfig;
 using UnityEngine;
 using UnityEngine.Events;
@@ -15,14 +16,13 @@ namespace SDK.AdsManagers
           [field: SerializeField] public int LevelToShowInterstitial { get; set; } = 0;
           private CancellationTokenSource StopCooldownCTS { get; set; } = new CancellationTokenSource();
           private DateTime StartRequestTime{ get; set; }
+          private  bool IsLoading { get; set; } = false;
 
           public override void Init(AdsMediationType adsMediationType)
           {
                if (AdsMediationType != adsMediationType) return;
-               if (IsRemoveAds()) return;
-               Debug.Log("Setup Interstitial");
-               AdsConfig.isActive = SDKSetup.IsActiveAdsType(AdsType.INTERSTITIAL);
-               if (!SDKSetup.IsActiveAdsType(AdsType.INTERSTITIAL)) return;
+               if (!IsActive || IsRemoveAds() || IsCheatAds()) return;
+               DebugAds.Log("Setup Interstitial");
                foreach (AdsMediationController t in AdsConfig.adsMediations)
                {
                     t.InitInterstitialAd(
@@ -33,8 +33,21 @@ namespace SDK.AdsManagers
                          OnAdShowFailed
                     );
                }
-               RequestAd();
-               Debug.Log("Setup Interstitial Done");
+               _ = AutoReloadInterstitialAd();
+               DebugAds.Log("Setup Interstitial Done");
+          }
+          private async Task AutoReloadInterstitialAd() 
+          {
+               while (true)
+               {
+                    DebugAds.Log("Auto Loading Interstitial Ad " + IsLoaded() + " " + IsLoading + " " + IsRemoveAds() + " " + IsCheatAds() + " " + IsShowingAd);
+                    if (!IsLoaded() && !IsLoading && !IsRemoveAds() && !IsCheatAds() && !IsShowingAd)
+                    {
+                         IsLoading = true;
+                         RequestAd();
+                    }
+                    await Task.Delay(TimeSpan.FromSeconds(10f));
+               }
           }
 
           public override void UpdateRemoteConfig()
@@ -44,12 +57,12 @@ namespace SDK.AdsManagers
                     ConfigValue configValue =
                          ABIFirebaseManager.Instance.GetConfigValue(Keys.key_remote_interstitial_capping_time);
                     MaxCappingAdsCooldown = (float)configValue.DoubleValue;
-                    Debug.Log("=============== Max Interstitial Capping Time " + MaxCappingAdsCooldown);
+                    DebugAds.Log("=============== Max Interstitial Capping Time " + MaxCappingAdsCooldown);
                }
                {
                     LevelToShowInterstitial =
                          (int)ABIFirebaseManager.Instance.GetConfigDouble(Keys.key_remote_interstitial_level);
-                    Debug.Log("=============== Level Pass Show Interstitial " + LevelToShowInterstitial);
+                    DebugAds.Log("=============== Level Pass Show Interstitial " + LevelToShowInterstitial);
                }
           }
 
@@ -169,8 +182,15 @@ namespace SDK.AdsManagers
           public override void OnAdLoadSuccess()
           {
                base.OnAdLoadSuccess();
+               IsLoading = false;
                float timeFromStartRequest = (float)(DateTime.Now - StartRequestTime).TotalSeconds;
                ABIAnalyticsManager.Instance.TrackAdsInterstitial_LoadedSuccess(timeFromStartRequest);
+          }
+
+          public override void OnAdLoadFail()
+          {
+               base.OnAdLoadFail();
+               IsLoading = false;
           }
 
           public override bool IsAdReady()
