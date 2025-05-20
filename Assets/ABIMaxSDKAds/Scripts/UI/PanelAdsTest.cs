@@ -24,6 +24,7 @@ public class PanelAdsTest : MonoBehaviour
     public Button m_ButtonMREC;
     
     public TextMeshProUGUI m_TextInterstitialStatus;
+    public TextMeshProUGUI m_TextInterstitialCooldown;
     public TextMeshProUGUI m_TextRewardedStatus;
     
     public TextMeshProUGUI m_TextMRECStatus;
@@ -86,7 +87,7 @@ public class PanelAdsTest : MonoBehaviour
         }
         else
         {
-            m_TextBannerStatus.text = AdsManager.Instance.IsBannerLoaded() ? "Banner Ad Loaded" : "Banner Ad Not Loaded";
+            m_TextBannerStatus.text = AdsManager.Instance.CanShowBannerAd() ? "Banner Ad Loaded" : "Banner Ad Not Loaded";
         }
         if (AdsManager.Instance.IsCollapsibleBannerExpended())
         {
@@ -102,11 +103,12 @@ public class PanelAdsTest : MonoBehaviour
         }
         else
         {
-            m_TextMRECStatus.text = AdsManager.Instance.IsMRecLoaded() ? "MREC Ad Loaded" : "MREC Ad Not Loaded";
+            m_TextMRECStatus.text = AdsManager.Instance.CanShowMRecAd() ? "MREC Ad Loaded" : "MREC Ad Not Loaded";
         }
         m_TextInterstitialStatus.text = AdsManager.Instance.IsInterstitialAdLoaded() ? "Interstitial Ad Loaded" : "Interstitial Ad Not Loaded";
-        m_TextRewardedStatus.text = AdsManager.Instance.IsRewardVideoLoaded() ? "Rewarded Ad Loaded" : "Rewarded Ad Not Loaded";
+        m_TextRewardedStatus.text = AdsManager.Instance.IsRewardedVideoLoaded() ? "Rewarded Ad Loaded" : "Rewarded Ad Not Loaded";
         m_TextBannerCountTime.text = AdsManager.Instance.BannerAdManager.BannerAutoResetTime.ToString(CultureInfo.InvariantCulture);
+        m_TextInterstitialCooldown.text = AdsManager.Instance.InterstitialAdManager.CooldownSystem.CooldownTime.ToString(CultureInfo.InvariantCulture) + "s";
     }
 
     public void ShowBanner()
@@ -130,7 +132,7 @@ public class PanelAdsTest : MonoBehaviour
     
     public void ShowInter()
     {
-        AdsManager.Instance.ShowInterstitial(null,null,null);
+        AdsManager.Instance.ShowInterstitial(isSkipCapping: true);
     }
 
     public void ShowReward()

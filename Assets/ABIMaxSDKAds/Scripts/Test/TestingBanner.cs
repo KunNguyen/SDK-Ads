@@ -20,7 +20,7 @@ public class TestingBanner : MonoBehaviour
         UpdateStatus();
     }
     public void UpdateStatus() {
-        m_TextStatus.text = "Banner Load: " + AdsManager.Instance.IsBannerLoaded();
+        m_TextStatus.text = "Banner Load: " + AdsManager.Instance.CanShowBannerAd();
     }
 
 }

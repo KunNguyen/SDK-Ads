@@ -143,7 +143,7 @@ GameObject:
   - component: {fileID: 523666806333618752}
   - component: {fileID: 7383918788949571939}
   m_Layer: 0
-  m_Name: AnalyticsManager
+  m_Name: AdsTracker
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -280,11 +280,6 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 2822602354715014199, guid: 9ae466a635204e743baa965c6809e8e7,
         type: 3}
-      propertyPath: m_RootOrder
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2822602354715014199, guid: 9ae466a635204e743baa965c6809e8e7,
-        type: 3}
       propertyPath: m_LocalPosition.x
       value: 1.6092398
       objectReference: {fileID: 0}
@@ -333,10 +328,171 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 2822602354715014200, guid: 9ae466a635204e743baa965c6809e8e7,
+        type: 3}
+      propertyPath: <SDKSetup>k__BackingField
+      value: 
+      objectReference: {fileID: 11400000, guid: c5c607acd1781e54f8f9fe792bd02631,
+        type: 2}
+    - target: {fileID: 2822602354715014200, guid: 9ae466a635204e743baa965c6809e8e7,
+        type: 3}
+      propertyPath: <AdsConfigs>k__BackingField.Array.size
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 2822602354715014200, guid: 9ae466a635204e743baa965c6809e8e7,
+        type: 3}
+      propertyPath: <AdsConfigs>k__BackingField.Array.data[0].adsType
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2822602354715014200, guid: 9ae466a635204e743baa965c6809e8e7,
+        type: 3}
+      propertyPath: <AdsConfigs>k__BackingField.Array.data[1].adsType
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 2822602354715014200, guid: 9ae466a635204e743baa965c6809e8e7,
+        type: 3}
+      propertyPath: <AdsConfigs>k__BackingField.Array.data[3].adsType
+      value: 5
+      objectReference: {fileID: 0}
+    - target: {fileID: 2822602354715014200, guid: 9ae466a635204e743baa965c6809e8e7,
+        type: 3}
+      propertyPath: <AdsConfigs>k__BackingField.Array.data[4].adsType
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 2822602354715014200, guid: 9ae466a635204e743baa965c6809e8e7,
+        type: 3}
+      propertyPath: <AdsConfigs>k__BackingField.Array.data[5].adsType
+      value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 2822602354715014200, guid: 9ae466a635204e743baa965c6809e8e7,
+        type: 3}
+      propertyPath: <AdsConfigs>k__BackingField.Array.data[0].isActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2822602354715014200, guid: 9ae466a635204e743baa965c6809e8e7,
+        type: 3}
+      propertyPath: <AdsConfigs>k__BackingField.Array.data[1].isActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2822602354715014200, guid: 9ae466a635204e743baa965c6809e8e7,
+        type: 3}
+      propertyPath: <AdsConfigs>k__BackingField.Array.data[2].isActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2822602354715014200, guid: 9ae466a635204e743baa965c6809e8e7,
+        type: 3}
+      propertyPath: <AdsConfigs>k__BackingField.Array.data[3].isActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2822602354715014200, guid: 9ae466a635204e743baa965c6809e8e7,
+        type: 3}
+      propertyPath: <AdsConfigs>k__BackingField.Array.data[4].isActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2822602354715014200, guid: 9ae466a635204e743baa965c6809e8e7,
+        type: 3}
+      propertyPath: <AdsConfigs>k__BackingField.Array.data[5].isActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2822602354715014200, guid: 9ae466a635204e743baa965c6809e8e7,
+        type: 3}
+      propertyPath: <AdsConfigs>k__BackingField.Array.data[0].maxReloadTime
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 2822602354715014200, guid: 9ae466a635204e743baa965c6809e8e7,
+        type: 3}
+      propertyPath: <AdsConfigs>k__BackingField.Array.data[1].maxReloadTime
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 2822602354715014200, guid: 9ae466a635204e743baa965c6809e8e7,
+        type: 3}
+      propertyPath: <AdsConfigs>k__BackingField.Array.data[2].maxReloadTime
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 2822602354715014200, guid: 9ae466a635204e743baa965c6809e8e7,
+        type: 3}
+      propertyPath: <AdsConfigs>k__BackingField.Array.data[3].maxReloadTime
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 2822602354715014200, guid: 9ae466a635204e743baa965c6809e8e7,
+        type: 3}
+      propertyPath: <AdsConfigs>k__BackingField.Array.data[4].maxReloadTime
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 2822602354715014200, guid: 9ae466a635204e743baa965c6809e8e7,
+        type: 3}
+      propertyPath: <AdsConfigs>k__BackingField.Array.data[5].maxReloadTime
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 2822602354715014200, guid: 9ae466a635204e743baa965c6809e8e7,
+        type: 3}
+      propertyPath: <AdsConfigs>k__BackingField.Array.data[0].adsMediationType
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 2822602354715014200, guid: 9ae466a635204e743baa965c6809e8e7,
+        type: 3}
+      propertyPath: <AdsConfigs>k__BackingField.Array.data[1].adsMediationType
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 2822602354715014200, guid: 9ae466a635204e743baa965c6809e8e7,
+        type: 3}
+      propertyPath: <AdsConfigs>k__BackingField.Array.data[2].adsMediationType
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 2822602354715014200, guid: 9ae466a635204e743baa965c6809e8e7,
+        type: 3}
+      propertyPath: <AdsConfigs>k__BackingField.Array.data[5].adsMediationType
+      value: 2
+      objectReference: {fileID: 0}
     - target: {fileID: 2822602354715014201, guid: 9ae466a635204e743baa965c6809e8e7,
         type: 3}
       propertyPath: m_Name
       value: AdsManager
+      objectReference: {fileID: 0}
+    - target: {fileID: 5196014125470475834, guid: 9ae466a635204e743baa965c6809e8e7,
+        type: 3}
+      propertyPath: m_BannerPosition
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 5196014125470475834, guid: 9ae466a635204e743baa965c6809e8e7,
+        type: 3}
+      propertyPath: m_CollapsibleBannerPosition
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5196014125470475834, guid: 9ae466a635204e743baa965c6809e8e7,
+        type: 3}
+      propertyPath: IsCollapsibleBannerShowingOnStart
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5196014125470475834, guid: 9ae466a635204e743baa965c6809e8e7,
+        type: 3}
+      propertyPath: m_AdmobAdSetup.bannerAdUnitID.AndroidID.Array.data[0]
+      value: ca-app-pub-6955836496511243/3867008067
+      objectReference: {fileID: 0}
+    - target: {fileID: 5196014125470475834, guid: 9ae466a635204e743baa965c6809e8e7,
+        type: 3}
+      propertyPath: m_AdmobAdSetup.appOpenAdUnitID.AndroidID.Array.data[0]
+      value: ca-app-pub-6955836496511243/1628805658
+      objectReference: {fileID: 0}
+    - target: {fileID: 5196014125470475834, guid: 9ae466a635204e743baa965c6809e8e7,
+        type: 3}
+      propertyPath: m_AdmobAdSetup.rewardedAdUnitID.AndroidID.Array.data[0]
+      value: ca-app-pub-6955836496511243/4545664910
+      objectReference: {fileID: 0}
+    - target: {fileID: 5196014125470475834, guid: 9ae466a635204e743baa965c6809e8e7,
+        type: 3}
+      propertyPath: m_AdmobAdSetup.interstitialAdUnitID.AndroidID.Array.data[0]
+      value: ca-app-pub-6955836496511243/9506122217
+      objectReference: {fileID: 0}
+    - target: {fileID: 5573320739325500279, guid: 9ae466a635204e743baa965c6809e8e7,
+        type: 3}
+      propertyPath: <IsAutoRefresh>k__BackingField
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5573320739325500279, guid: 9ae466a635204e743baa965c6809e8e7,
+        type: 3}
+      propertyPath: <AutoRefreshTime>k__BackingField
+      value: 30
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

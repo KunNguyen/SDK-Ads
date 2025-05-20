@@ -794,7 +794,7 @@ PlayerSettings:
   webGLMemoryGeometricGrowthCap: 96
   webGLPowerPreference: 2
   scriptingDefineSymbols:
-    Android: UNITY_AD_MAX;ODIN_INSPECTOR;ODIN_INSPECTOR_3;ODIN_INSPECTOR_3_1;UNITY_AD_ADMOB
+    Android: UNITY_AD_ADMOB;ODIN_INSPECTOR;ODIN_INSPECTOR_3;ODIN_INSPECTOR_3_1;DEBUG_ADS;UNITY_AD_MAX
   additionalCompilerArguments: {}
   platformArchitecture: {}
   scriptingBackend:

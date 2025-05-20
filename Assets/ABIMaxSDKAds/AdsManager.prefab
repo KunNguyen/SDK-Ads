@@ -55,6 +55,7 @@ MonoBehaviour:
   <AdsMediationType>k__BackingField: 0
   <IsActive>k__BackingField: 0
   <IsReady>k__BackingField: 0
+  <IsPaused>k__BackingField: 0
   <Placement>k__BackingField: 
   <IsLinkRewardWithRemoveAds>k__BackingField: 1
   <IsActiveInterruptReward>k__BackingField: 0
@@ -108,26 +109,27 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   IsCheatAds: 0
-  m_SDKSetup: {fileID: 11400000, guid: 249da539afb5e6d4ebc977a0cfeea499, type: 2}
-  <LevelPassToShowInterstitial>k__BackingField: 2
+  <SDKSetup>k__BackingField: {fileID: 0}
+  <AdsStateMachine>k__BackingField:
+    <CurrentState>k__BackingField: 0
   <IsUpdateRemoteConfigSuccess>k__BackingField: 0
   <IsRemoveAds>k__BackingField: 0
   <IsFirstOpen>k__BackingField: 0
   <IsReady>k__BackingField: 0
-  <IsShowingAds>k__BackingField: 0
-  <MainAdsMediationType>k__BackingField: 1
+  <MainAdsMediationType>k__BackingField: 2
   <AdsConfigs>k__BackingField: []
   <AdsMediationControllers>k__BackingField:
   - {fileID: 2822602355967738161}
   - {fileID: 5196014125470475834}
   - {fileID: 4438890547479628587}
-  <InterstitialAdManager>k__BackingField: {fileID: 9132237946308442928}
+  <AppOpenAdManager>k__BackingField: {fileID: 6175679813834998635}
   <BannerAdManager>k__BackingField: {fileID: 5049510003584445776}
   <CollapsibleBannerAdManager>k__BackingField: {fileID: 5573320739325500279}
-  <RewardAdManager>k__BackingField: {fileID: 7149778340613795241}
+  <LevelPassToShowInterstitial>k__BackingField: 2
+  <InterstitialAdManager>k__BackingField: {fileID: 9132237946308442928}
   <MRecAdManager>k__BackingField: {fileID: 4934694578441453522}
-  <AppOpenAdManager>k__BackingField: {fileID: 6175679813834998635}
   <ResumeAdManager>k__BackingField: {fileID: 1156291136395092052}
+  <RewardAdManager>k__BackingField: {fileID: 7149778340613795241}
 --- !u!1 &2822602355967738163
 GameObject:
   m_ObjectHideFlags: 0
@@ -173,23 +175,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_IsActive: 0
+  <AdsMediationType>k__BackingField: 1
   IsInited: 0
-  m_MaxAdConfig:
-    sdkKey:
-      AndroidID: 
-    interstitialAdUnitID:
-      AndroidID: 
-    rewardedAdUnitID:
-      AndroidID: 
-    bannerAdUnitID:
-      AndroidID: 
-    collapsibleBannerAdUnitID:
-      AndroidID: 
-    mrecAdUnitID:
-      AndroidID: 
-    appOpenAdUnitID:
-      AndroidID: 
-  m_BannerPosition: 0
 --- !u!1 &3204194498440044683
 GameObject:
   m_ObjectHideFlags: 0
@@ -245,6 +232,7 @@ MonoBehaviour:
   <AdsMediationType>k__BackingField: 0
   <IsActive>k__BackingField: 0
   <IsReady>k__BackingField: 0
+  <IsPaused>k__BackingField: 0
   <Placement>k__BackingField: 
   <IsOpenOnStart>k__BackingField: 0
   <IsAutoRefresh>k__BackingField: 0
@@ -295,6 +283,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_IsActive: 0
+  <AdsMediationType>k__BackingField: 2
   IsInited: 0
   m_AdmobAdSetup:
     interstitialAdUnitID:
@@ -307,17 +296,16 @@ MonoBehaviour:
       AndroidID:
       - ca-app-pub-3940256099942544/6300978111
     collapsibleBannerAdUnitID:
-      AndroidID:
-      - ca-app-pub-3940256099942544/2014213617
+      AndroidID: []
     mrecAdUnitID:
       AndroidID: []
     appOpenAdUnitID:
-      AndroidID: []
+      AndroidID:
+      - ca-app-pub-3940256099942544/9257395921
   m_BannerPosition: 1
   IsBannerShowingOnStart: 1
   m_CollapsibleBannerPosition: 1
-  IsCollapsibleBannerShowingOnStart: 0
-  m_MRECPosition: 0
+  IsCollapsibleBannerShowingOnStart: 1
 --- !u!1 &4527321062299242044
 GameObject:
   m_ObjectHideFlags: 0
@@ -411,6 +399,7 @@ MonoBehaviour:
   <AdsMediationType>k__BackingField: 0
   <IsActive>k__BackingField: 0
   <IsReady>k__BackingField: 0
+  <IsPaused>k__BackingField: 0
   <Placement>k__BackingField: 
   <IsActiveByRemoteConfig>k__BackingField: 1
   <IsFirstOpen>k__BackingField: 1
@@ -470,6 +459,7 @@ MonoBehaviour:
   <AdsMediationType>k__BackingField: 0
   <IsActive>k__BackingField: 0
   <IsReady>k__BackingField: 0
+  <IsPaused>k__BackingField: 0
   <Placement>k__BackingField: 
   <IsAutoRefreshBanner>k__BackingField: 0
   <BannerAutoResetTime>k__BackingField: 15
@@ -518,6 +508,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_IsActive: 0
+  <AdsMediationType>k__BackingField: 3
   IsInited: 0
 --- !u!1 &8490865075576442836
 GameObject:
@@ -574,6 +565,7 @@ MonoBehaviour:
   <AdsMediationType>k__BackingField: 0
   <IsActive>k__BackingField: 0
   <IsReady>k__BackingField: 0
+  <IsPaused>k__BackingField: 0
   <Placement>k__BackingField: 
   <AdsType>k__BackingField: 0
   <PauseTimeNeedToShowAds>k__BackingField: 5
@@ -634,9 +626,9 @@ MonoBehaviour:
   <AdsMediationType>k__BackingField: 0
   <IsActive>k__BackingField: 0
   <IsReady>k__BackingField: 0
+  <IsPaused>k__BackingField: 0
   <Placement>k__BackingField: 
-  <MaxCappingAdsCooldown>k__BackingField: 0
-  <CappingAdsCooldown>k__BackingField: 0
+  <MaxCappingAdsCooldown>k__BackingField: 30
   <LevelToShowInterstitial>k__BackingField: 0
 --- !u!1 &8628556824229148138
 GameObject:
@@ -693,4 +685,5 @@ MonoBehaviour:
   <AdsMediationType>k__BackingField: 0
   <IsActive>k__BackingField: 0
   <IsReady>k__BackingField: 0
+  <IsPaused>k__BackingField: 0
   <Placement>k__BackingField: 
