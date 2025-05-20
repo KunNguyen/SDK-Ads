@@ -12,8 +12,30 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 074fc6e48c4aeee4eaaa708414d919ed, type: 3}
   m_Name: SDKAdsSetup
   m_EditorClassIdentifier: 
-  IsActiveAppsflyer: 0
-  interstitialCappingTime: 30
+  appOpenAdsMediationType: 2
+  bannerAdsMediationType: 2
+  maxBannerAdsPosition: 0
+  admobBannerAdsPosition: 1
+  isBannerShowingOnStart: 1
+  isAutoRefreshBannerByCode: 0
+  collapsibleBannerAdsMediationType: 0
+  adsPositionCollapsibleBanner: 1
+  isShowingOnStartCollapsibleBanner: 1
+  isAutoRefreshCollapsibleBanner: 1
+  isAutoRefreshExtendCollapsibleBanner: 1
+  autoRefreshTime: 20
+  isAutoCloseCollapsibleBanner: 0
+  autoCloseTime: 30
+  interstitialAdsMediationType: 2
+  mrecAdsMediationType: 0
+  mrecAdsPosition: 0
+  rewardedAdsMediationType: 2
+  IsLinkToRemoveAds: 1
+  <IsActiveAppsflyer>k__BackingField: 0
+  <IsActiveAdImpressionTracking>k__BackingField: 1
+  <IsActiveCustomAdImpressionTracking>k__BackingField: 1
+  <CustomAdImpressionEventName>k__BackingField: ad_impression_abi
+  adsMediationType: 1
   maxAdsSetup:
     sdkKey:
       AndroidID: uJa4sGbT3zSQ9zw2o_CzJrxzsUI682WXsNFOfDGoT0Z5SsqQSWN52AZi7P0UtoN13VRe_MgEZodmMuzDKQwf0d
@@ -31,40 +53,24 @@ MonoBehaviour:
       AndroidID: 
   admobAdsSetup:
     interstitialAdUnitID:
-      AndroidID: []
+      AndroidID:
+      - ca-app-pub-3940256099942544/1033173712
     rewardedAdUnitID:
-      AndroidID: []
+      AndroidID:
+      - ca-app-pub-3940256099942544/5224354917
     bannerAdUnitID:
-      AndroidID: []
+      AndroidID:
+      - ca-app-pub-3940256099942544/6300978111
     collapsibleBannerAdUnitID:
       AndroidID:
       - 
     mrecAdUnitID:
       AndroidID: []
     appOpenAdUnitID:
-      AndroidID: []
+      AndroidID:
+      - ca-app-pub-3940256099942544/9257395921
   ironSourceAdSetup:
     appKey: 
     interstitialID: 
     rewardedID: 
     bannerID: 
-  adsMediationType: 1
-  interstitialAdsMediationType: 1
-  rewardedAdsMediationType: 1
-  IsLinkToRemoveAds: 1
-  bannerAdsMediationType: 1
-  maxBannerAdsPosition: 1
-  admobBannerAdsPosition: 0
-  isBannerShowingOnStart: 1
-  isAutoRefreshBannerByCode: 0
-  collapsibleBannerAdsMediationType: 0
-  adsPositionCollapsibleBanner: 1
-  isShowingOnStartCollapsibleBanner: 1
-  isAutoRefreshCollapsibleBanner: 1
-  isAutoRefreshExtendCollapsibleBanner: 1
-  autoRefreshTime: 20
-  isAutoCloseCollapsibleBanner: 0
-  autoCloseTime: 30
-  mrecAdsMediationType: 0
-  mrecAdsPosition: 0
-  appOpenAdsMediationType: 0
