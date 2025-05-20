@@ -24,6 +24,7 @@ public class PanelAdsTest : MonoBehaviour
     public Button m_ButtonMREC;
     
     public TextMeshProUGUI m_TextInterstitialStatus;
+    public TextMeshProUGUI m_TextInterstitialCooldown;
     public TextMeshProUGUI m_TextRewardedStatus;
     
     public TextMeshProUGUI m_TextMRECStatus;
@@ -36,11 +37,11 @@ public class PanelAdsTest : MonoBehaviour
         {
             if (IsShowingMREC)
             {
-                HideMrec();
+                HideMRec();
             }
             else
             {
-                ShowMrec();
+                ShowMRec();
             }
             IsShowingMREC = !IsShowingMREC;
         });
@@ -79,13 +80,14 @@ public class PanelAdsTest : MonoBehaviour
 
     private void Update()
     {
-        if (AdsManager.Instance.IsBannerShowing())
+        if (!AdsManager.Instance.IsReady) return;
+        if (AdsManager.Instance.BannerAdManager.IsShowingAd)
         {
             m_TextBannerStatus.text = "Banner Ad Showing";
         }
         else
         {
-            m_TextBannerStatus.text = AdsManager.Instance.IsBannerLoaded() ? "Banner Ad Loaded" : "Banner Ad Not Loaded";
+            m_TextBannerStatus.text = AdsManager.Instance.CanShowBannerAd() ? "Banner Ad Loaded" : "Banner Ad Not Loaded";
         }
         if (AdsManager.Instance.IsCollapsibleBannerExpended())
         {
@@ -93,7 +95,7 @@ public class PanelAdsTest : MonoBehaviour
         }
         else
         {
-            m_TextCollapsibleBannerStatus.text = AdsManager.Instance.IsBannerLoaded() ? "Collapsible Banner Ad Loaded" : "Collapsible Banner Ad Not Loaded";
+            m_TextCollapsibleBannerStatus.text = AdsManager.Instance.IsCollapsibleBannerLoaded() ? "Collapsible Banner Ad Loaded" : "Collapsible Banner Ad Not Loaded";
         }
         if (AdsManager.Instance.IsMRecShowing())
         {
@@ -101,11 +103,12 @@ public class PanelAdsTest : MonoBehaviour
         }
         else
         {
-            m_TextMRECStatus.text = AdsManager.Instance.IsMRecLoaded() ? "MREC Ad Loaded" : "MREC Ad Not Loaded";
+            m_TextMRECStatus.text = AdsManager.Instance.CanShowMRecAd() ? "MREC Ad Loaded" : "MREC Ad Not Loaded";
         }
         m_TextInterstitialStatus.text = AdsManager.Instance.IsInterstitialAdLoaded() ? "Interstitial Ad Loaded" : "Interstitial Ad Not Loaded";
-        m_TextRewardedStatus.text = AdsManager.Instance.IsRewardVideoLoaded() ? "Rewarded Ad Loaded" : "Rewarded Ad Not Loaded";
-        m_TextBannerCountTime.text = AdsManager.Instance.BannerCountTime.ToString(CultureInfo.InvariantCulture);
+        m_TextRewardedStatus.text = AdsManager.Instance.IsRewardedVideoLoaded() ? "Rewarded Ad Loaded" : "Rewarded Ad Not Loaded";
+        m_TextBannerCountTime.text = AdsManager.Instance.BannerAdManager.BannerAutoResetTime.ToString(CultureInfo.InvariantCulture);
+        m_TextInterstitialCooldown.text = AdsManager.Instance.InterstitialAdManager.CooldownSystem.CooldownTime.ToString(CultureInfo.InvariantCulture) + "s";
     }
 
     public void ShowBanner()
@@ -120,7 +123,7 @@ public class PanelAdsTest : MonoBehaviour
     public void ShowCollapsibleBanner()
     {
         AdsManager.Instance.HideBannerAds();
-        AdsManager.Instance.ShowCollapsibleBannerAds(false, null);
+        AdsManager.Instance.ShowCollapsibleBannerAds(null);
     }
     public void HideCollapsibleBanner()
     {
@@ -129,18 +132,18 @@ public class PanelAdsTest : MonoBehaviour
     
     public void ShowInter()
     {
-        AdsManager.Instance.ShowInterstitial(null,null,null);
+        AdsManager.Instance.ShowInterstitial(isSkipCapping: true);
     }
 
     public void ShowReward()
     {
         AdsManager.Instance.ShowRewardVideo(null,null);
     }
-    public void ShowMrec()
+    public void ShowMRec()
     {
         AdsManager.Instance.ShowMRecAds();
     }
-    public void HideMrec()
+    public void HideMRec()
     {
         AdsManager.Instance.HideMRecAds();
     }

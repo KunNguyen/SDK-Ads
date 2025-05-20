@@ -1,4 +1,149 @@
 Google Mobile Ads Unity Plugin Change Log
+
+**************
+Version 10.0.0
+**************
+- Updated the GMA Android SDK dependency version to 24.1.0.
+- Updated the GMA iOS SDK dependency version to 12.2.0.
+- Removed deprecated `AdFailedToLoadEventArgs` class. Use `LoadAdError` directly.
+- Removed deprecated `AdValueEventArgs` class. Use `AdValue` directly.
+- Changed the default behavior to True for OPTIMIZE_INITIALIZATION and
+OPTIMIZE_AD_LOADING flags to align with GMA Android 24.0.0.
+- Replaced `Optimize Ad Loading` and `Optimize Initialization` with
+`Disable ad loading optimization` and `Disable initialization optimzation`
+- Removed "Remove property tag from GMA Android SDK" feature from Google Mobile
+Ads Editor Settings as this tag has been removed from GMA Android SDK v.24.0.0.
+- Removed Preloading APIs for iOS as part of upgrade to newer to newer APIs.
+
+Built and tested with:
+- Google Mobile Ads Android SDK 24.1.0.
+- Google Mobile Ads iOS SDK 12.2.0.
+- Google User Messaging Platform Android SDK 3.1.0
+- Google User Messaging Platform iOS SDK 2.7.0
+- External Dependency Manager for Unity 1.2.185
+
+**************
+Version 9.6.0
+**************
+- Added ability to return correct native template view size on Android.
+- Fixed issue with Native Overlay Icon not being clickable.
+- Added `GetVersion` API to MobileAds class to be able to fetch the GMA Unity SDK Version.
+- Fire `OnUserEarnedReward` once the ad counter expires when showing Rewarded ads in Unity Editor.
+
+Built and tested with:
+- Google Mobile Ads Android SDK 23.6.0
+- Google Mobile Ads iOS SDK 11.13.0
+- Google User Messaging Platform Android SDK 3.1.0
+- Google User Messaging Platform iOS SDK 2.7.0
+- External Dependency Manager for Unity 1.2.185
+
+**************
+Version 9.5.0
+**************
+- Added `CustomTargeting` field to AdRequest.
+- Added `GetPlatformVersion` API to MobileAds class to be able to fetch the version info of the underlying GMA Android or iOS SDK.
+- Updated the GMA iOS SDK dependency version to 11.13.0.
+- Updated the GMA Android SDK dependency version to 23.6.0.
+
+Built and tested with:
+- Google Mobile Ads Android SDK 23.6.0
+- Google Mobile Ads iOS SDK 11.13.0
+- Google User Messaging Platform Android SDK 3.1.0
+- Google User Messaging Platform iOS SDK 2.7.0
+- External Dependency Manager for Unity 1.2.183
+
+**************
+Version 9.4.0
+**************
+
+- To support testing with regulated US states, added the following options to UMPDebugGeography:
+  - RegulatedUSState
+  - Other
+- Deprecated `DebugGeography.NotEEA`. Use `DebugGeography.Other` instead.
+- Updated the GMA iOS SDK dependency version to 11.12.0.
+- Updated the GMA Android SDK dependency version to 23.5.0.
+- Updated UMP SDK dependency on Android to 3.1.0 and on iOS to 2.7.0.
+
+Built and tested with:
+- Google Mobile Ads Android SDK 23.5.0
+- Google Mobile Ads iOS SDK 11.12.0
+- Google User Messaging Platform Android SDK 3.1.0
+- Google User Messaging Platform iOS SDK 2.7.0
+- External Dependency Manager for Unity 1.2.183
+
+**************
+Version 9.3.0
+**************
+- Updated the iOS GMA SDK dependency version to 11.11.0.
+
+Built and tested with:
+- Google Mobile Ads Android SDK 23.4.0
+- Google Mobile Ads iOS SDK 11.11.0
+- Google User Messaging Platform Android SDK 3.0.0
+- Google User Messaging Platform iOS SDK 2.6.0
+- External Dependency Manager for Unity 1.2.183
+
+**************
+Version 9.2.1
+**************
+- Added French language support for Settings Inspector window.
+- Fixed [#3510] by specifying the minSdkVersion in the library.
+- Updated the dependency version for Android GMA SDK to 23.4.0 and iOS GMA SDK to 11.10.0.
+- Updated iOS UMP SDK dependency to 2.6.0.
+
+Built and tested with:
+- Google Mobile Ads Android SDK 23.4.0
+- Google Mobile Ads iOS SDK 11.10.0
+- Google User Messaging Platform Android SDK 3.0.0
+- Google User Messaging Platform iOS SDK 2.6.0
+- External Dependency Manager for Unity 1.2.183
+
+**************
+Version 9.2.0
+**************
+- Added `IsCollapsible` API to `BannerView` to check if a collapsible banner was loaded.
+- Fixed [#3369] by using appropriate LayoutParams.
+- Fixed [#3455] Banner ad positioning not working on iOS.
+- Updated GoogleMobileAds iOS SDK to 11.7.0.
+
+Built and tested with:
+- Google Mobile Ads Android SDK 23.2.0
+- Google Mobile Ads iOS SDK 11.7.0
+- Google User Messaging Platform 2.2.0
+- External Dependency Manager for Unity 1.2.181
+
+**************
+Version 9.1.1
+**************
+- Updated GoogleMobileAds Android SDK to 23.2.0.
+- Updated GoogleMobileAds iOS SDK to 11.6.0.
+- Updated External Dependency Manager for Unity to 1.2.181.
+- Added the AndroidJNI dependency to the UPM package.
+
+Built and tested with:
+- Google Mobile Ads Android SDK 23.2.0
+- Google Mobile Ads iOS SDK 11.6.0
+- Google User Messaging Platform 2.2.0
+- External Dependency Manager for Unity 1.2.181
+
+**************
+Version 9.1.0
+**************
+
+- Removed the app measurement feature as Android/iOS SDKs [no longer](https://support.google.com/admob/answer/13973847) initialize App measurement.
+- Fixed [#3290] by calling static putPublisherFirstPartyIdEnabled with boolean return type.
+- Fixed [#3042] by explicitly adding gradle.projectsEvaluated for executing validate_dependencies gradle script.
+- Fixed [#2801] incorrect value for `AdapterResponseInfo.LatencyMillis` on iOS.
+- Added `GetAdUnitID` API that allows reading the ad unit id for all ad formats.
+- Enabled passing AdManagerAdRequest as part of Load API for Rewarded, Rewarded Interstitial and AppOpen formats.
+- Updated Google Mobile Ads SDK dependency to use v11.3.0 on iOS.
+
+Built and tested with:
+- Google Mobile Ads Android SDK 23.0.0
+- Google Mobile Ads iOS SDK 11.3.0
+- Google User Messaging Platform 2.2.0
+- External Dependency Manager for Unity 1.2.179
+
 **************
 Version 9.0.0
 **************

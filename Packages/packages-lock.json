@@ -1,5 +1,21 @@
 {
   "dependencies": {
+    "com.applovin.mediation.ads": {
+      "version": "8.2.2",
+      "depth": 0,
+      "source": "registry",
+      "dependencies": {
+        "com.google.external-dependency-manager": "1.2.182"
+      },
+      "url": "https://unity.packages.applovin.com"
+    },
+    "com.google.external-dependency-manager": {
+      "version": "1.2.182",
+      "depth": 1,
+      "source": "registry",
+      "dependencies": {},
+      "url": "https://package.openupm.com"
+    },
     "com.opeious.pokemon3dstounity": {
       "version": "https://github.com/opeious/Pokemon3DStoUnity.git",
       "depth": 0,
@@ -121,7 +137,7 @@
       "url": "https://packages.unity.com"
     },
     "com.unity.ide.rider": {
-      "version": "3.0.34",
+      "version": "3.0.36",
       "depth": 0,
       "source": "registry",
       "dependencies": {

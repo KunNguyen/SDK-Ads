@@ -1,6 +1,8 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using Sirenix.OdinInspector;
+using UnityEditor;
 using UnityEngine;
 
 public class MeldAppAdsManager : MonoBehaviour
@@ -26,8 +28,10 @@ public class MeldAppAdsManager : MonoBehaviour
         }
         Debug.Log("Found " + addedLines.Split(new[] { '\n' }, System.StringSplitOptions.RemoveEmptyEntries).Length + " lines to add.\n" + addedLines);
         // Save mainAppAdsContent to MainAppAds
-        string pathToMainAppAds = UnityEditor.AssetDatabase.GetAssetPath(MainAppAds);
-        System.IO.File.WriteAllText(pathToMainAppAds, mainAppAdsContent);
+#if UNITY_EDITOR
+        string pathToMainAppAds = AssetDatabase.GetAssetPath(MainAppAds);
+        File.WriteAllText(pathToMainAppAds, mainAppAdsContent); 
+#endif
     }
 
     [Button]

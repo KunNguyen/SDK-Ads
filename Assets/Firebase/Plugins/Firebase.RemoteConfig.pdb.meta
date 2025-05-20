@@ -2,7 +2,7 @@ fileFormatVersion: 2
 guid: 0f687f0c95b64778b52842d506202d14
 labels:
 - gvh
-- gvh_version-11.6.0
+- gvh_version-12.8.0
 - gvhp_exportpath-Firebase/Plugins/Firebase.RemoteConfig.pdb
 timeCreated: 1480838400
 PluginImporter:
