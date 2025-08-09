@@ -1,3 +1,4 @@
+using System.Collections;
 using ABIMaxSDKAds.Scripts;
 using SDK.AdsManagers;
 using UnityEngine;
@@ -22,12 +23,6 @@ namespace SDK
                InterstitialAdManager.IsCheatAds = () => IsCheatAds;
                InterstitialAdManager.MarkShowingAds = MarkShowingAds;
                InterstitialAdManager.IsShowingAdChecking = IsShowingAds;
-          }
-
-          private void InitInterstitial(AdsMediationType adsMediationType)
-          {
-               InterstitialAdManager.Init(adsMediationType);
-               DebugAds.Log("Setup Interstitial Done");
           }
 
           public void ShowInterstitial(

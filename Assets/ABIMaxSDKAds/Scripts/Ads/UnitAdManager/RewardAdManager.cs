@@ -18,10 +18,10 @@ namespace SDK.AdsManagers
           private bool IsWatchedSuccess { get; set; }
           private UnityAction<bool> AdRewardClosedCallback { get; set; }
 
-          public override void Init(AdsMediationType adsMediationType)
+          public override void Init()
           {
                DebugAds.Log("Init Reward Ad Start");
-               if (AdsMediationType != adsMediationType || !IsActive || IsRemoveAds() || IsCheatAds()) return;
+               if (!IsActive || IsRemoveAds() || IsCheatAds()) return;
 
                foreach (var t in AdsConfig.adsMediations)
                {
@@ -29,7 +29,7 @@ namespace SDK.AdsManagers
                }
                AutoLoad = new AutoLoadSystem();
                AutoLoad.Init(this, RequestAd);
-               IsInited = true;
+               Status = AdStatus.Inited;
           }
 
           public override void OnRemoveAd()

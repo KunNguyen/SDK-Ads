@@ -10,7 +10,7 @@ namespace SDK
           public void InitResumeAdManager()
           {
                ResumeAdManager.IsActive = true;
-               ResumeAdManager.Init(AdsMediationType.ADMOB);
+               ResumeAdManager.Init();
                OnRemoveAdsEvent.AddListener(AppOpenAdManager.OnRemoveAd);
             
                ResumeAdManager.IsCheatAds = () => IsCheatAds;

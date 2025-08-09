@@ -15,9 +15,8 @@ namespace SDK.AdsManagers
           [field: SerializeField] public float AutoRefreshTime { get; set; } = 15f;
           private CancellationTokenSource AutoRefreshCancellationTokenSource { get; set; }
 
-          public override void Init(AdsMediationType adsMediationType)
+          public override void Init()
           {
-               if (AdsMediationType != adsMediationType) return;
                if(IsRemoveAds() || IsCheatAds()) return;
                foreach (AdsMediationController t in AdsConfig.adsMediations)
                {
@@ -31,7 +30,7 @@ namespace SDK.AdsManagers
                }
                Hide();
                StartCoroutine(coCheckingShowCollapsibleBannerAdsOnStart());
-               IsInited = true;
+               Status = AdStatus.Inited;
           }
           IEnumerator coCheckingShowCollapsibleBannerAdsOnStart()
           {

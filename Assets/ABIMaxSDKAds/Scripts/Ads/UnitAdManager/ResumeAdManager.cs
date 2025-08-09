@@ -17,10 +17,10 @@ namespace SDK.AdsManagers.Interface
           public DateTime PauseTime { get; private set; }
           public DateTime LastTimeShowAds { get; set; } = DateTime.Now;
 
-          public override void Init(AdsMediationType adsMediationType)
+          public override void Init()
           {
                SetAdManager(AdsType.APP_OPEN);
-               IsInited = true;
+               Status = AdStatus.Inited;
           }
           protected override void UpdateRemoteConfigValue()
           {

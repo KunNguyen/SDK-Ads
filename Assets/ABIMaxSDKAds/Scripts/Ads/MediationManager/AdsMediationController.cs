@@ -8,20 +8,28 @@ using UnityEngine.Serialization;
 
 namespace SDK {
     public abstract class AdsMediationController : MonoBehaviour {
+        
+        public enum MediationStatus
+        {
+            NotInited,
+            IsIniting,
+            Inited,
+            FailedToInit
+        }
         [SerializeField]
-        protected bool m_IsActive;
+        protected bool isActive;
         public bool IsActive
         {
-            get => m_IsActive;
-            set => m_IsActive = value;
+            get => isActive;
+            set => isActive = value;
         }
 
         [field: SerializeField] public AdsMediationType AdsMediationType  { get; set; }
         public UnityAction<ImpressionData> AdRevenuePaidCallback { get; set; }
+        public MediationStatus Status { get; set; } = MediationStatus.NotInited;
 
-        public bool IsInited = false;
         public virtual void Init() {
-            IsInited = true;
+            Status = MediationStatus.IsIniting;
         }
 
         #region Banner Ads
@@ -190,7 +198,7 @@ namespace SDK {
         }
         #endregion
         public virtual bool IsActiveAdsType(AdsType adsType) {
-            return m_IsActive;
+            return isActive;
         }
         public abstract AdsMediationType GetAdsMediationType();
     }

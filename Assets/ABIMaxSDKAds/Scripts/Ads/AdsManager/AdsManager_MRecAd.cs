@@ -16,11 +16,6 @@ namespace SDK
                MRecAdManager.IsRemoveAds = () => IsRemoveAds;
                MRecAdManager.IsCheatAds = () => IsCheatAds;
           }
-          private void InitMRecAds(AdsMediationType adsMediationType)
-          {
-               DebugAds.Log("Init MRec");
-               MRecAdManager.Init(adsMediationType);
-          }
           public void ShowMRecAds()
           {
                MRecAdManager.Show();

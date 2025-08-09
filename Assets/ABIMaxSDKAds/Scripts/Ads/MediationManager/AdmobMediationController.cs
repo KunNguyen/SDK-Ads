@@ -17,15 +17,15 @@ namespace SDK
      {
           public AdmobAdSetup m_AdmobAdSetup;
 
-          private InterstitialAd m_InterstitialAds;
-          private RewardedAd m_RewardVideoAds;
-          private BannerView m_MRECAds;
-          private AppOpenAd m_AppOpenAd;
-          private bool m_IsWatchSuccess = false;
+          private InterstitialAd InterstitialAds { get; set; }
+          private RewardedAd RewardVideoAds { get; set; }
+          private BannerView MRecAds { get; set; }
+          private AppOpenAd AppOpenAd { get; set; }
+          private bool IsWatchSuccess { get; set; } = false;
 
           public override void Init()
           {
-               if (IsInited) return;
+               if (Status != MediationStatus.NotInited) return;
                base.Init();
                InitAdmob();
           }
@@ -100,8 +100,7 @@ namespace SDK
                                    break;
                          }
                     }
-
-                    AdsManager.Instance.InitAds(AdsMediationType.ADMOB);
+                    Status = MediationStatus.Inited;
                });
                RequestConfiguration requestConfiguration = new RequestConfiguration();
                requestConfiguration.TestDeviceIds.Add("F0DE51766DB7C0740DEF1633ACCB3755");
@@ -440,10 +439,10 @@ namespace SDK
                base.RequestInterstitialAd();
                DebugAds.Log("Request interstitial ads");
 
-               if (m_InterstitialAds != null)
+               if (InterstitialAds != null)
                {
-                    m_InterstitialAds.Destroy();
-                    m_InterstitialAds = null;
+                    InterstitialAds.Destroy();
+                    InterstitialAds = null;
                }
 
                AdRequest adRequest = new AdRequest();
@@ -460,7 +459,7 @@ namespace SDK
                     }
 
                     DebugAds.Log("Interstitial ad loaded with response : " + ad.GetResponseInfo());
-                    m_InterstitialAds = ad;
+                    InterstitialAds = ad;
                     RegisterInterstitialAd(ad);
                     OnAdInterstitialSuccessToLoad();
                });
@@ -476,15 +475,15 @@ namespace SDK
 
           public override bool IsInterstitialLoaded()
           {
-               return m_InterstitialAds != null && m_InterstitialAds.CanShowAd();
+               return InterstitialAds != null && InterstitialAds.CanShowAd();
           }
 
           public override void ShowInterstitialAd()
           {
                base.ShowInterstitialAd();
-               if (m_InterstitialAds.CanShowAd())
+               if (InterstitialAds.CanShowAd())
                {
-                    m_InterstitialAds.Show();
+                    InterstitialAds.Show();
                }
           }
 
@@ -522,16 +521,16 @@ namespace SDK
 
           private void OnAdInterstitialPaid(AdValue adValue)
           {
-               HandleAdPaidEvent("interstitial", adValue, m_InterstitialAds.GetResponseInfo());
+               HandleAdPaidEvent("interstitial", adValue, InterstitialAds.GetResponseInfo());
           }
 
           public void DestroyInterstitialAd()
           {
-               if (m_InterstitialAds != null)
+               if (InterstitialAds != null)
                {
                     DebugAds.Log("Destroying interstitial ad.");
-                    m_InterstitialAds.Destroy();
-                    m_InterstitialAds = null;
+                    InterstitialAds.Destroy();
+                    InterstitialAds = null;
                }
           }
 
@@ -554,7 +553,7 @@ namespace SDK
           public override void RequestRewardVideoAd()
           {
                base.RequestRewardVideoAd();
-               if (m_RewardVideoAds != null)
+               if (RewardVideoAds != null)
                {
                     DestroyRewardedAd();
                }
@@ -567,7 +566,7 @@ namespace SDK
                     m_AdmobAdSetup.RewardedAdUnitID.ChangeID();
                }
 
-               if (m_RewardVideoAds != null && m_RewardVideoAds.CanShowAd()) return;
+               if (RewardVideoAds != null && RewardVideoAds.CanShowAd()) return;
                var adRequest = new AdRequest();
 
                RewardedAd.Load(adUnitId, adRequest, (RewardedAd ad, LoadAdError error) =>
@@ -579,7 +578,7 @@ namespace SDK
                          return;
                     }
 
-                    m_RewardVideoAds = ad;
+                    RewardVideoAds = ad;
                     RegisterRewardAdEvent(ad);
                     OnRewardBasedVideoLoaded();
                });
@@ -599,8 +598,8 @@ namespace SDK
                if (IsRewardVideoLoaded())
                {
                     DebugAds.Log("RewardedVideoAd ADMOB Show");
-                    m_IsWatchSuccess = false;
-                    m_RewardVideoAds.Show((Reward reward) => { OnRewardBasedVideoRewarded(); });
+                    IsWatchSuccess = false;
+                    RewardVideoAds.Show((Reward reward) => { OnRewardBasedVideoRewarded(); });
                }
           }
 
@@ -609,9 +608,9 @@ namespace SDK
 #if UNITY_EDITOR
                return false;
 #endif
-               if (m_RewardVideoAds != null)
+               if (RewardVideoAds != null)
                {
-                    return m_RewardVideoAds.CanShowAd();
+                    return RewardVideoAds.CanShowAd();
                }
 
                return false;
@@ -622,7 +621,7 @@ namespace SDK
                DebugAds.Log("RewardedVideoAd ADMOB Closed");
                if (Application.platform == RuntimePlatform.IPhonePlayer)
                {
-                    if (m_IsWatchSuccess)
+                    if (IsWatchSuccess)
                     {
                          if (RewardedVideoCallbacks.Completed != null)
                          {
@@ -633,14 +632,14 @@ namespace SDK
 
                if (RewardedVideoCallbacks.Closed != null)
                {
-                    EventManager.AddEventNextFrame(() => { RewardedVideoCallbacks.Closed.Invoke(m_IsWatchSuccess); });
+                    EventManager.AddEventNextFrame(() => { RewardedVideoCallbacks.Closed.Invoke(IsWatchSuccess); });
                }
           }
 
           private void OnRewardBasedVideoRewarded()
           {
                DebugAds.Log("RewardedVideoAd ADMOB Rewarded");
-               m_IsWatchSuccess = true;
+               IsWatchSuccess = true;
                if (Application.platform == RuntimePlatform.Android)
                {
                     if (RewardedVideoCallbacks.Completed != null)
@@ -677,17 +676,17 @@ namespace SDK
 
           public void DestroyRewardedAd()
           {
-               if (m_RewardVideoAds != null)
+               if (RewardVideoAds != null)
                {
                     DebugAds.Log("Destroying rewarded ad.");
-                    m_RewardVideoAds.Destroy();
-                    m_RewardVideoAds = null;
+                    RewardVideoAds.Destroy();
+                    RewardVideoAds = null;
                }
           }
 
           private void OnAdRewardedAdPaid(AdValue adValue)
           {
-               HandleAdPaidEvent("rewarded", adValue, m_RewardVideoAds.GetResponseInfo());
+               HandleAdPaidEvent("rewarded", adValue, RewardVideoAds.GetResponseInfo());
           }
 
           public string GetRewardedAdID()
@@ -715,21 +714,21 @@ namespace SDK
           public void CreateMRecAdsView()
           {
                DebugAds.Log("Creating MREC view");
-               if (m_MRECAds != null)
+               if (MRecAds != null)
                {
                     DestroyMRecAds();
                }
 
                string adUnitId = GetMRECAdID();
                // Create a 320x50 banner at top of the screen
-               m_MRECAds = new BannerView(adUnitId, AdSize.MediumRectangle, m_MRecPosition);
-               RegisterMRECAdsEvents(m_MRECAds);
+               MRecAds = new BannerView(adUnitId, AdSize.MediumRectangle, m_MRecPosition);
+               RegisterMRECAdsEvents(MRecAds);
           }
 
           public override void RequestMRecAds()
           {
                base.RequestMRecAds();
-               if (m_MRECAds == null)
+               if (MRecAds == null)
                {
                     CreateMRecAdsView();
                }
@@ -738,7 +737,7 @@ namespace SDK
                adRequest.Keywords.Add("unity-admob-sample");
 
                // Load the banner with the request.
-               m_MRECAds.LoadAd(adRequest);
+               MRecAds.LoadAd(adRequest);
           }
 
           private void RegisterMRECAdsEvents(BannerView mrecBannerView)
@@ -754,14 +753,14 @@ namespace SDK
           {
                DebugAds.Log("Show Admob MREC Ads");
                base.ShowMRecAds();
-               m_MRECAds.Show();
+               MRecAds.Show();
           }
 
           public override void HideMRecAds()
           {
                DebugAds.Log("Hide Admob MREC Ads");
                base.HideMRecAds();
-               m_MRECAds.Hide();
+               MRecAds.Hide();
           }
 
           private void MRecAdsOnOnBannerAdLoaded()
@@ -777,7 +776,7 @@ namespace SDK
           private void MRecAdsOnOnAdPaid(AdValue adValue)
           {
                DebugAds.Log("Admob MRec Ads Paid");
-               HandleAdPaidEvent("mrec", adValue, m_MRECAds.GetResponseInfo());
+               HandleAdPaidEvent("mrec", adValue, MRecAds.GetResponseInfo());
           }
 
           private void MRecAdsOnOnAdFullScreenContentClosed()
@@ -794,17 +793,17 @@ namespace SDK
 
           private void DestroyMRecAds()
           {
-               if (m_MRECAds != null)
+               if (MRecAds != null)
                {
                     DebugAds.Log("Destroying MREC Ad.");
-                    m_MRECAds.Destroy();
-                    m_MRECAds = null;
+                    MRecAds.Destroy();
+                    MRecAds = null;
                }
           }
 
           public override bool IsMRecLoaded()
           {
-               return m_MRECAds != null;
+               return MRecAds != null;
           }
 
           private string GetMRECAdID()
@@ -830,10 +829,10 @@ namespace SDK
           {
                base.RequestAppOpenAds();
                DebugAds.Log("Request Admob App Open Ads");
-               if (m_AppOpenAd != null)
+               if (AppOpenAd != null)
                {
-                    m_AppOpenAd.Destroy();
-                    m_AppOpenAd = null;
+                    AppOpenAd.Destroy();
+                    AppOpenAd = null;
                }
 
                AdRequest request = new AdRequest();
@@ -855,9 +854,9 @@ namespace SDK
           public override void ShowAppOpenAds()
           {
                base.ShowAppOpenAds();
-               if (m_AppOpenAd != null && m_AppOpenAd.CanShowAd())
+               if (AppOpenAd != null && AppOpenAd.CanShowAd())
                {
-                    m_AppOpenAd.Show();
+                    AppOpenAd.Show();
                }
           }
 
@@ -872,7 +871,7 @@ namespace SDK
 
           public override bool IsAppOpenAdsLoaded()
           {
-               return m_AppOpenAd != null && m_AppOpenAd.CanShowAd();
+               return AppOpenAd != null && AppOpenAd.CanShowAd();
           }
 
 
@@ -882,7 +881,7 @@ namespace SDK
           {
                DebugAds.Log("Admob AppOpenAds Loaded");
                // App open ad is loaded.
-               m_AppOpenAd = appOpenAd;
+               AppOpenAd = appOpenAd;
                RegisterAppOpenAdEventHandlers(appOpenAd);
                AppOpenAdCallbacks.LoadedSuccess?.Invoke();
           }
@@ -897,14 +896,14 @@ namespace SDK
           private void OnAppOpenAdDidDismissFullScreenContent()
           {
                DebugAds.Log("Admob AppOpenAds Dismissed");
-               m_AppOpenAd = null;
+               AppOpenAd = null;
                AppOpenAdCallbacks.Closed?.Invoke(true);
           }
 
           private void OnAppOpenAdFailedToPresentFullScreenContent(AdError args)
           {
                DebugAds.LogFormat("Admob AppOpenAd Failed to present the ad (reason: {0})", args.GetMessage());
-               m_AppOpenAd = null;
+               AppOpenAd = null;
                AppOpenAdCallbacks.DisplayedFail?.Invoke();
           }
 
@@ -922,7 +921,7 @@ namespace SDK
           private void OnAppOpenAppPaidEvent(AdValue adValue)
           {
                DebugAds.Log("Admob AppOpenAds Paid");
-               HandleAdPaidEvent("app_open_ad", adValue, m_AppOpenAd.GetResponseInfo());
+               HandleAdPaidEvent("app_open_ad", adValue, AppOpenAd.GetResponseInfo());
           }
 
           #endregion
@@ -974,7 +973,7 @@ namespace SDK
 
           private void OnApplicationQuit()
           {
-               m_InterstitialAds?.Destroy();
+               InterstitialAds?.Destroy();
           }
 
           public override AdsMediationType GetAdsMediationType()
@@ -984,7 +983,7 @@ namespace SDK
 
           public override bool IsActiveAdsType(AdsType adsType)
           {
-               if (!m_IsActive) return false;
+               if (!isActive) return false;
                return adsType switch
                {
                     AdsType.BANNER => m_AdmobAdSetup.BannerAdUnitID.IsActive(),

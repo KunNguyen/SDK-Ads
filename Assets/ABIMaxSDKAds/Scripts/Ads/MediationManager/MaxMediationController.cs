@@ -18,14 +18,13 @@ namespace SDK {
 
         public override void Init()
         {
-            if (IsInited) return;
+            if (Status != MediationStatus.NotInited) return;
             base.Init();
             DebugAds.Log("unity-script: MyAppStart Start called");
             MaxSdkCallbacks.OnSdkInitializedEvent += sdkConfiguration => {
                 // AppLovin SDK is initialized, configure and start loading ads.
                 DebugAds.Log("MAX SDK Initialized");
-                AdsManager.Instance.InitAds(AdsMediationType.MAX);
-                MaxSdk.ShowMediationDebugger();
+                Status = MediationStatus.Inited;
             };
             MaxSdk.SetSdkKey(m_MaxAdConfig.SDKKey);
             MaxSdk.SetHasUserConsent(true);

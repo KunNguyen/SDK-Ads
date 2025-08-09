@@ -19,9 +19,8 @@ namespace SDK.AdsManagers
           [field: SerializeField] public CooldownSystem CooldownSystem { get; set; }
 
 
-          public override void Init(AdsMediationType adsMediationType)
+          public override void Init()
           {
-               if (AdsMediationType != adsMediationType) return;
                if (!IsActive || IsRemoveAds() || IsCheatAds()) return;
                DebugAds.Log("Init Interstitial Start");
                foreach (AdsMediationController t in AdsConfig.adsMediations)
@@ -40,7 +39,7 @@ namespace SDK.AdsManagers
                
                CooldownSystem = new CooldownSystem();
                CooldownSystem.Init(this, MaxCappingAdsCooldown,false);
-               IsInited = true;
+               Status = AdStatus.Inited;
           }
 
           public override void OnRemoveAd()

@@ -23,11 +23,6 @@ namespace SDK
                       CollapsibleBannerAdManager.IsRemoveAds = () => IsRemoveAds;
                       CollapsibleBannerAdManager.IsCheatAds = () => IsCheatAds;
                   }
-                  private void InitCollapsibleBanner(AdsMediationType adsMediationType)
-                  {
-                      DebugAds.Log("Init Collapsible Banner");
-                      CollapsibleBannerAdManager.Init(adsMediationType);
-                  }
                   public bool IsCollapsibleBannerExpended()
                   {
                       return CollapsibleBannerAdManager.IsExpanded;

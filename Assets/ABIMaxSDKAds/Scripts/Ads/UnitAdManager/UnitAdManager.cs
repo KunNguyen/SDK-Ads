@@ -8,12 +8,17 @@ namespace SDK.AdsManagers
 {
      public abstract class UnitAdManager : MonoBehaviour
      {
+          public enum AdStatus
+          {
+               NotInited,
+               Inited,
+          }
           public delegate bool AdChecking();
           [field: SerializeField] public AdsMediationController MediationController { get; set; }
           [field: SerializeField] public SDKSetup SDKSetup { get; set; }
           [field: SerializeField] public AdsConfig AdsConfig { get; set; }
           [field: SerializeField] public AdsMediationType AdsMediationType { get; set; }
-          [field: SerializeField] public bool IsInited { get; set; } = false;
+          [field: SerializeField] public AdStatus Status { get; set; } = AdStatus.NotInited;
           [field: SerializeField] public bool IsActive { get; set; }
           [field: SerializeField] public bool IsReady { get; set; } = false;
           [field: SerializeField] public bool IsPaused { get; set; } = false;
@@ -49,7 +54,7 @@ namespace SDK.AdsManagers
                MediationController = mediationController;
           }
 
-          public abstract void Init(AdsMediationType adsMediationType);
+          public abstract void Init();
 
           public virtual void RequestAd()
           {
@@ -85,7 +90,7 @@ namespace SDK.AdsManagers
           }
           private IEnumerator CoWaitingForRemoteConfigUpdate()
           {
-               while (!IsInited)
+               while (Status != AdStatus.Inited)
                {
                     yield return Yields.EndOfFrame;
                }

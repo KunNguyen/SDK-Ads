@@ -3968,27 +3968,27 @@ PrefabInstance:
     - target: {fileID: 6685391519484111099, guid: 72fec712b86322e4a86060c37a805d29,
         type: 3}
       propertyPath: <AdsConfigs>k__BackingField.Array.data[1].adsType
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 6685391519484111099, guid: 72fec712b86322e4a86060c37a805d29,
-        type: 3}
-      propertyPath: <AdsConfigs>k__BackingField.Array.data[2].adsType
       value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 6685391519484111099, guid: 72fec712b86322e4a86060c37a805d29,
         type: 3}
+      propertyPath: <AdsConfigs>k__BackingField.Array.data[2].adsType
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6685391519484111099, guid: 72fec712b86322e4a86060c37a805d29,
+        type: 3}
       propertyPath: <AdsConfigs>k__BackingField.Array.data[3].adsType
-      value: 3
+      value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 6685391519484111099, guid: 72fec712b86322e4a86060c37a805d29,
         type: 3}
       propertyPath: <AdsConfigs>k__BackingField.Array.data[4].adsType
-      value: 4
+      value: 3
       objectReference: {fileID: 0}
     - target: {fileID: 6685391519484111099, guid: 72fec712b86322e4a86060c37a805d29,
         type: 3}
       propertyPath: <AdsConfigs>k__BackingField.Array.data[5].adsType
-      value: 5
+      value: 4
       objectReference: {fileID: 0}
     - target: {fileID: 6685391519484111099, guid: 72fec712b86322e4a86060c37a805d29,
         type: 3}
@@ -4073,17 +4073,17 @@ PrefabInstance:
     - target: {fileID: 6685391519484111099, guid: 72fec712b86322e4a86060c37a805d29,
         type: 3}
       propertyPath: <AdsConfigs>k__BackingField.Array.data[4].adsMediationType
-      value: 2
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6685391519484111099, guid: 72fec712b86322e4a86060c37a805d29,
         type: 3}
       propertyPath: <AdsConfigs>k__BackingField.Array.data[5].adsMediationType
-      value: 0
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 6685391520706141682, guid: 72fec712b86322e4a86060c37a805d29,
         type: 3}
       propertyPath: m_BannerPosition
-      value: 7
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6685391520706141682, guid: 72fec712b86322e4a86060c37a805d29,
         type: 3}

@@ -8,15 +8,14 @@ namespace SDK.AdsManagers
      {
           public bool IsActiveByRemote { get; set; } = false;
           public override bool IsShowingAd { get; protected set; }    
-          public override void Init(AdsMediationType adsMediationType)
+          public override void Init()
           {
-               if(AdsMediationType!= adsMediationType) return;
                if (IsRemoveAds() || IsCheatAds()) return;
                foreach (AdsMediationController t in AdsConfig.adsMediations)
                {
                     t.InitRMecAds(OnAdLoadSuccess, OnAdLoadFail, OnAdClicked, OnAdExpanded,OnAdCollapsed);
                }
-               IsInited = true;
+               Status = AdStatus.Inited;
           }
           protected override void UpdateRemoteConfigValue()
           {

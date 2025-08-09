@@ -19,10 +19,6 @@ namespace SDK
                RewardAdManager.MarkShowingAds = MarkShowingAds;
                RewardAdManager.IsShowingAdChecking = IsShowingAds;
           }
-          private void InitRewardedVideo(AdsMediationType adsMediationType)
-          {
-               RewardAdManager.Init(adsMediationType);
-          }
           public void ShowRewardVideo(string rewardedPlacement, UnityAction successCallback,
                UnityAction<bool> closedCallback = null, UnityAction failedCallback = null)
           {

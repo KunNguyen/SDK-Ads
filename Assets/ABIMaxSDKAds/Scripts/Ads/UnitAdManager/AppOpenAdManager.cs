@@ -12,9 +12,8 @@ namespace SDK.AdsManagers
           [field: SerializeField] public bool IsActiveByRemoteConfig { get; set; } = true;
           [field: SerializeField] public bool IsFirstOpen { get; set; } = true;
           [field: SerializeField] public bool IsActiveShowAdsFirstTime { get; set; } = true;
-          public override void Init(AdsMediationType adsMediationType)
+          public override void Init()
           {
-               if (AdsMediationType != adsMediationType) return;
                if (IsRemoveAds() || IsCheatAds()) return;
                MediationController.InitAppOpenAds(
                     OnAdLoadSuccess, 
@@ -23,7 +22,7 @@ namespace SDK.AdsManagers
                     OnAdShowSuccess,
                     OnAdShowFailed);
                StartCoroutine(coCheckingShowAppOpenAdsOnStart());
-               IsInited = true;
+               Status = AdStatus.Inited;
           }
           IEnumerator coCheckingShowAppOpenAdsOnStart()
           {

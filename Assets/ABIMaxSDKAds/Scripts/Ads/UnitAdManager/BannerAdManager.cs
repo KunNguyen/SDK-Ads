@@ -14,9 +14,8 @@ namespace SDK.AdsManagers
           [field: SerializeField] public float BannerAutoResetTime { get; set; } = 15f;
           private CancellationTokenSource AutoResetCancellationTokenSource { get; set; }
 
-          public override void Init(AdsMediationType adsMediationType)
+          public override void Init()
           {
-               if(AdsMediationType != adsMediationType) return;
                if (IsRemoveAds() || IsCheatAds()) return;
                foreach (AdsMediationController t in AdsConfig.adsMediations)
                {
@@ -29,7 +28,7 @@ namespace SDK.AdsManagers
                          OnAdShowFailed,
                          OnAdClicked);
                }
-               IsInited = true;
+               Status = AdStatus.Inited;
           }
 
           protected override void UpdateRemoteConfigValue()

@@ -21,11 +21,6 @@ namespace SDK
                BannerAdManager.IsCheatAds = () => IsCheatAds;
                HideBannerAds();
           }
-          private void InitBannerAds(AdsMediationType adsMediationType)
-          {
-               DebugAds.Log("Init Banner");
-               BannerAdManager.Init(adsMediationType);
-          }
 
           public void RequestBannerAds()
           {

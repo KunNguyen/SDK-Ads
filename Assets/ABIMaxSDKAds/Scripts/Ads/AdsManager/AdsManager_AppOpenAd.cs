@@ -23,12 +23,6 @@ namespace SDK
             
                DebugAds.Log("Setup App Open Ads Done");
           }
-          private void InitAppOpenAds(AdsMediationType adsMediationType)
-          {
-               DebugAds.Log("Init App Open Ads");
-               AppOpenAdManager.Init(adsMediationType);
-          }
-
           private void ShowAppOpenAds()
           {
                AppOpenAdManager.CallToShowAd();
