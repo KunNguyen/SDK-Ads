@@ -107,13 +107,32 @@ namespace SDK
         private void UpdateRemoteConfigs()
         {
             IsUpdateRemoteConfigSuccess = true;
-            InterstitialAdManager.UpdateRemoteConfig();
-            RewardAdManager.UpdateRemoteConfig();
+            StartCoroutine(CoUpdateRemoteConfigs());
+        }
+
+        private IEnumerator CoUpdateRemoteConfigs()
+        {
             BannerAdManager.UpdateRemoteConfig();
+            InterstitialAdManager.UpdateRemoteConfig();
             CollapsibleBannerAdManager.UpdateRemoteConfig();
             MRecAdManager.UpdateRemoteConfig();
             AppOpenAdManager.UpdateRemoteConfig();
             ResumeAdManager.UpdateRemoteConfig();
+            
+            var elapsedTime = 0f;
+            var timeOut = 8f;
+            while (elapsedTime <timeOut && !InterstitialAdManager.IsLoaded())
+            {
+                elapsedTime += Time.unscaledDeltaTime;
+                yield return null;
+            }
+            
+            if (DelayBetweenAdInits > 0f)
+            {
+                yield return new WaitForSecondsRealtime(DelayBetweenAdInits);
+            }
+
+            RewardAdManager.UpdateRemoteConfig();
         }
 
         private void Init()

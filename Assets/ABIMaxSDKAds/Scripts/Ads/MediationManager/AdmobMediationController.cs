@@ -430,8 +430,6 @@ namespace SDK
           {
                base.InitInterstitialAd(adClosedCallback, adLoadSuccessCallback, adLoadFailedCallback,
                     adShowSuccessCallback, adShowFailCallback);
-               DebugAds.Log("Init Admob Interstitial");
-               RequestInterstitialAd();
           }
 
           public override void RequestInterstitialAd()

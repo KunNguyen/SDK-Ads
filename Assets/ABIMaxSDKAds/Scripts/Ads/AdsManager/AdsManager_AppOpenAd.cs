@@ -30,10 +30,10 @@ namespace SDK
         
           private void DelayShowAppOpenAds()
           {
-               StartCoroutine(coDelayShowAppOpenAds());
+               StartCoroutine(CoDelayShowAppOpenAds());
           }
 
-          IEnumerator coDelayShowAppOpenAds()
+          private IEnumerator CoDelayShowAppOpenAds()
           {
                yield return new WaitForSeconds(0.3f);
                ShowAppOpenAds();
