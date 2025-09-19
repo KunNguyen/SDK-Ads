@@ -199,6 +199,7 @@ namespace SDK {
     public class ImpressionData {
         public AdsMediationType ad_mediation;
         public string ad_type;
+        public string ad_sourceID;
         public string ad_source;
         public string ad_unit_name;
         public string ad_format;

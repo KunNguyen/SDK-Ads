@@ -29,11 +29,13 @@ namespace SDK
           public void ShowBannerAds()
           {
                DebugAds.Log(("Call Show Banner Ads"));
+               if (!IsReady) return;
                BannerAdManager.Show();
           }
           public void HideBannerAds()
           {
                DebugAds.Log(("Call Hide Banner Ads"));
+               if (!IsReady) return;
                BannerAdManager.Hide();
           }
 

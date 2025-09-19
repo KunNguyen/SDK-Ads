@@ -1,5 +1,6 @@
-﻿#if GOOGLE_REVIEW
+﻿#if GOOGLE_REVIEW && UNITY_ANDROID
 using Google.Play.Review;
+#endif
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -11,6 +12,7 @@ public class AppReviewManager : MonoBehaviour {
             return m_Instance;
         }
     }
+#if GOOGLE_REVIEW && UNITY_ANDROID
     private ReviewManager m_ReviewManager;
     private PlayReviewInfo m_PlayerReviewInfo = null;
 
@@ -53,5 +55,12 @@ public class AppReviewManager : MonoBehaviour {
         // reviewed or not, or even whether the review dialog was shown. Thus, no
         // matter the result, we continue our app flow.
     }
-}
 #endif
+    
+#if UNITY_IOS
+    
+    public void RequestIOSReview() {
+        
+    }
+#endif
+}

@@ -378,6 +378,10 @@ namespace SDK
 #if UNITY_APPSFLYER
             ABIAppsflyerManager.TrackAppsflyerAdRevenue(impressionData);
 #endif
+            
+#if UNITY_SOLAR_ENGINE
+            SolarEngineManager.Instance.TrackAdRevenue(impressionData);  
+#endif
         }
 
         private void OnApplicationPause(bool paused)

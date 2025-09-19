@@ -430,6 +430,7 @@ namespace SDK
           {
                base.InitInterstitialAd(adClosedCallback, adLoadSuccessCallback, adLoadFailedCallback,
                     adShowSuccessCallback, adShowFailCallback);
+               DebugAds.Log("Init Admob Interstitial");
           }
 
           public override void RequestInterstitialAd()
@@ -961,6 +962,7 @@ namespace SDK
                {
                     ad_mediation = AdsMediationType.ADMOB,
                     ad_source = adSourceName,
+                    ad_sourceID = adSourceId,
                     ad_unit_name = adSourceInstanceId,
                     ad_format = adFormat.ToUpper(),
                     ad_currency = "USD",

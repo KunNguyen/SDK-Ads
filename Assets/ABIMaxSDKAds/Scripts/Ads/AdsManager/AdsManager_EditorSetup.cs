@@ -177,21 +177,17 @@ namespace SDK
           {
 #if UNITY_AD_IRONSOURCE
             const AdsMediationType adsMediationType = AdsMediationType.IRONSOURCE;
-            IronSourceMediationController ironSourceMediationController =
- GetAdsMediationController(adsMediationType) as IronSourceMediationController;
+            IronSourceMediationController ironSourceMediationController = GetAdsMediationController(adsMediationType) as IronSourceMediationController;
             if (ironSourceMediationController == null) return;
-            if (m_SDKSetup.adsMediationType == adsMediationType)
+            if (SDKSetup.adsMediationType == adsMediationType)
             {
-                ironSourceMediationController.AppKey = m_SDKSetup.ironSourceAdSetup.appKey;
+                ironSourceMediationController.AppKey = SDKSetup.ironSourceAdSetup.appKey;
             }
             
-            ironSourceMediationController.interstitialAdUnitID =
- m_SDKSetup.interstitialAdsMediationType == adsMediationType ? m_SDKSetup.ironSourceAdSetup.interstitialID : "";
-            ironSourceMediationController.rewardedAdUnitID =
- m_SDKSetup.rewardedAdsMediationType == adsMediationType ? m_SDKSetup.ironSourceAdSetup.rewardedID : "";
-            ironSourceMediationController.bannerAdUnitID =
- m_SDKSetup.bannerAdsMediationType == adsMediationType ? m_SDKSetup.ironSourceAdSetup.bannerID : "";
-            isAutoRefreshBannerByCode = m_SDKSetup.isAutoRefreshBannerByCode;
+            ironSourceMediationController.interstitialAdUnitID = SDKSetup.interstitialAdsMediationType == adsMediationType ? SDKSetup.ironSourceAdSetup.interstitialID : "";
+            ironSourceMediationController.rewardedAdUnitID = SDKSetup.rewardedAdsMediationType == adsMediationType ? SDKSetup.ironSourceAdSetup.rewardedID : "";
+            ironSourceMediationController.bannerAdUnitID = SDKSetup.bannerAdsMediationType == adsMediationType ? SDKSetup.ironSourceAdSetup.bannerID : "";
+            BannerAdManager.IsAutoRefreshBanner = SDKSetup.isAutoRefreshBannerByCode;
 #if UNITY_EDITOR
             EditorUtility.SetDirty(ironSourceMediationController);
             DebugAds.Log("Update IronSource Mediation Done");

@@ -1,139 +1,121 @@
 ﻿using SDK;
-using System;
-using System.Collections;
-using System.Collections.Generic;
 using ABIMaxSDKAds.Scripts;
+using Unity.Services.LevelPlay;
 using UnityEngine;
 using UnityEngine.Events;
+using LevelPlayAdSize = com.unity3d.mediation.LevelPlayAdSize;
+using LevelPlayBannerPosition = com.unity3d.mediation.LevelPlayBannerPosition;
 
 public class IronSourceMediationController : AdsMediationController
 {
 #if UNITY_AD_IRONSOURCE
 #if UNITY_ANDROID
-   public string Android_Key;
-   public string IOS_Key;
+    public string Android_Key;
+    public string IOS_Key;
 
-   private bool IsWatchSuccess { get; set; } = false;
+    private bool IsWatchSuccess { get; set; } = false;
 
-   public string AppKey
-   {
-      get
-      {
+    public string AppKey
+    {
+        get
+        {
 #if UNITY_ANDROID
-         return Android_Key;
+            return Android_Key;
 #elif UNITY_IPHONE
             return IOS_Key;
 #else
             return Android_Key;
 #endif
-      }
-      set
-      {
+        }
+        set
+        {
 #if UNITY_ANDROID
-         Android_Key = value;
+            Android_Key = value;
 #elif UNITY_IPHONE
             IOS_Key = value;
 #else
             Android_Key = value;
 #endif
-      }
-   }
+        }
+    }
 
-   public string rewardedAdUnitID;
-   public string interstitialAdUnitID;
-   public string bannerAdUnitID;
+    public string rewardedAdUnitID;
+    public string interstitialAdUnitID;
+    public string bannerAdUnitID;
 
-   private void Awake()
-   {
-   }
+    public override void Init()
+    {
+        if (Status != MediationStatus.NotInited) return;
+        base.Init();
+        DebugAds.Log("IronSource: MyAppStart Start called");
+        DebugAds.Log("IronSource: unity version" + LevelPlay.UnityVersion);
 
-   private void Start()
-   {
-   }
+        // SDK init
+        DebugAds.Log("IronSource: IronSource.Agent.init");
+        string uniqueUserID = SystemInfo.deviceUniqueIdentifier;
+        LevelPlay.SetConsent(true);
+        LevelPlay.SetMetaData("do_not_sell", "false");
+        LevelPlay.SetMetaData("is_child_directed", "false");
+        LevelPlay.SetMetaData("is_test_suite", "enable");
+        LevelPlay.OnImpressionDataReady += IronSourceEvents_onImpressionSuccessEvent;
+        LevelPlay.OnInitFailed += OnInitFailed;
+        LevelPlay.OnInitSuccess += OnInitSuccess;
+        LevelPlay.Init(AppKey,uniqueUserID);
+        LevelPlay.ValidateIntegration();
+    }
 
-   public override void Init()
-   {
-      if (IsInited) return;
-      base.Init();
-      DebugAds.Log("IronSource: MyAppStart Start called");
+    private void OnInitSuccess(LevelPlayConfiguration obj)
+    {
+        DebugAds.Log("Init Iron Success ");
+        Status = MediationStatus.Inited;
+        LevelPlay.LaunchTestSuite();
+    }
 
-      string id = IronSource.Agent.getAdvertiserId();
-      DebugAds.Log("IronSource: IronSource.Agent.getAdvertiserId : " + id);
-      DebugAds.Log("IronSource: unity version" + IronSource.unityVersion());
+    private void OnInitFailed(LevelPlayInitError obj)
+    {
+        DebugAds.Log("Init Iron Failed " + obj.ErrorMessage);
+    }
 
-      // SDK init
-      DebugAds.Log("IronSource: IronSource.Agent.init");
-      string uniqueUserID = SystemInfo.deviceUniqueIdentifier;
-      IronSource.Agent.setUserId(uniqueUserID);
-      IronSource.Agent.setConsent(true);
-      IronSource.Agent.setMetaData("do_not_sell", "false");
-      IronSource.Agent.setMetaData("is_child_directed", "false");
-      IronSource.Agent.setMetaData("is_test_suite", "enable");
-      IronSourceEvents.onImpressionDataReadyEvent += IronSourceEvents_onImpressionSuccessEvent;
-      IronSourceEvents.onSdkInitializationCompletedEvent += () =>
-      {
-         DebugAds.Log("IronSource: onSdkInitializationCompletedEvent");
-         IronSource.Agent.launchTestSuite();
-      };
-      LevelPlay.OnInitFailed += OnInitFailed;
-      LevelPlay.OnInitSuccess += OnInitSuccess;
-      LevelPlay.Init(AppKey, null,
-         new LevelPlayAdFormat[]
-            { LevelPlayAdFormat.REWARDED, LevelPlayAdFormat.INTERSTITIAL, LevelPlayAdFormat.BANNER });
-      IronSource.Agent.validateIntegration();
-   }
+    private void IronSourceEvents_onImpressionSuccessEvent(LevelPlayImpressionData impressionData)
+    {
+        if (impressionData.Revenue != null)
+        {
+            DebugAds.Log("ImpressionData: " + impressionData.ToString());
+            double revenue = impressionData.Revenue.Value;
+            ImpressionData impression = new ImpressionData
+            {
+                ad_mediation = AdsMediationType.IRONSOURCE,
+                ad_source = impressionData.AdNetwork,
+                ad_unit_name = impressionData.InstanceName,
+                ad_format = impressionData.AdFormat,
+                ad_currency = "USD",
+                ad_revenue = revenue,
+                ad_type = impressionData.AdFormat
+            };
+            AdRevenuePaidCallback?.Invoke(impression);
+        }
+    }
 
-   private void OnInitSuccess(LevelPlayConfiguration obj)
-   {
-      DebugAds.Log("Init Iron Success ");
-      AdsManager.Instance.InitAds(AdsMediationType.IRONSOURCE);
-   }
+    #region InterstitialAd
 
-   private void OnInitFailed(LevelPlayInitError obj)
-   {
-      DebugAds.Log("Init Iron Failed " + obj.ErrorMessage);
-   }
+    private LevelPlayInterstitialAd interstitialAd;
 
-   private void IronSourceEvents_onImpressionSuccessEvent(IronSourceImpressionData impressionData)
-   {
-      if (impressionData?.revenue != null)
-      {
-         DebugAds.Log("ImpressionData: " + impressionData.ToString());
-         double revenue = impressionData.revenue.Value;
-         ImpressionData impression = new ImpressionData
-         {
-            ad_mediation = AdsMediationType.IRONSOURCE,
-            ad_source = impressionData.adNetwork,
-            ad_unit_name = impressionData.instanceName,
-            ad_format = impressionData.adFormat,
-            ad_currency = "USD",
-            ad_revenue = revenue,
-            ad_type = impressionData.adFormat
-         };
-         AdRevenuePaidCallback?.Invoke(impression);
-      }
-   }
-
-   #region InterstitialAd
-
-   private LevelPlayInterstitialAd interstitialAd;
-
-   public override void InitInterstitialAd(UnityAction adClosedCallback, UnityAction adLoadSuccessCallback,
-      UnityAction adLoadFailedCallback, UnityAction adShowSuccessCallback, UnityAction adShowFailCallback)
-   {
-      base.InitInterstitialAd(adClosedCallback, adLoadSuccessCallback, adLoadFailedCallback, adShowSuccessCallback,
-         adShowFailCallback);
-      DebugAds.Log("Init IronSource Interstitial");
+    public override void InitInterstitialAd(UnityAction adClosedCallback, UnityAction adLoadSuccessCallback,
+        UnityAction adLoadFailedCallback, UnityAction adShowSuccessCallback, UnityAction adShowFailCallback)
+    {
+        base.InitInterstitialAd(adClosedCallback, adLoadSuccessCallback, adLoadFailedCallback, adShowSuccessCallback,
+            adShowFailCallback);
+        DebugAds.Log("Init IronSource Interstitial");
 #if IRONSOURCE_LEGACY
         CreateInterstitialAdLegacy();
 #else
-      CreateInterstitialAd();
+        CreateInterstitialAd();
 #endif
-      RequestInterstitialAd();
-   }
+        RequestInterstitialAd();
+    }
 
-   private void CreateInterstitialAdLegacy()
-   {
+    private void CreateInterstitialAdLegacy()
+    {
 #if IRONSOURCE_LEGACY
         IronSource.Agent.init(AppKey, IronSourceAdUnits.INTERSTITIAL);
         IronSourceInterstitialEvents.onAdLoadFailedEvent += LegacyInterstitialOnAdLoadFailedEvent;
@@ -144,384 +126,397 @@ public class IronSourceMediationController : AdsMediationController
         IronSourceInterstitialEvents.onAdShowFailedEvent += LegacyInterstitialOnAdDisplayFailedEvent;
         IronSourceInterstitialEvents.onAdShowSucceededEvent += LegacyInterstitialOnAdInfoChangedEvent;
 #endif
-   }
+    }
 
-   #region Interstitial Event Legacy
+    #region Interstitial Event Legacy
 
-   private void LegacyInterstitialOnAdInfoChangedEvent(IronSourceAdInfo adInfo)
-   {
-      DebugAds.Log("IronSource: I got InterstitialAdInfoChangedEvent");
-   }
+    private void LegacyInterstitialOnAdInfoChangedEvent(IronSourceAdInfo adInfo)
+    {
+        DebugAds.Log("IronSource: I got InterstitialAdInfoChangedEvent");
+    }
 
-   private void LegacyInterstitialOnAdDisplayFailedEvent(IronSourceError error, IronSourceAdInfo adInfo)
-   {
-      DebugAds.Log("IronSource: I got InterstitialAdDisplayFailedEvent");
-      InterstitialCallbacks.DisplayedFail?.Invoke();
-   }
+    private void LegacyInterstitialOnAdDisplayFailedEvent(IronSourceError error, IronSourceAdInfo adInfo)
+    {
+        DebugAds.Log("IronSource: I got InterstitialAdDisplayFailedEvent");
+        InterstitialCallbacks.DisplayedFail?.Invoke();
+    }
 
-   private void LegacyInterstitialOnAdClosedEvent(IronSourceAdInfo adInfo)
-   {
-      DebugAds.Log("IronSource: I got InterstitialAdClosedEvent");
-      InterstitialCallbacks.Closed?.Invoke(true);
-   }
+    private void LegacyInterstitialOnAdClosedEvent(IronSourceAdInfo adInfo)
+    {
+        DebugAds.Log("IronSource: I got InterstitialAdClosedEvent");
+        InterstitialCallbacks.Closed?.Invoke(true);
+    }
 
-   private void LegacyInterstitialOnAdDisplayedEvent(IronSourceAdInfo adInfo)
-   {
-      DebugAds.Log("IronSource: I got InterstitialAdDisplayedEvent");
-      InterstitialCallbacks.Displayed?.Invoke();
-   }
+    private void LegacyInterstitialOnAdDisplayedEvent(IronSourceAdInfo adInfo)
+    {
+        DebugAds.Log("IronSource: I got InterstitialAdDisplayedEvent");
+        InterstitialCallbacks.Displayed?.Invoke();
+    }
 
-   private void LegacyInterstitialOnAdClickedEvent(IronSourceAdInfo adInfo)
-   {
-      DebugAds.Log("IronSource: I got InterstitialAdClickedEvent");
-   }
+    private void LegacyInterstitialOnAdClickedEvent(IronSourceAdInfo adInfo)
+    {
+        DebugAds.Log("IronSource: I got InterstitialAdClickedEvent");
+    }
 
-   private void LegacyInterstitialOnAdLoadedEvent(IronSourceAdInfo adInfo)
-   {
-      DebugAds.Log("IronSource: I got InterstitialAdLoadedEvent");
-      InterstitialCallbacks.LoadedSuccess?.Invoke();
-   }
+    private void LegacyInterstitialOnAdLoadedEvent(IronSourceAdInfo adInfo)
+    {
+        DebugAds.Log("IronSource: I got InterstitialAdLoadedEvent");
+        InterstitialCallbacks.LoadedSuccess?.Invoke();
+    }
 
-   private void LegacyInterstitialOnAdLoadFailedEvent(IronSourceError adInfo)
-   {
-      DebugAds.Log("IronSource: I got InterstitialAdLoadFailedEvent");
-      InterstitialCallbacks.LoadedFail?.Invoke();
-   }
+    private void LegacyInterstitialOnAdLoadFailedEvent(IronSourceError adInfo)
+    {
+        DebugAds.Log("IronSource: I got InterstitialAdLoadFailedEvent");
+        InterstitialCallbacks.LoadedFail?.Invoke();
+    }
 
-   #endregion
+    #endregion
 
-   private void CreateInterstitialAd()
-   {
-      DebugAds.Log("Create InterstitialAd");
-      interstitialAd = new LevelPlayInterstitialAd(interstitialAdUnitID);
+    private void CreateInterstitialAd()
+    {
+        DebugAds.Log("Create InterstitialAd");
+        interstitialAd = new LevelPlayInterstitialAd(interstitialAdUnitID);
 
-      // Register to interstitial events
-      interstitialAd.OnAdLoaded += InterstitialOnAdLoadedEvent;
-      interstitialAd.OnAdLoadFailed += InterstitialOnAdLoadFailedEvent;
-      interstitialAd.OnAdDisplayed += InterstitialOnAdDisplayedEvent;
-      interstitialAd.OnAdDisplayFailed += InterstitialOnAdDisplayFailedEvent;
-      interstitialAd.OnAdClicked += InterstitialOnAdClickedEvent;
-      interstitialAd.OnAdClosed += InterstitialOnAdClosedEvent;
-      interstitialAd.OnAdInfoChanged += InterstitialOnAdInfoChangedEvent;
-      DebugAds.Log("Create InterstitialAd Done");
-   }
+        // Register to interstitial events
+        interstitialAd.OnAdLoaded += InterstitialOnAdLoadedEvent;
+        interstitialAd.OnAdLoadFailed += InterstitialOnAdLoadFailedEvent;
+        interstitialAd.OnAdDisplayed += InterstitialOnAdDisplayedEvent;
+        interstitialAd.OnAdDisplayFailed += InterstitialOnAdDisplayFailedEvent;
+        interstitialAd.OnAdClicked += InterstitialOnAdClickedEvent;
+        interstitialAd.OnAdClosed += InterstitialOnAdClosedEvent;
+        interstitialAd.OnAdInfoChanged += InterstitialOnAdInfoChangedEvent;
+        DebugAds.Log("Create InterstitialAd Done");
+    }
 
-   #region Interstitial Event
+    #region Interstitial Event
 
-   private void InterstitialOnAdLoadedEvent(LevelPlayAdInfo adInfo)
-   {
-      DebugAds.Log("IronSource: I got InterstitialAdLoadedEvent");
-      InterstitialCallbacks.LoadedSuccess?.Invoke();
-   }
+    private void InterstitialOnAdLoadedEvent(LevelPlayAdInfo adInfo)
+    {
+        DebugAds.Log("IronSource: I got InterstitialAdLoadedEvent");
+        InterstitialCallbacks.LoadedSuccess?.Invoke();
+    }
 
-   private void InterstitialOnAdLoadFailedEvent(LevelPlayAdError error)
-   {
-      DebugAds.Log("IronSource: I got InterstitialAdLoadFailedEvent");
-      InterstitialCallbacks.LoadedFail?.Invoke();
-   }
+    private void InterstitialOnAdLoadFailedEvent(LevelPlayAdError error)
+    {
+        DebugAds.Log("IronSource: I got InterstitialAdLoadFailedEvent");
+        InterstitialCallbacks.LoadedFail?.Invoke();
+    }
 
-   private void InterstitialOnAdDisplayedEvent(LevelPlayAdInfo adInfo)
-   {
-      DebugAds.Log("IronSource: I got InterstitialAdDisplayedEvent");
-      InterstitialCallbacks.Displayed?.Invoke();
-   }
+    private void InterstitialOnAdDisplayedEvent(LevelPlayAdInfo adInfo)
+    {
+        DebugAds.Log("IronSource: I got InterstitialAdDisplayedEvent");
+        InterstitialCallbacks.Displayed?.Invoke();
+    }
 
-   private void InterstitialOnAdDisplayFailedEvent(LevelPlayAdDisplayInfoError error)
-   {
-      DebugAds.Log("IronSource: I got InterstitialAdDisplayFailedEvent");
-      InterstitialCallbacks.DisplayedFail?.Invoke();
-   }
+    private void InterstitialOnAdDisplayFailedEvent(LevelPlayAdDisplayInfoError error)
+    {
+        DebugAds.Log("IronSource: I got InterstitialAdDisplayFailedEvent");
+        InterstitialCallbacks.DisplayedFail?.Invoke();
+    }
 
-   private void InterstitialOnAdClickedEvent(LevelPlayAdInfo adInfo)
-   {
-      DebugAds.Log("IronSource: I got InterstitialAdClickedEvent");
-   }
+    private void InterstitialOnAdClickedEvent(LevelPlayAdInfo adInfo)
+    {
+        DebugAds.Log("IronSource: I got InterstitialAdClickedEvent");
+    }
 
-   private void InterstitialOnAdClosedEvent(LevelPlayAdInfo adInfo)
-   {
-      DebugAds.Log("IronSource: I got InterstitialAdClosedEvent");
-      InterstitialCallbacks.Closed?.Invoke(true);
-   }
+    private void InterstitialOnAdClosedEvent(LevelPlayAdInfo adInfo)
+    {
+        DebugAds.Log("IronSource: I got InterstitialAdClosedEvent");
+        InterstitialCallbacks.Closed?.Invoke(true);
+    }
 
-   private void InterstitialOnAdInfoChangedEvent(LevelPlayAdInfo adInfo)
-   {
-   }
+    private void InterstitialOnAdInfoChangedEvent(LevelPlayAdInfo adInfo)
+    {
+    }
 
-   #endregion
+    #endregion
 
-   public override void RequestInterstitialAd()
-   {
-      base.RequestInterstitialAd();
-      DebugAds.Log("Request IronSource Interstitial");
+    public override void RequestInterstitialAd()
+    {
+        base.RequestInterstitialAd();
+        DebugAds.Log("Request IronSource Interstitial");
 #if IRONSOURCE_LEGACY
         IronSource.Agent.loadInterstitial();
 #else
-      interstitialAd?.LoadAd();
+        interstitialAd?.LoadAd();
 #endif
-   }
+    }
 
-   public override void ShowInterstitialAd()
-   {
-      base.ShowInterstitialAd();
-      DebugAds.Log("Show Iron source interstitial");
+    public override void ShowInterstitialAd()
+    {
+        base.ShowInterstitialAd();
+        DebugAds.Log("Show Iron source interstitial");
 #if IRONSOURCE_LEGACY
         IronSource.Agent.showInterstitial();
 #else
-      interstitialAd?.ShowAd();
+        interstitialAd?.ShowAd();
 #endif
-   }
+    }
 
-   public override bool IsInterstitialLoaded()
-   {
+    public override bool IsInterstitialLoaded()
+    {
 #if IRONSOURCE_LEGACY
         return IronSource.Agent.isInterstitialReady();
 #else
-      return interstitialAd != null && interstitialAd.IsAdReady();
+        return interstitialAd != null && interstitialAd.IsAdReady();
 #endif
-   }
+    }
 
-   #endregion InterstitialAd
+    #endregion InterstitialAd
 
-   #region RewardAd
+    #region RewardAd
 
-   public override void InitRewardVideoAd(UnityAction<bool> videoClosed, UnityAction videoLoadSuccess,
-      UnityAction videoLoadFailed, UnityAction videoStart)
-   {
-      base.InitRewardVideoAd(videoClosed, videoLoadSuccess, videoLoadFailed, videoStart);
-      DebugAds.Log("Init IronSource video");
-      //Add AdInfo Rewarded Video Events
-      IronSourceRewardedVideoEvents.onAdOpenedEvent += RewardedVideoOnAdOpenedEvent;
-      IronSourceRewardedVideoEvents.onAdClosedEvent += RewardedVideoOnAdClosedEvent;
-      IronSourceRewardedVideoEvents.onAdAvailableEvent += RewardedVideoOnAdAvailable;
-      IronSourceRewardedVideoEvents.onAdUnavailableEvent += RewardedVideoOnAdUnavailable;
-      IronSourceRewardedVideoEvents.onAdShowFailedEvent += RewardedVideoOnAdShowFailedEvent;
-      IronSourceRewardedVideoEvents.onAdRewardedEvent += RewardedVideoOnAdRewardedEvent;
-      IronSourceRewardedVideoEvents.onAdClickedEvent += RewardedVideoOnAdClickedEvent;
+    private LevelPlayRewardedAd RewardedAd { get; set; }
 
-      IronSource.Agent.shouldTrackNetworkState(true);
-      IronSource.Agent.init(AppKey, IronSourceAdUnits.REWARDED_VIDEO);
-   }
+    public override void InitRewardVideoAd(UnityAction videoSuccess, UnityAction<bool> videoClosed,
+        UnityAction videoLoadSuccess,
+        UnityAction videoLoadFailed, UnityAction videoStart)
+    {
+        base.InitRewardVideoAd(videoSuccess, videoClosed, videoLoadSuccess, videoLoadFailed, videoStart);
+        DebugAds.Log("Init IronSource video");
+        RewardedAd = new LevelPlayRewardedAd(rewardedAdUnitID);
+        RewardedAd.OnAdDisplayed += RewardedVideoOnAdOpenedEvent;
+        RewardedAd.OnAdClosed += RewardedVideoOnAdClosedEvent;
+        RewardedAd.OnAdLoaded += RewardedVideoOnAdAvailable;
+        RewardedAd.OnAdLoadFailed += RewardedVideoOnAdUnavailable;
+        RewardedAd.OnAdDisplayFailed += RewardedVideoOnAdShowFailedEvent;
+        RewardedAd.OnAdRewarded += RewardedVideoOnAdRewardedEvent;
+        RewardedAd.OnAdClicked += RewardedVideoOnAdClickedEvent;
+    }
 
-   private void RewardedVideoOnAdClickedEvent(IronSourcePlacement placement, IronSourceAdInfo adInfo)
-   {
-      DebugAds.Log("IronSource: I got RewardedVideoAdClickedEvent, name = " + placement.getRewardName());
-   }
+    private void RewardedVideoOnAdClickedEvent(LevelPlayAdInfo adInfo)
+    {
+        DebugAds.Log("IronSource: I got RewardedVideoAdClickedEvent");
+    }
 
-   private void RewardedVideoOnAdRewardedEvent(IronSourcePlacement placement, IronSourceAdInfo adInfo)
-   {
-      DebugAds.Log("IronSource: I got RewardedVideoAdRewardedEvent, name = " + placement.getRewardName());
-      IsWatchSuccess = true;
-      switch (Application.platform)
-      {
-         case RuntimePlatform.Android:
-         {
-            if (RewardedVideoCallbacks.Completed != null)
+    private void RewardedVideoOnAdRewardedEvent(LevelPlayAdInfo adInfo, LevelPlayReward adReward)
+    {
+        DebugAds.Log("IronSource: I got RewardedVideoAdRewardedEvent");
+        IsWatchSuccess = true;
+        switch (Application.platform)
+        {
+            case RuntimePlatform.Android:
             {
-               DebugAds.Log("Watch video Success Callback!");
-               EventManager.AddEventNextFrame(RewardedVideoCallbacks.Completed);
-               RewardedVideoCallbacks.Completed = null;
-            }
+                if (RewardedVideoCallbacks.Completed != null)
+                {
+                    DebugAds.Log("Watch video Success Callback!");
+                    EventManager.AddEventNextFrame(RewardedVideoCallbacks.Completed);
+                    RewardedVideoCallbacks.Completed = null;
+                }
 
-            break;
-         }
-         case RuntimePlatform.IPhonePlayer:
-         {
-            if (RewardedVideoCallbacks.Completed != null)
+                break;
+            }
+            case RuntimePlatform.IPhonePlayer:
             {
-               DebugAds.Log("Watch video Success Callback!");
-               EventManager.AddEventNextFrame(RewardedVideoCallbacks.Completed);
-               RewardedVideoCallbacks.Completed = null;
+                if (RewardedVideoCallbacks.Completed != null)
+                {
+                    DebugAds.Log("Watch video Success Callback!");
+                    EventManager.AddEventNextFrame(RewardedVideoCallbacks.Completed);
+                    RewardedVideoCallbacks.Completed = null;
+                }
+
+                break;
             }
+        }
+    }
 
-            break;
-         }
-      }
-   }
+    private void RewardedVideoOnAdShowFailedEvent(LevelPlayAdDisplayInfoError error)
+    {
+        DebugAds.Log("IronSource: I got RewardedVideoAdShowFailedEvent, code :  " + error.LevelPlayError.ErrorCode +
+                     ", description : " +
+                     error.LevelPlayError.ErrorMessage);
+        RewardedVideoCallbacks.DisplayedFailed?.Invoke();
+    }
 
-   private void RewardedVideoOnAdShowFailedEvent(IronSourceError error, IronSourceAdInfo adInfo)
-   {
-      DebugAds.Log("IronSource: I got RewardedVideoAdShowFailedEvent, code :  " + error.getCode() + ", description : " +
-                error.getDescription());
-      RewardedVideoCallbacks.DisplayedFailed?.Invoke();
-   }
+    private void RewardedVideoOnAdUnavailable(LevelPlayAdError error)
+    {
+        DebugAds.Log("IronSource: RewardedVideoAd Iron Loaded Fail " + error.ErrorMessage);
+        RewardedVideoCallbacks.LoadedFail?.Invoke();
+    }
 
-   private void RewardedVideoOnAdUnavailable()
-   {
-      DebugAds.Log("IronSource: RewardedVideoAd Iron Loaded Fail");
-      RewardedVideoCallbacks.LoadedFail?.Invoke();
-   }
+    private void RewardedVideoOnAdAvailable(LevelPlayAdInfo adInfo)
+    {
+        DebugAds.Log("IronSource: RewardedVideoAds Available");
+        RewardedVideoCallbacks.LoadedSuccess?.Invoke();
+    }
 
-   private void RewardedVideoOnAdAvailable(IronSourceAdInfo adInfo)
-   {
-      DebugAds.Log("IronSource: RewardedVideoAds Available");
-      RewardedVideoCallbacks.LoadedSuccess?.Invoke();
-   }
+    private void RewardedVideoOnAdClosedEvent(LevelPlayAdInfo adInfo)
+    {
+        DebugAds.Log("IronSource: I got RewardedVideoAdClosedEvent");
+        if (RewardedVideoCallbacks.Completed != null && IsWatchSuccess)
+        {
+            DebugAds.Log("Do Callback Success");
+            EventManager.AddEventNextFrame(RewardedVideoCallbacks.Completed);
+            RewardedVideoCallbacks.Completed = null;
+        }
+        else
+        {
+            DebugAds.Log("Don't have any callback");
+        }
 
-   private void RewardedVideoOnAdClosedEvent(IronSourceAdInfo adInfo)
-   {
-      DebugAds.Log("IronSource: I got RewardedVideoAdClosedEvent");
-      if (RewardedVideoCallbacks.Completed != null && IsWatchSuccess)
-      {
-         DebugAds.Log("Do Callback Success");
-         EventManager.AddEventNextFrame(RewardedVideoCallbacks.Completed);
-         RewardedVideoCallbacks.Completed = null;
-      }
-      else
-      {
-         DebugAds.Log("Don't have any callback");
-      }
+        RewardedVideoCallbacks.Closed?.Invoke(IsWatchSuccess);
+    }
 
-      RewardedVideoCallbacks.Closed?.Invoke(IsWatchSuccess);
-   }
+    private void RewardedVideoOnAdOpenedEvent(LevelPlayAdInfo adInfo)
+    {
+        DebugAds.Log("IronSource: I got RewardedVideoAdOpenedEvent");
+    }
 
-   private void RewardedVideoOnAdOpenedEvent(IronSourceAdInfo adInfo)
-   {
-      DebugAds.Log("IronSource: I got RewardedVideoAdOpenedEvent");
-   }
+    public override void RequestRewardVideoAd()
+    {
+        base.RequestRewardVideoAd();
+        DebugAds.Log("Request Video");
+        RewardedAd.LoadAd();
+    }
 
-   public override void RequestRewardVideoAd()
-   {
-      base.RequestRewardVideoAd();
-      DebugAds.Log("Request ironsource Video");
-   }
-
-   public override void ShowRewardVideoAd(UnityAction successCallback, UnityAction failedCallback)
-   {
-      base.ShowRewardVideoAd(successCallback, failedCallback);
+    public override void ShowRewardVideoAd()
+    {
+        base.ShowRewardVideoAd();
 #if !UNITY_EDITOR
-        m_IsWatchSuccess = false;
-        IronSource.Agent.showRewardedVideo();
+        IsWatchSuccess = false;
+        RewardedAd.ShowAd();
 #else
-      IsWatchSuccess = false;
-      RewardedVideoOnAdRewardedEvent(null, null);
+        IsWatchSuccess = false;
+        RewardedVideoOnAdRewardedEvent(null, null);
 #endif
-   }
+    }
 
-   public override bool IsRewardVideoLoaded()
-   {
+    public override bool IsRewardVideoLoaded()
+    {
 #if !UNITY_EDITOR
-        return IronSource.Agent.isRewardedVideoAvailable();
+        return RewardedAd.IsAdReady();
 #else
-      return true;
+        return true;
 #endif
-   }
+    }
 
-   #endregion RewardAd
+    #endregion RewardAd
 
-   #region Banner
+    #region Banner
 
-   bool isBannerLoaded = false;
-   private bool isDestroyedBannerAd = true;
-   private LevelPlayBannerAd bannerAd;
+    bool isBannerLoaded = false;
+    private bool isDestroyedBannerAd = true;
+    private LevelPlayBannerAd bannerAd;
 
-   public override void InitBannerAds(
-      UnityAction bannerLoadedSuccessCallback,
-      UnityAction bannerAdLoadedFailCallback,
-      UnityAction bannerAdsCollapsed,
-      UnityAction bannerAdsExpandedCallback,
-      UnityAction bannerAdsDisplayed = null,
-      UnityAction bannerAdsDisplayedFailedCallback = null,
-      UnityAction bannerAdsClickedCallback = null)
-   {
-      base.InitBannerAds(
-         bannerLoadedSuccessCallback,
-         bannerAdLoadedFailCallback,
-         bannerAdsCollapsed,
-         bannerAdsExpandedCallback,
-         bannerAdsDisplayed,
-         bannerAdsDisplayedFailedCallback,
-         bannerAdsClickedCallback);
-      DebugAds.Log("IronSource: Init Banner");
-      isDestroyedBannerAd = true;
+    public override void InitBannerAds(
+        UnityAction bannerLoadedSuccessCallback,
+        UnityAction bannerAdLoadedFailCallback,
+        UnityAction bannerAdsCollapsed,
+        UnityAction bannerAdsExpandedCallback,
+        UnityAction bannerAdsDisplayed = null,
+        UnityAction bannerAdsDisplayedFailedCallback = null,
+        UnityAction bannerAdsClickedCallback = null)
+    {
+        base.InitBannerAds(
+            bannerLoadedSuccessCallback,
+            bannerAdLoadedFailCallback,
+            bannerAdsCollapsed,
+            bannerAdsExpandedCallback,
+            bannerAdsDisplayed,
+            bannerAdsDisplayedFailedCallback,
+            bannerAdsClickedCallback);
+        DebugAds.Log("IronSource: Init Banner");
+        isDestroyedBannerAd = true;
 #if !IRONSOURCE_LEGACY
-      CreateBannerAds();
+        CreateBannerAds();
 #else
         InitEventBannerLegacy();
         CreateBannerAdsLegacy();
 #endif
-      RequestBannerAds();
-   }
+        RequestBannerAds();
+    }
 
-   public override void CreateBannerAds()
-   {
-      LevelPlayAdSize adSize = LevelPlayAdSize.CreateAdaptiveAdSize();
-      bannerAd = new LevelPlayBannerAd(bannerAdUnitID, adSize, LevelPlayBannerPosition.BottomCenter);
+    public override void CreateBannerAds()
+    {
+        LevelPlayAdSize adSize = LevelPlayAdSize.CreateAdaptiveAdSize();
 
-      bannerAd.OnAdLoaded += BannerOnAdLoadedEvent;
-      bannerAd.OnAdLoadFailed += BannerOnAdLoadFailedEvent;
-      bannerAd.OnAdDisplayed += BannerOnAdDisplayedEvent;
-      bannerAd.OnAdDisplayFailed += BannerOnAdDisplayFailedEvent;
-      bannerAd.OnAdClicked += BannerOnAdClickedEvent;
-      bannerAd.OnAdCollapsed += BannerOnAdCollapsedEvent;
-      bannerAd.OnAdLeftApplication += BannerOnAdLeftApplicationEvent;
-      bannerAd.OnAdExpanded += BannerOnAdExpandedEvent;
-      isDestroyedBannerAd = false;
-   }
+        var adConfig = new LevelPlayBannerAd.Config.Builder()
+            .SetSize(LevelPlayAdSize.BANNER)
+            .SetPlacementName("placementName")
+            .SetPosition(LevelPlayBannerPosition.BottomCenter)
+            .SetDisplayOnLoad(true)
+            .SetRespectSafeArea(true)
+            .Build();
 
-   private void CreateBannerAdsLegacy()
-   {
+
+        bannerAd = new LevelPlayBannerAd(bannerAdUnitID, adConfig);
+
+        bannerAd.OnAdLoaded += BannerOnAdLoadedEvent;
+        bannerAd.OnAdLoadFailed += BannerOnAdLoadFailedEvent;
+        bannerAd.OnAdDisplayed += BannerOnAdDisplayedEvent;
+        bannerAd.OnAdDisplayFailed += BannerOnAdDisplayFailedEvent;
+        bannerAd.OnAdClicked += BannerOnAdClickedEvent;
+        bannerAd.OnAdCollapsed += BannerOnAdCollapsedEvent;
+        bannerAd.OnAdLeftApplication += BannerOnAdLeftApplicationEvent;
+        bannerAd.OnAdExpanded += BannerOnAdExpandedEvent;
+        isDestroyedBannerAd = false;
+    }
+
+    private void CreateBannerAdsLegacy()
+    {
 #if IRONSOURCE_LEGACY
         IronSource.Agent.init(AppKey, IronSourceAdUnits.BANNER);
 #endif
-   }
+    }
 
-   #region Banner Event
+    #region Banner Event
 
-   #region IronSource Banner Event
+    #region IronSource Banner Event
 
-   private void BannerOnAdLoadedEvent(LevelPlayAdInfo adInfo)
-   {
-      DebugAds.Log("IronSource: I got BannerAdLoadedEvent");
-      isBannerLoaded = true;
-      BannerCallbacks.LoadedSuccess?.Invoke();
-   }
+    private void BannerOnAdLoadedEvent(LevelPlayAdInfo adInfo)
+    {
+        DebugAds.Log("IronSource: I got BannerAdLoadedEvent");
+        isBannerLoaded = true;
+        BannerCallbacks.LoadedSuccess?.Invoke();
+    }
 
-   private void BannerOnAdLoadFailedEvent(LevelPlayAdError error)
-   {
-      DebugAds.Log("IronSource: I got BannerAdLoadFailedEvent " + error.ErrorMessage);
-      isBannerLoaded = false;
-      BannerCallbacks.LoadedFail?.Invoke();
-   }
+    private void BannerOnAdLoadFailedEvent(LevelPlayAdError error)
+    {
+        DebugAds.Log("IronSource: I got BannerAdLoadFailedEvent " + error.ErrorMessage);
+        isBannerLoaded = false;
+        BannerCallbacks.LoadedFail?.Invoke();
+    }
 
-   private void BannerOnAdDisplayedEvent(LevelPlayAdInfo adInfo)
-   {
-      DebugAds.Log("IronSource: I got BannerAdDisplayedEvent");
-      BannerCallbacks.Displayed?.Invoke();
-   }
+    private void BannerOnAdDisplayedEvent(LevelPlayAdInfo adInfo)
+    {
+        DebugAds.Log("IronSource: I got BannerAdDisplayedEvent");
+        BannerCallbacks.Displayed?.Invoke();
+    }
 
-   private void BannerOnAdDisplayFailedEvent(LevelPlayAdDisplayInfoError adDisplayInfoError)
-   {
-      DebugAds.Log("IronSource: I got BannerAdDisplayFailedEvent");
-      BannerCallbacks.DisplayedFail?.Invoke();
-   }
+    private void BannerOnAdDisplayFailedEvent(LevelPlayAdDisplayInfoError adDisplayInfoError)
+    {
+        DebugAds.Log("IronSource: I got BannerAdDisplayFailedEvent");
+        BannerCallbacks.DisplayedFail?.Invoke();
+    }
 
-   private void BannerOnAdClickedEvent(LevelPlayAdInfo adInfo)
-   {
-      DebugAds.Log("IronSource: I got BannerAdClickedEvent");
-      BannerCallbacks.Clicked?.Invoke();
-   }
+    private void BannerOnAdClickedEvent(LevelPlayAdInfo adInfo)
+    {
+        DebugAds.Log("IronSource: I got BannerAdClickedEvent");
+        BannerCallbacks.Clicked?.Invoke();
+    }
 
-   private void BannerOnAdCollapsedEvent(LevelPlayAdInfo adInfo)
-   {
-      DebugAds.Log("IronSource: I got BannerAdCollapsedEvent");
-      BannerCallbacks.Collapsed?.Invoke();
-   }
+    private void BannerOnAdCollapsedEvent(LevelPlayAdInfo adInfo)
+    {
+        DebugAds.Log("IronSource: I got BannerAdCollapsedEvent");
+        BannerCallbacks.Collapsed?.Invoke();
+    }
 
-   private void BannerOnAdExpandedEvent(LevelPlayAdInfo adInfo)
-   {
-      DebugAds.Log("IronSource: I got BannerAdExpandedEvent");
-      BannerCallbacks.Expanded?.Invoke();
-   }
+    private void BannerOnAdExpandedEvent(LevelPlayAdInfo adInfo)
+    {
+        DebugAds.Log("IronSource: I got BannerAdExpandedEvent");
+        BannerCallbacks.Expanded?.Invoke();
+    }
 
-   private void BannerOnAdLeftApplicationEvent(LevelPlayAdInfo adInfo)
-   {
-      DebugAds.Log("IronSource: I got BannerAdLeftApplicationEvent");
-   }
+    private void BannerOnAdLeftApplicationEvent(LevelPlayAdInfo adInfo)
+    {
+        DebugAds.Log("IronSource: I got BannerAdLeftApplicationEvent");
+    }
 
-   #endregion
+    #endregion
 
-   #region IronSource Legacy Banner Event
+    #region IronSource Legacy Banner Event
 
+#if IRONSOURCE_LEGACY
    private void InitEventBannerLegacy()
    {
       IronSourceBannerEvents.onAdLoadedEvent += BannerOnAdLoadedEventLegacy;
@@ -540,78 +535,73 @@ public class IronSourceMediationController : AdsMediationController
       isBannerLoaded = true;
       BannerCallbacks.LoadedSuccess?.Invoke();
    }
+#endif
 
-   #endregion
+    #endregion
 
-   #endregion
+    #endregion
 
-   public override void RequestBannerAds()
-   {
-      base.RequestBannerAds();
-      DebugAds.Log("IronSource: Request IronSource Banner");
-      isBannerLoaded = false;
+    public override void RequestBannerAds()
+    {
+        base.RequestBannerAds();
+        DebugAds.Log("IronSource: Request IronSource Banner");
+        isBannerLoaded = false;
 #if IRONSOURCE_LEGACY
             IronSource.Agent.loadBanner(IronSourceBannerSize.BANNER, IronSourceBannerPosition.BOTTOM);
 #else
-      if (isDestroyedBannerAd || bannerAd == null)
-      {
-         CreateBannerAds();
-      }
+        if (isDestroyedBannerAd || bannerAd == null)
+        {
+            CreateBannerAds();
+        }
 
-      bannerAd?.LoadAd();
+        bannerAd?.LoadAd();
 #endif
-   }
+    }
 
-   public override void ShowBannerAds()
-   {
-      base.ShowBannerAds();
-      DebugAds.Log("IronSource: Show IronSource Banner");
+    public override void ShowBannerAds()
+    {
+        base.ShowBannerAds();
+        DebugAds.Log("IronSource: Show IronSource Banner");
 #if IRONSOURCE_LEGACY
         IronSource.Agent.displayBanner();
 #else
-      bannerAd?.ShowAd();
+        bannerAd?.ShowAd();
 #endif
-   }
+    }
 
-   public override void HideBannerAds()
-   {
-      base.HideBannerAds();
+    public override void HideBannerAds()
+    {
+        base.HideBannerAds();
 #if IRONSOURCE_LEGACY
       IronSource.Agent.hideBanner();
 #else
-      bannerAd?.HideAd();
+        bannerAd?.HideAd();
 #endif
-   }
+    }
 
-   public override void DestroyBannerAds()
-   {
-      base.DestroyBannerAds();
+    public override void DestroyBannerAds()
+    {
+        base.DestroyBannerAds();
 #if IRONSOURCE_LEGACY
         IronSource.Agent.destroyBanner();
 #else
-      bannerAd?.DestroyAd();
+        bannerAd?.DestroyAd();
 #endif
-      isDestroyedBannerAd = true;
-   }
+        isDestroyedBannerAd = true;
+    }
 
-   public override bool IsBannerLoaded()
-   {
-      return isBannerLoaded;
-   }
+    public override bool IsBannerLoaded()
+    {
+        return isBannerLoaded;
+    }
 
-   #endregion
-
-   void OnApplicationPause(bool isPaused)
-   {
-      IronSource.Agent.onApplicationPause(isPaused);
-   }
-
+    #endregion
 
 #endif
 
 #endif
-   public override AdsMediationType GetAdsMediationType()
-   {
-      return AdsMediationType.IRONSOURCE;
-   }
+    public override AdsMediationType GetAdsMediationType()
+    {
+        return AdsMediationType.IRONSOURCE;
+    }
 }
