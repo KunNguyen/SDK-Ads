@@ -6,6 +6,7 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/ABIMaxSDKAds/Scenes/Demo.unity
+    path: Assets/JisSDKAds/Scenes/FirstScene.unity
     guid: 6fa24f8f12200dc46ad3b4f1715a023b
   m_configObjects: {}
+  m_UseUCBPForAssetBundles: 0
