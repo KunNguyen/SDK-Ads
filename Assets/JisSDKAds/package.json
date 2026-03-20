@@ -7,7 +7,9 @@
   "author": {
     "name": "JustIdleGames"
   },
-  "dependencies": {},
+  "dependencies": {
+    "com.unity.purchasing": "5.0.0"
+  },
   "keywords": [
     "ads",
     "sdk",

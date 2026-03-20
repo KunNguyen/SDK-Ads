@@ -1,5 +1,7 @@
 using System.Collections.Generic;
+#if UNITY_AD_ADMOB
 using GoogleMobileAds.Api;
+#endif
 using Sirenix.OdinInspector;
 
 namespace SDK

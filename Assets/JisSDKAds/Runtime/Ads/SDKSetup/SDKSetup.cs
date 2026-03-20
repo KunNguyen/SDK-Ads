@@ -2,7 +2,9 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using ABIMaxSDKAds.Scripts.Utils;
+#if UNITY_AD_ADMOB
 using GoogleMobileAds.Api;
+#endif
 using Sirenix.OdinInspector;
 using UnityEngine;
 using UnityEngine.Serialization;

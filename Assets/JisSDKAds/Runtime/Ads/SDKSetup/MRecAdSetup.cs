@@ -1,5 +1,7 @@
 using System.Collections.Generic;
+#if UNITY_AD_ADMOB
 using GoogleMobileAds.Api;
+#endif
 using Sirenix.OdinInspector;
 
 namespace SDK
@@ -9,9 +11,14 @@ namespace SDK
           [BoxGroup("MREC"), PropertyOrder(6)] 
           public AdsMediationType mrecAdsMediationType;
 
+#if UNITY_AD_ADMOB
           [BoxGroup("MREC"), PropertyOrder(6)]
           [ShowInInspector, ShowIf("@mrecAdsMediationType == AdsMediationType.ADMOB")]
           public AdPosition mrecAdsPosition;
+#else
+          [BoxGroup("MREC"), PropertyOrder(6)]
+          public int mrecAdsPositionFallback = 8; // BottomCenter when AdMob
+#endif
 
           [BoxGroup("MREC"), PropertyOrder(6)]
           [ShowInInspector, ShowIf("@mrecAdsMediationType == AdsMediationType.MAX")]

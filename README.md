@@ -47,6 +47,49 @@ Khi clone repo vào cùng thư mục với project:
 
 > **Lưu ý:** Đường dẫn `file:` phải tương đối từ thư mục gốc project (chứa `Packages/`).
 
+### ⚠️ Bắt buộc: Cài đặt Dependencies trước
+
+JisSDKAds **cần** các package sau để compile. Cài đặt **trước** hoặc **cùng lúc** với JisSDKAds:
+
+| Package | Cách cài |
+|---------|----------|
+| **Unity Purchasing** | Có sẵn trong Unity Registry |
+| **Firebase** (App, Analytics, RemoteConfig) | [Firebase Unity Setup](https://firebase.google.com/docs/unity/setup) – import `.unitypackage` hoặc `.tgz` |
+| **Google Mobile Ads** | [AdMob Quick Start](https://developers.google.com/admob/unity/quick-start) – import qua UPM hoặc `.unitypackage` |
+| **AppLovin MAX** (nếu dùng MAX) | [MAX Integration](https://dash.applovin.com/documentation/mediation/unity/getting-started/integration) |
+
+**Nếu thiếu dependencies**, bạn sẽ gặp lỗi như:
+- `The type or namespace name 'GoogleMobileAds' could not be found`
+- `The type or namespace name 'Firebase' could not be found`
+- `The type or namespace name 'Purchasing' does not exist`
+
+**Giải pháp:** Cài đủ Firebase, Google AdMob, Unity Purchasing theo hướng dẫn trên.
+
+**Mẫu `manifest.json`** – thêm vào `dependencies` và `scopedRegistries` (nếu chưa có):
+
+```json
+{
+  "dependencies": {
+    "com.jis.sdkads": "https://github.com/JustIdleGames/SDK-Ads.git?path=/Assets/JisSDKAds#main",
+    "com.unity.purchasing": "5.0.0"
+  },
+  "scopedRegistries": [
+    {
+      "name": "Game Package Registry by Google",
+      "url": "https://unityregistry-pa.googleapis.com",
+      "scopes": ["com.google"]
+    },
+    {
+      "name": "AppLovin MAX Unity",
+      "url": "https://unity.packages.applovin.com/",
+      "scopes": ["com.applovin.mediation.ads", "com.applovin.mediation.adapters"]
+    }
+  ]
+}
+```
+
+Sau đó cài **Firebase** và **Google AdMob** qua Package Manager (từ registry Google) hoặc import `.unitypackage` / `.tgz` theo tài liệu chính thức.
+
 ---
 
 ## Yêu cầu & Dependencies

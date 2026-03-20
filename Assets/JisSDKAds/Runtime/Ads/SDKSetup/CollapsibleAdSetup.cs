@@ -1,5 +1,7 @@
 using System.Collections.Generic;
+#if UNITY_AD_ADMOB
 using GoogleMobileAds.Api;
+#endif
 using Sirenix.OdinInspector;
 using UnityEngine;
 
@@ -10,9 +12,14 @@ namespace SDK
         [BoxGroup("COLLAPSIBLE BANNER"),PropertyOrder(5)] 
         public AdsMediationType collapsibleBannerAdsMediationType;
 
+#if UNITY_AD_ADMOB
         [BoxGroup("COLLAPSIBLE BANNER"), PropertyOrder(5)]
         [ShowInInspector, ShowIf("@collapsibleBannerAdsMediationType != AdsMediationType.NONE")]
         public AdPosition adsPositionCollapsibleBanner;
+#else
+        [BoxGroup("COLLAPSIBLE BANNER"), PropertyOrder(5), HideInInspector]
+        public int adsPositionCollapsibleBannerFallback = 8; // BottomCenter when AdMob
+#endif
 
         [BoxGroup("COLLAPSIBLE BANNER"), PropertyOrder(5)]
         [ShowInInspector, ShowIf("@collapsibleBannerAdsMediationType != AdsMediationType.NONE")]
