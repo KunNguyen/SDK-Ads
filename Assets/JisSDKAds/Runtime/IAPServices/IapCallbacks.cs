@@ -92,6 +92,7 @@ namespace SDK.IAP
             foreach (var cartItem in failedOrder.CartOrdered.Items())
             {
                 InAppPurchaser.IAPLogger.LogFailedPurchase(cartItem.Product, reason);
+                InAppPurchaser.OnPurchaseFailed(cartItem.Product, reason);
             }
         }
         public void OnOrderDeferred(DeferredOrder deferredOrder)

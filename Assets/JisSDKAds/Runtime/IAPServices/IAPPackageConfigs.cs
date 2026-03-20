@@ -8,7 +8,7 @@ namespace ABIMaxSDKAds.Scripts.IAPServices
     [CreateAssetMenu(fileName = "IAPPackageConfigs", menuName = "SDK/IAP/IAPPackageConfigs", order = 0)]
     public class IAPPackageConfigs : ScriptableObject
     {
-        [field: SerializeField, TableList] public List<IAPPackage> Packages { get; set; }
+        [field: SerializeField, TableList] public List<IAPPackage> Packages { get; set; } = new List<IAPPackage>();
         
         
     }

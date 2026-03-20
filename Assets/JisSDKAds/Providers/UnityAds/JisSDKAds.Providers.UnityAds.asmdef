@@ -1,0 +1,16 @@
+{
+    "name": "JisSDKAds.Providers.UnityAds",
+    "rootNamespace": "JisSDKAds.Providers.UnityAds",
+    "references": [
+        "JisSDKAds.Core"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

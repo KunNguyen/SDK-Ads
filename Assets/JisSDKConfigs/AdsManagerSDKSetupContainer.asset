@@ -12,5 +12,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f98fb13c29010bf4290a0c0fd645340e, type: 3}
   m_Name: AdsManagerSDKSetupContainer
   m_EditorClassIdentifier: JisSDKAds.Runtime::SDK.AdsManagerSDKSetupContainer
-  android: {fileID: 11400000, guid: b2df45d5d8ddb0e4186a3c8c6b1a1f53, type: 2}
-  ios: {fileID: 11400000, guid: ae81b858936578a4982719fb77818572, type: 2}
+  android: {fileID: 11400000, guid: 578c5b1b3d53b5640a6145f17dd14991, type: 2}
+  ios: {fileID: 11400000, guid: 6dfedb0151c6cfa4f8968d0a1ecca1f8, type: 2}

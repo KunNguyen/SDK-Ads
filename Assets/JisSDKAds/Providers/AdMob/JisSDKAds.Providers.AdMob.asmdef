@@ -1,0 +1,23 @@
+{
+    "name": "JisSDKAds.Providers.AdMob",
+    "rootNamespace": "JisSDKAds.Providers.AdMob",
+    "references": [
+        "JisSDKAds.Core"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "GoogleMobileAds.dll",
+        "GoogleMobileAds.Unity.dll",
+        "GoogleMobileAds.Common.dll",
+        "GoogleMobileAds.Core.dll"
+    ],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "UNITY_AD_ADMOB"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -1,5 +1,8 @@
-using Sirenix.OdinInspector;
 using UnityEngine;
+#if UNITY_EDITOR
+using UnityEditor;
+using UnityEditor.SceneManagement;
+#endif
 
 namespace SDK
 {
@@ -12,29 +15,34 @@ namespace SDK
         public SDKSetup android;
         public SDKSetup ios;
 
-        private void SetAndroid(SDKSetup setup) => android = setup;
-        private void SetIos(SDKSetup setup) => ios = setup;
-
+#if UNITY_EDITOR
+        /// <summary>
+        /// Gán cả Android và iOS setup vào AdsManager, sau đó apply config theo build target hiện tại.
+        /// </summary>
         public void Setup()
         {
-            if(android != null)
+            var adsManager = Object.FindFirstObjectByType<AdsManager>();
+            if (adsManager == null)
             {
-                SetAndroid(android);
+                Debug.LogError("[AdsManager] Please add AdsManager Prefab to scene.");
+                return;
             }
-            else
+
+            adsManager.ApplyFromContainer(this);
+            EditorUtility.SetDirty(adsManager);
+            EditorSceneManager.MarkSceneDirty(adsManager.gameObject.scene);
+
+            var setupForTarget = GetSetupForActiveBuildTarget();
+            if (setupForTarget != null)
             {
-                Debug.LogError("Android SDKSetup is not set");
-            }
-            
-            
-            if(ios != null)
-            {
-                SetIos(ios);
-            }
-            else
-            {
-                Debug.LogError("iOS SDKSetup is not set");
+                setupForTarget.SetupSymbol();
             }
         }
+
+        private SDKSetup GetSetupForActiveBuildTarget()
+        {
+            return EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android ? android : ios;
+        }
+#endif
     }
 }

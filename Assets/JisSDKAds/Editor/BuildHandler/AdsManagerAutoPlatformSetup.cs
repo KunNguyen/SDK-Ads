@@ -57,14 +57,20 @@ namespace SDK
                 return false;
             }
 
-            if (requireAdsManagerInScene && Object.FindObjectOfType<AdsManager>() == null)
+            var adsManager = Object.FindFirstObjectByType<AdsManager>();
+            if (requireAdsManagerInScene && adsManager == null)
             {
-                // Tránh gọi setup.Setup() để không spam lỗi "Please add Manager Prefab..."
                 Debug.Log($"[AdsManager] {reason}: Không có AdsManager trong scene, bỏ qua apply.");
                 return false;
             }
 
-            setup.Setup();
+            if (adsManager != null)
+            {
+                adsManager.ApplyFromContainer(container);
+                EditorUtility.SetDirty(adsManager);
+                UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(adsManager.gameObject.scene);
+            }
+            setup.SetupSymbol();
             Debug.Log($"[AdsManager] {reason}: Applied SDKSetup '{setup.name}' for {EditorUserBuildSettings.activeBuildTarget}");
             return true;
         }
@@ -88,7 +94,14 @@ namespace SDK
                 return false;
             }
 
-            setup.Setup();
+            var adsManager = Object.FindFirstObjectByType<AdsManager>();
+            if (adsManager != null)
+            {
+                adsManager.ApplyFromContainer(container);
+                EditorUtility.SetDirty(adsManager);
+                UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(adsManager.gameObject.scene);
+            }
+            setup.SetupSymbol();
             Debug.Log($"[AdsManager] {reason}: Applied SDKSetup '{setup.name}' for {target}");
             return true;
         }

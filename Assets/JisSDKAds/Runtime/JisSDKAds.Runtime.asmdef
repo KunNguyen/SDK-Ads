@@ -3,6 +3,13 @@
     "rootNamespace": "",
     "references": [
         "GUID:fe25561d224ed4743af4c60938a59d0b",
+        "AppsFlyer",
+        "Unity.Purchasing",
+        "Unity.Purchasing.Stores",
+        "Unity.Purchasing.Security",
+        "Unity.Purchasing.SecurityCore",
+        "Unity.Purchasing.SecurityStub",
+        "Unity.Purchasing.TransactionVerifier",
         "GUID:6055be8ebefd69e48b49212b09b47b2f",
         "GUID:70ea675efa2644cef98c7ece24158333",
         "GUID:f0136c67cf7443ff90e2e1b623f008b5",

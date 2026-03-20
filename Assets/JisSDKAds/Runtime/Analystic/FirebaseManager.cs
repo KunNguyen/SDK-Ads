@@ -1,8 +1,5 @@
 using System;
 using System.Collections;
-#if UNITY_APPSFLYER
-using AppsFlyerSDK; 
-#endif
 using Firebase;
 using Firebase.Analytics;
 #if UNITY_CRASHLYTICS
@@ -50,7 +47,7 @@ namespace SDK {
         public void OnTokenReceived(object sender, Firebase.Messaging.TokenReceivedEventArgs token)
         {
 #if UNITY_ANDROID && UNITY_APPSFLYER
-            AppsFlyer.updateServerUninstallToken(token.Token);
+            AppsFlyerSDK.AppsFlyer.updateServerUninstallToken(token.Token);
 #endif
         } 
 #endif

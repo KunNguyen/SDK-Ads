@@ -55,7 +55,7 @@ namespace SDK.IAP
             if (appleReceipt != null)
             {
                 LogConsole(
-                    $"Apple - Original Transaction: '{appleReceipt.originalTransactionIdentifier}', Expiration Date : '{appleReceipt.subscriptionExpirationDate}', Cancellation Date : '{appleReceipt.cancellationDate}', Quandtity : '{appleReceipt.quantity}'");
+                    $"Apple - Original Transaction: '{appleReceipt.originalTransactionIdentifier}', Expiration Date : '{appleReceipt.subscriptionExpirationDate}', Cancellation Date : '{appleReceipt.cancellationDate}', Quantity : '{appleReceipt.quantity}'");
             }
         }
 

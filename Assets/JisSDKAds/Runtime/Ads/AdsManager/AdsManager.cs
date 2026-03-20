@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.Threading.Tasks;
@@ -83,14 +83,32 @@ namespace SDK
 
         private SDKSetup CurrentSDKSetup
         {
-            get => Application.platform == RuntimePlatform.Android ? AndroidSdkSetup : IOSSdkSetup;
-            set
-            {
-                if (Application.platform == RuntimePlatform.Android)
-                    AndroidSdkSetup = value;
-                else
-                    IOSSdkSetup = value;
-            }
+            get => GetSetupForCurrentPlatform();
+            set => SetSetupForCurrentPlatform(value);
+        }
+
+        private SDKSetup GetSetupForCurrentPlatform()
+        {
+#if UNITY_EDITOR
+            return EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android ? AndroidSdkSetup : IOSSdkSetup;
+#else
+            return Application.platform == RuntimePlatform.Android ? AndroidSdkSetup : IOSSdkSetup;
+#endif
+        }
+
+        private void SetSetupForCurrentPlatform(SDKSetup value)
+        {
+#if UNITY_EDITOR
+            if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android)
+                AndroidSdkSetup = value;
+            else
+                IOSSdkSetup = value;
+#else
+            if (Application.platform == RuntimePlatform.Android)
+                AndroidSdkSetup = value;
+            else
+                IOSSdkSetup = value;
+#endif
         }
 
         [ShowInInspector, ReadOnly, PropertyOrder(-1)]
@@ -210,10 +228,12 @@ namespace SDK
 
         private void InitializeAdsConfigs()
         {
+            if (CurrentSDKSetup == null || AdsConfigs == null) return;
             foreach (var adsConfig in AdsConfigs)
             {
                 var adsMediationType = CurrentSDKSetup.GetAdsMediationType(adsConfig.adsType);
-                adsConfig.Init(GetAdsMediationController(adsMediationType), OnAdRevenuePaidEvent);
+                var controller = GetAdsMediationController(adsMediationType);
+                adsConfig.Init(controller, OnAdRevenuePaidEvent);
             }
         }
 
@@ -471,7 +491,7 @@ namespace SDK
                 CurrentSDKSetup.CustomAdImpressionEventName);
 
 #if UNITY_APPSFLYER
-            ABIAppsflyerManager.TrackAppsflyerAdRevenue(impressionData);
+            AppsflyerManager.TrackAppsflyerAdRevenue(impressionData);
 #endif
             
 #if UNITY_SOLAR_ENGINE
@@ -527,7 +547,8 @@ namespace SDK
 
         private AdsMediationController GetAdsMediationController(AdsMediationType adsMediationType)
         {
-            return AdsMediationControllers.Find(x => x.AdsMediationType == adsMediationType);
+            if (AdsMediationControllers == null) return null;
+            return AdsMediationControllers.Find(x => x != null && x.AdsMediationType == adsMediationType);
         }
 
         public bool IsShowingAds()

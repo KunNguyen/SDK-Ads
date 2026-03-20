@@ -14,7 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: JisSDKAds.Runtime::SDK.SDKSetup
   appOpenAdsMediationType: 0
   bannerAdsMediationType: 0
-  admobBannerAdsPosition: 0
   isBannerShowingOnStart: 0
   isAutoRefreshBannerByCode: 0
   collapsibleBannerAdsMediationType: 0
@@ -62,6 +61,8 @@ MonoBehaviour:
     mrecAdUnitID:
       AndroidID: []
     appOpenAdUnitID:
+      AndroidID: []
+    rewardedInterstitialAdUnitID:
       AndroidID: []
   ironSourceAdSetup:
     appKey: 

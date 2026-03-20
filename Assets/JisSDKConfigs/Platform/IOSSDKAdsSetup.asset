@@ -10,40 +10,39 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 074fc6e48c4aeee4eaaa708414d919ed, type: 3}
-  m_Name: SDKAdsSetup
-  m_EditorClassIdentifier: 
-  appOpenAdsMediationType: 2
-  bannerAdsMediationType: 2
-  admobBannerAdsPosition: 1
-  isBannerShowingOnStart: 1
+  m_Name: IOSSDKAdsSetup
+  m_EditorClassIdentifier: JisSDKAds.Runtime::SDK.SDKSetup
+  appOpenAdsMediationType: 0
+  bannerAdsMediationType: 0
+  isBannerShowingOnStart: 0
   isAutoRefreshBannerByCode: 0
   collapsibleBannerAdsMediationType: 0
-  adsPositionCollapsibleBanner: 1
-  isShowingOnStartCollapsibleBanner: 1
-  isAutoRefreshCollapsibleBanner: 1
-  isAutoRefreshExtendCollapsibleBanner: 1
-  autoRefreshTime: 20
+  adsPositionCollapsibleBanner: 0
+  isShowingOnStartCollapsibleBanner: 0
+  isAutoRefreshCollapsibleBanner: 0
+  isAutoRefreshExtendCollapsibleBanner: 0
+  autoRefreshTime: 30
   isAutoCloseCollapsibleBanner: 0
   autoCloseTime: 30
-  interstitialAdsMediationType: 3
+  interstitialAdsMediationType: 0
   mrecAdsMediationType: 0
   mrecAdsPosition: 0
-  rewardedAdsMediationType: 3
+  rewardedAdsMediationType: 0
   IsLinkToRemoveAds: 1
-  <IsActiveAppsflyer>k__BackingField: 0
+  <IsActiveAppsflyer>k__BackingField: 1
   <IsActiveAdImpressionTracking>k__BackingField: 1
   <IsActiveCustomAdImpressionTracking>k__BackingField: 1
   <CustomAdImpressionEventName>k__BackingField: ad_impression_abi
-  adsMediationType: 3
+  adsMediationType: 0
   maxAdsSetup:
     sdkKey:
-      AndroidID: uJa4sGbT3zSQ9zw2o_CzJrxzsUI682WXsNFOfDGoT0Z5SsqQSWN52AZi7P0UtoN13VRe_MgEZodmMuzDKQwf0d
+      AndroidID: 
     interstitialAdUnitID:
-      AndroidID: dc0ad761a49f5182
+      AndroidID: 
     rewardedAdUnitID:
-      AndroidID: ff0317a314d2117c
+      AndroidID: 
     bannerAdUnitID:
-      AndroidID: 6d8e4a6ca85ee0d0
+      AndroidID: 
     collapsibleBannerAdUnitID:
       AndroidID: 
     mrecAdUnitID:
@@ -52,24 +51,21 @@ MonoBehaviour:
       AndroidID: 
   admobAdsSetup:
     interstitialAdUnitID:
-      AndroidID:
-      - ca-app-pub-3940256099942544/1033173712
+      AndroidID: []
     rewardedAdUnitID:
-      AndroidID:
-      - ca-app-pub-3940256099942544/5224354917
+      AndroidID: []
     bannerAdUnitID:
-      AndroidID:
-      - ca-app-pub-3940256099942544/6300978111
+      AndroidID: []
     collapsibleBannerAdUnitID:
-      AndroidID:
-      - 
+      AndroidID: []
     mrecAdUnitID:
       AndroidID: []
     appOpenAdUnitID:
-      AndroidID:
-      - ca-app-pub-3940256099942544/9257395921
+      AndroidID: []
+    rewardedInterstitialAdUnitID:
+      AndroidID: []
   ironSourceAdSetup:
-    appKey: 2343d765d
+    appKey: 
     interstitialID: 
     rewardedID: 
     bannerID: 

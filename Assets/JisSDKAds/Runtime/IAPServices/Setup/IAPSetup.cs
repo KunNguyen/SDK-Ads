@@ -9,7 +9,7 @@ namespace ABIMaxSDKAds.Scripts.IAPServices.Setup
         public static IAPPackageConfigs CreateIAPPackageConfigs()
         {
             var directory = CreateConfigFolder();
-            var assetName = "IAPPackage.asset";
+            var assetName = "IAPPackageConfigs.asset";
             var assetPath = $"{directory}{assetName}";
             var selectedScriptableObject = AssetDatabase.LoadAssetAtPath<IAPPackageConfigs>(assetPath);
             if (selectedScriptableObject == null)

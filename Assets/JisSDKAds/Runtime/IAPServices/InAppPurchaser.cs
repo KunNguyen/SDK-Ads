@@ -5,7 +5,6 @@ using System.Linq;
 using ABIMaxSDKAds.Scripts;
 using ABIMaxSDKAds.Scripts.IAPServices;
 using ABIMaxSDKAds.Scripts.IAPServices.Setup;
-using BanThanh;
 using Sirenix.OdinInspector;
 using UnityEngine;
 using UnityEngine.Events;
@@ -119,6 +118,12 @@ namespace SDK.IAP
                if (IapProductConfigs == null)
                {
                     Debug.LogError("IapProductConfigs is null");
+                    return;
+               }
+
+               if (IapProductConfigs.Packages == null || IapProductConfigs.Packages.Count == 0)
+               {
+                    Debug.LogError("IapProductConfigs.Packages is null or empty");
                     return;
                }
 

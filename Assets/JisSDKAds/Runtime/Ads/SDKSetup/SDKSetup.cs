@@ -52,7 +52,7 @@ namespace SDK
           [GUIColor(0.2f, 0.8f, 0.2f)]
           public void Setup()
           {
-               AdsManager adsManager = FindObjectOfType<AdsManager>();
+               AdsManager adsManager = FindFirstObjectByType<AdsManager>();
                if (adsManager != null)
                {
                     adsManager.UpdateAdsMediationConfig(this);
@@ -86,7 +86,7 @@ namespace SDK
                }
           }
 
-          private void SetupSymbol()
+          public void SetupSymbol()
           {
                List<string> removeSymbols = new List<string>
                     { MAX_MEDIATION_SYMBOL, ADMOB_MEDIATION_SYMBOL, IRONSOURCE_MEDIATION_SYMBOL };

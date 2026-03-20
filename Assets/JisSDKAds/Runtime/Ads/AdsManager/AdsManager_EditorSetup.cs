@@ -1,12 +1,31 @@
 using System.Collections.Generic;
 using ABIMaxSDKAds.Scripts;
+#if UNITY_EDITOR
 using UnityEditor;
+#endif
 
 namespace SDK
 {
      public partial class AdsManager
      {
           #region EditorUpdate
+
+#if UNITY_EDITOR
+          /// <summary>
+          /// Gán Android/IOS setup từ Container vào AdsManager, sau đó apply config theo build target hiện tại.
+          /// </summary>
+          public void ApplyFromContainer(AdsManagerSDKSetupContainer container)
+          {
+               if (container == null) return;
+               AndroidSdkSetup = container.android;
+               IOSSdkSetup = container.ios;
+               var setup = EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android
+                    ? container.android
+                    : container.ios;
+               if (setup != null)
+                    UpdateAdsMediationConfig(setup);
+          }
+#endif
 
           public void UpdateAdsMediationConfig()
           {
@@ -69,37 +88,37 @@ namespace SDK
                MaxMediationController maxMediationController =
                     GetAdsMediationController(adsMediationType) as MaxMediationController;
                if (maxMediationController == null) return;
-               if (SDKSetup.adsMediationType == adsMediationType)
+               if (CurrentSDKSetup.adsMediationType == adsMediationType)
                {
-                    maxMediationController.m_MaxAdConfig.SDKKey = SDKSetup.maxAdsSetup.SDKKey;
+                    maxMediationController.m_MaxAdConfig.SDKKey = CurrentSDKSetup.maxAdsSetup.SDKKey;
                }
 
                maxMediationController.m_MaxAdConfig.InterstitialAdUnitID =
-                    SDKSetup.interstitialAdsMediationType == adsMediationType
-                         ? SDKSetup.maxAdsSetup.InterstitialAdUnitID
+                    CurrentSDKSetup.interstitialAdsMediationType == adsMediationType
+                         ? CurrentSDKSetup.maxAdsSetup.InterstitialAdUnitID
                          : "";
 
                maxMediationController.m_MaxAdConfig.RewardedAdUnitID =
-                    SDKSetup.rewardedAdsMediationType == adsMediationType ? SDKSetup.maxAdsSetup.RewardedAdUnitID : "";
+                    CurrentSDKSetup.rewardedAdsMediationType == adsMediationType ? CurrentSDKSetup.maxAdsSetup.RewardedAdUnitID : "";
 
-               maxMediationController.m_MaxAdConfig.BannerAdUnitID = SDKSetup.bannerAdsMediationType == adsMediationType
-                    ? SDKSetup.maxAdsSetup.BannerAdUnitID
+               maxMediationController.m_MaxAdConfig.BannerAdUnitID = CurrentSDKSetup.bannerAdsMediationType == adsMediationType
+                    ? CurrentSDKSetup.maxAdsSetup.BannerAdUnitID
                     : "";
 #if UNITY_AD_MAX
-               maxMediationController.m_BannerPosition = SDKSetup.maxBannerAdsPosition;
+               maxMediationController.m_BannerPosition = CurrentSDKSetup.maxBannerAdsPosition;
 #endif
 
                maxMediationController.m_MaxAdConfig.CollapsibleBannerAdUnitID =
-                    SDKSetup.collapsibleBannerAdsMediationType == adsMediationType
-                         ? SDKSetup.maxAdsSetup.CollapsibleBannerAdUnitID
+                    CurrentSDKSetup.collapsibleBannerAdsMediationType == adsMediationType
+                         ? CurrentSDKSetup.maxAdsSetup.CollapsibleBannerAdUnitID
                          : "";
 
-               maxMediationController.m_MaxAdConfig.MrecAdUnitID = SDKSetup.mrecAdsMediationType == adsMediationType
-                    ? SDKSetup.maxAdsSetup.MrecAdUnitID
+               maxMediationController.m_MaxAdConfig.MrecAdUnitID = CurrentSDKSetup.mrecAdsMediationType == adsMediationType
+                    ? CurrentSDKSetup.maxAdsSetup.MrecAdUnitID
                     : "";
 
                maxMediationController.m_MaxAdConfig.AppOpenAdUnitID =
-                    SDKSetup.appOpenAdsMediationType == adsMediationType ? SDKSetup.maxAdsSetup.AppOpenAdUnitID : "";
+                    CurrentSDKSetup.appOpenAdsMediationType == adsMediationType ? CurrentSDKSetup.maxAdsSetup.AppOpenAdUnitID : "";
 
 #if UNITY_EDITOR
                EditorUtility.SetDirty(maxMediationController);
@@ -180,17 +199,17 @@ namespace SDK
             IronSourceMediationController ironSourceMediationController =
  GetAdsMediationController(adsMediationType) as IronSourceMediationController;
             if (ironSourceMediationController == null) return;
-            if (SDKSetup.adsMediationType == adsMediationType)
+            if (CurrentSDKSetup.adsMediationType == adsMediationType)
             {
-                ironSourceMediationController.AppKey = SDKSetup.ironSourceAdSetup.appKey;
+                ironSourceMediationController.AppKey = CurrentSDKSetup.ironSourceAdSetup.appKey;
             }
             
             ironSourceMediationController.interstitialAdUnitID =
-                 SDKSetup.interstitialAdsMediationType == adsMediationType ? SDKSetup.ironSourceAdSetup.interstitialID : "";
+                 CurrentSDKSetup.interstitialAdsMediationType == adsMediationType ? CurrentSDKSetup.ironSourceAdSetup.interstitialID : "";
             ironSourceMediationController.rewardedAdUnitID =
-                 SDKSetup.rewardedAdsMediationType == adsMediationType ? SDKSetup.ironSourceAdSetup.rewardedID : "";
+                 CurrentSDKSetup.rewardedAdsMediationType == adsMediationType ? CurrentSDKSetup.ironSourceAdSetup.rewardedID : "";
             ironSourceMediationController.bannerAdUnitID =
-                 SDKSetup.bannerAdsMediationType == adsMediationType ? SDKSetup.ironSourceAdSetup.bannerID : "";
+                 CurrentSDKSetup.bannerAdsMediationType == adsMediationType ? CurrentSDKSetup.ironSourceAdSetup.bannerID : "";
 #if UNITY_EDITOR
             EditorUtility.SetDirty(ironSourceMediationController);
             DebugAds.Log("Update IronSource Mediation Done");

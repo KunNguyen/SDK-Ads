@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System;
@@ -85,7 +85,7 @@ namespace SDK {
                         string eventName = ad_inters_show_count + totalWatched;
                         FirebaseManager.Instance.LogFirebaseEvent(eventName);
 #if UNITY_APPSFLYER
-                        ABIAppsflyerManager.TrackInterstitial_ShowCount(totalWatched); 
+                        AppsflyerManager.TrackInterstitial_ShowCount(totalWatched); 
 #endif
                     }
                     break;
@@ -104,7 +104,7 @@ namespace SDK {
         public void TrackAdsReward_ClickOnButton() {
             FirebaseManager.Instance.LogFirebaseEvent(ads_reward_click);
 #if UNITY_APPSFLYER
-            ABIAppsflyerManager.TrackRewarded_ClickShowButton();
+            AppsflyerManager.TrackRewarded_ClickShowButton();
 #endif
         }
         public void TrackAdsReward_StartShow() {
@@ -120,7 +120,7 @@ namespace SDK {
             };
             FirebaseManager.Instance.LogFirebaseEvent(ads_reward_complete, parameters);
 #if UNITY_APPSFLYER
-            ABIAppsflyerManager.TrackRewarded_Displayed();
+            AppsflyerManager.TrackRewarded_Displayed();
             EventManager.AddEventNextFrame(() =>
             {
                 TrackLocalAdImpression(AdsType.REWARDED);
@@ -130,7 +130,7 @@ namespace SDK {
         public void TrackAdsReward_LoadSuccess() {
             FirebaseManager.Instance.LogFirebaseEvent(ads_reward_loadsuccess);
 #if UNITY_APPSFLYER
-            ABIAppsflyerManager.TrackRewarded_LoadedSuccess();
+            AppsflyerManager.TrackRewarded_LoadedSuccess();
 #endif
         }
         #endregion
@@ -156,7 +156,7 @@ namespace SDK {
             };
             FirebaseManager.Instance.LogFirebaseEvent(ad_inter_load, parameters);
 #if UNITY_APPSFLYER
-            ABIAppsflyerManager.TrackInterstitial_LoadedSuccess();
+            AppsflyerManager.TrackInterstitial_LoadedSuccess();
 #endif
         }
         public void TrackAdsInterstitial_LoadedFail(string error, float timeFromStartRequest)
@@ -172,7 +172,7 @@ namespace SDK {
         public void TrackAdsInterstitial_ShowSuccess() {
             FirebaseManager.Instance.LogFirebaseEvent(ad_inter_show);
 #if UNITY_APPSFLYER
-            ABIAppsflyerManager.TrackInterstitial_Displayed();
+            AppsflyerManager.TrackInterstitial_Displayed();
             EventManager.AddEventNextFrame(() =>
             {
                 TrackLocalAdImpression(AdsType.INTERSTITIAL);
@@ -189,7 +189,7 @@ namespace SDK {
         public void TrackAdsInterstitial_ClickOnButton() {
             FirebaseManager.Instance.LogFirebaseEvent(ad_inter_click);
 #if UNITY_APPSFLYER
-            ABIAppsflyerManager.TrackInterstitial_ClickShowButton();
+            AppsflyerManager.TrackInterstitial_ClickShowButton();
 #endif
         }
         #endregion

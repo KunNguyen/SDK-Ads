@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using ABIMaxSDKAds.Scripts;
@@ -12,11 +12,17 @@ namespace SDK
 #if UNITY_AD_ADMOB
      using GoogleMobileAds.Api;
      using GoogleMobileAds.Ump.Api;
+#endif
 
+     /// <summary>
+     /// AdMob mediation controller. Class luôn tồn tại để prefab có thể reference.
+     /// Implementation thực chỉ compile khi UNITY_AD_ADMOB được định nghĩa.
+     /// </summary>
      public class AdmobMediationController : AdsMediationController
      {
           public AdmobAdSetup m_AdmobAdSetup;
 
+#if UNITY_AD_ADMOB
           private InterstitialAd InterstitialAds { get; set; }
           private RewardedAd RewardVideoAds { get; set; }
           private BannerView MRecAds { get; set; }
@@ -1055,6 +1061,18 @@ namespace SDK
                     _ => false
                };
           }
-     }
+#else
+          public override void Init()
+          {
+               base.Init();
+               Status = MediationStatus.FailedToInit;
+          }
+
+          public void ShowConsentFormAgain() { }
+
+          public override bool IsActiveAdsType(AdsType adsType) => false;
+
+          public override AdsMediationType GetAdsMediationType() => AdsMediationType.ADMOB;
 #endif
+     }
 }

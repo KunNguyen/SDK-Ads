@@ -4,65 +4,78 @@ using UnityEngine;
 
 namespace SDK
 {
+    /// <summary>
+    /// Creates and manages AdsManagerSDKSetupContainer and platform-specific SDKSetup assets.
+    /// </summary>
     public static class AdsManagerSDKSetupCreator
     {
-        private const string ConfigFolder = "Assets/JisSDKConfigs/";
-        private const string ContainerName = "AdsManagerSDKSetupContainer.asset";
-        private const string AndroidSetupName = "AndroidSDKAdsSetup.asset";
-        private const string IosSetupName = "IOSSDKAdsSetup.asset";
+        private const string ConfigRootFolder = "Assets/JisSDKConfigs";
+        private const string PlatformFolder = "Platform";
+        private const string ContainerFileName = "AdsManagerSDKSetupContainer.asset";
+        private const string AndroidSetupFileName = "AndroidSDKAdsSetup.asset";
+        private const string IosSetupFileName = "IOSSDKAdsSetup.asset";
 
         [MenuItem("SDK Setup/Create or Open SDKSetup Container")]
         public static void CreateOrOpen()
         {
-            EnsureFolderExists();
+            EnsureFolderStructure();
 
-            // 1) Load/Create container A
-            var containerPath = ConfigFolder + ContainerName;
-            var container = AssetDatabase.LoadAssetAtPath<AdsManagerSDKSetupContainer>(containerPath);
+            var container = LoadOrCreateContainer();
+            var platformFolder = $"{ConfigRootFolder}/{PlatformFolder}";
+
+            var android = LoadOrCreateSetup<SDKSetup>($"{platformFolder}/{AndroidSetupFileName}");
+            var ios = LoadOrCreateSetup<SDKSetup>($"{platformFolder}/{IosSetupFileName}");
+
+            AssignAndSave(container, android, ios);
+
+            Selection.activeObject = container;
+            EditorGUIUtility.PingObject(container);
+        }
+
+        private static void EnsureFolderStructure()
+        {
+            if (!AssetDatabase.IsValidFolder("Assets/JisSDKConfigs"))
+                AssetDatabase.CreateFolder("Assets", "JisSDKConfigs");
+
+            if (!AssetDatabase.IsValidFolder($"{ConfigRootFolder}/{PlatformFolder}"))
+                AssetDatabase.CreateFolder(ConfigRootFolder, PlatformFolder);
+        }
+
+        private static AdsManagerSDKSetupContainer LoadOrCreateContainer()
+        {
+            var path = $"{ConfigRootFolder}/{ContainerFileName}";
+            var container = AssetDatabase.LoadAssetAtPath<AdsManagerSDKSetupContainer>(path);
+
             if (container == null)
             {
                 container = ScriptableObject.CreateInstance<AdsManagerSDKSetupContainer>();
-                AssetDatabase.CreateAsset(container, containerPath);
+                AssetDatabase.CreateAsset(container, path);
             }
 
-            // 2) Load/Create Android SDKSetup
-            var androidPath = ConfigFolder + AndroidSetupName;
-            var android = AssetDatabase.LoadAssetAtPath<SDKSetup>(androidPath);
-            if (android == null)
+            return container;
+        }
+
+        private static T LoadOrCreateSetup<T>(string path) where T : ScriptableObject
+        {
+            var setup = AssetDatabase.LoadAssetAtPath<T>(path);
+
+            if (setup == null)
             {
-                android = ScriptableObject.CreateInstance<SDKSetup>();
-                AssetDatabase.CreateAsset(android, androidPath);
+                setup = ScriptableObject.CreateInstance<T>();
+                AssetDatabase.CreateAsset(setup, path);
             }
 
-            // 3) Load/Create iOS SDKSetup
-            var iosPath = ConfigFolder + IosSetupName;
-            var ios = AssetDatabase.LoadAssetAtPath<SDKSetup>(iosPath);
-            if (ios == null)
-            {
-                ios = ScriptableObject.CreateInstance<SDKSetup>();
-                AssetDatabase.CreateAsset(ios, iosPath);
-            }
+            return setup;
+        }
 
-            // 4) Assign refs into container, save
+        private static void AssignAndSave(AdsManagerSDKSetupContainer container, SDKSetup android, SDKSetup ios)
+        {
             container.android = android;
             container.ios = ios;
 
             EditorUtility.SetDirty(container);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-
-            // 5) Focus in Project
-            Selection.activeObject = container;
-            EditorGUIUtility.PingObject(container);
-        }
-
-        private static void EnsureFolderExists()
-        {
-            if (AssetDatabase.IsValidFolder(ConfigFolder)) return;
-
-            // ConfigFolder = "Assets/JisSDKConfigs/"
-            if (!AssetDatabase.IsValidFolder("Assets/JisSDKConfigs"))
-                AssetDatabase.CreateFolder("Assets", "JisSDKConfigs");
         }
     }
 }

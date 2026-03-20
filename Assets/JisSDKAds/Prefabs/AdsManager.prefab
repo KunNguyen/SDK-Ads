@@ -114,8 +114,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 02046a2b833dc384abeb49e3663c7ba0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  IsCheatAds: 0
-  <SDKSetup>k__BackingField: {fileID: 0}
+  isCheatAds: 0
+  <AndroidSdkSetup>k__BackingField: {fileID: 0}
+  <IOSSdkSetup>k__BackingField: {fileID: 0}
   <AdsStateMachine>k__BackingField:
     <CurrentState>k__BackingField: 0
   <IsUpdateRemoteConfigSuccess>k__BackingField: 0
@@ -130,7 +131,7 @@ MonoBehaviour:
   - {fileID: 4438890547479628587}
   <PrioritizeAppOpenAndThrottleLoads>k__BackingField: 1
   <DelayBetweenAdInits>k__BackingField: 0.75
-  LifecycleDebounceMs: 250
+  lifecycleDebounceMs: 250
   <AppOpenAdManager>k__BackingField: {fileID: 6175679813834998635}
   <BannerAdManager>k__BackingField: {fileID: 5049510003584445776}
   <CollapsibleBannerAdManager>k__BackingField: {fileID: 5573320739325500279}
@@ -310,10 +311,8 @@ MonoBehaviour:
     appOpenAdUnitID:
       AndroidID:
       - ca-app-pub-3940256099942544/9257395921
-  m_BannerPosition: 1
-  IsBannerShowingOnStart: 1
-  m_CollapsibleBannerPosition: 1
-  IsCollapsibleBannerShowingOnStart: 1
+    rewardedInterstitialAdUnitID:
+      AndroidID: []
 --- !u!1 &4527321062299242044
 GameObject:
   m_ObjectHideFlags: 0
