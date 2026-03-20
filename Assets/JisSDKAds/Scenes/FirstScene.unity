@@ -348,6 +348,7 @@ MonoBehaviour:
   m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0
+  m_characterHorizontalScale: 1
   m_wordSpacing: 0
   m_lineSpacing: 0
   m_lineSpacingMax: 0
@@ -668,14 +669,14 @@ Light:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 285955405}
   m_Enabled: 1
-  serializedVersion: 11
+  serializedVersion: 12
   m_Type: 1
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_Intensity: 1
   m_Range: 10
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
-  m_CookieSize: 10
+  m_CookieSize2D: {x: 10, y: 10}
   m_Shadows:
     m_Type: 0
     m_Resolution: -1
@@ -1031,6 +1032,7 @@ MonoBehaviour:
   m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0
+  m_characterHorizontalScale: 1
   m_wordSpacing: 0
   m_lineSpacing: 0
   m_lineSpacingMax: 0
@@ -1546,6 +1548,7 @@ MonoBehaviour:
   m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0
+  m_characterHorizontalScale: 1
   m_wordSpacing: 0
   m_lineSpacing: 0
   m_lineSpacingMax: 0
@@ -1682,6 +1685,7 @@ MonoBehaviour:
   m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0
+  m_characterHorizontalScale: 1
   m_wordSpacing: 0
   m_lineSpacing: 0
   m_lineSpacingMax: 0
@@ -1818,6 +1822,7 @@ MonoBehaviour:
   m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0
+  m_characterHorizontalScale: 1
   m_wordSpacing: 0
   m_lineSpacing: 0
   m_lineSpacingMax: 0
@@ -1995,6 +2000,7 @@ MonoBehaviour:
   m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0
+  m_characterHorizontalScale: 1
   m_wordSpacing: 0
   m_lineSpacing: 0
   m_lineSpacingMax: 0
@@ -2131,6 +2137,7 @@ MonoBehaviour:
   m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0
+  m_characterHorizontalScale: 1
   m_wordSpacing: 0
   m_lineSpacing: 0
   m_lineSpacingMax: 0
@@ -2463,6 +2470,7 @@ MonoBehaviour:
   m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0
+  m_characterHorizontalScale: 1
   m_wordSpacing: 0
   m_lineSpacing: 0
   m_lineSpacingMax: 0
@@ -2599,6 +2607,7 @@ MonoBehaviour:
   m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0
+  m_characterHorizontalScale: 1
   m_wordSpacing: 0
   m_lineSpacing: 0
   m_lineSpacingMax: 0
@@ -2743,6 +2752,7 @@ MonoBehaviour:
   m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0
+  m_characterHorizontalScale: 1
   m_wordSpacing: 0
   m_lineSpacing: 0
   m_lineSpacingMax: 0
@@ -2871,6 +2881,7 @@ MonoBehaviour:
   m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0
+  m_characterHorizontalScale: 1
   m_wordSpacing: 0
   m_lineSpacing: 0
   m_lineSpacingMax: 0
@@ -3128,6 +3139,7 @@ MonoBehaviour:
   m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0
+  m_characterHorizontalScale: 1
   m_wordSpacing: 0
   m_lineSpacing: 0
   m_lineSpacingMax: 0
@@ -3385,6 +3397,7 @@ MonoBehaviour:
   m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0
+  m_characterHorizontalScale: 1
   m_wordSpacing: 0
   m_lineSpacing: 0
   m_lineSpacingMax: 0
@@ -3613,6 +3626,7 @@ MonoBehaviour:
   m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0
+  m_characterHorizontalScale: 1
   m_wordSpacing: 0
   m_lineSpacing: 0
   m_lineSpacingMax: 0
@@ -3749,6 +3763,7 @@ MonoBehaviour:
   m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0
+  m_characterHorizontalScale: 1
   m_wordSpacing: 0
   m_lineSpacing: 0
   m_lineSpacingMax: 0
@@ -3801,7 +3816,7 @@ PrefabInstance:
     - target: {fileID: 3744565625552255737, guid: 72fec712b86322e4a86060c37a805d29,
         type: 3}
       propertyPath: m_BannerPosition
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3744565625552255737, guid: 72fec712b86322e4a86060c37a805d29,
         type: 3}
@@ -3811,17 +3826,17 @@ PrefabInstance:
     - target: {fileID: 3744565625552255737, guid: 72fec712b86322e4a86060c37a805d29,
         type: 3}
       propertyPath: IsBannerShowingOnStart
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3744565625552255737, guid: 72fec712b86322e4a86060c37a805d29,
         type: 3}
       propertyPath: m_CollapsibleBannerPosition
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3744565625552255737, guid: 72fec712b86322e4a86060c37a805d29,
         type: 3}
       propertyPath: IsCollapsibleBannerShowingOnStart
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3744565625552255737, guid: 72fec712b86322e4a86060c37a805d29,
         type: 3}
@@ -3831,12 +3846,12 @@ PrefabInstance:
     - target: {fileID: 3744565625552255737, guid: 72fec712b86322e4a86060c37a805d29,
         type: 3}
       propertyPath: m_AdmobAdSetup.bannerAdUnitID.AndroidID.Array.size
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3744565625552255737, guid: 72fec712b86322e4a86060c37a805d29,
         type: 3}
       propertyPath: m_AdmobAdSetup.appOpenAdUnitID.AndroidID.Array.size
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3744565625552255737, guid: 72fec712b86322e4a86060c37a805d29,
         type: 3}
@@ -3907,9 +3922,21 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6685391519484111099, guid: 72fec712b86322e4a86060c37a805d29,
         type: 3}
+      propertyPath: <IOSSdkSetup>k__BackingField
+      value: 
+      objectReference: {fileID: 11400000, guid: 6dfedb0151c6cfa4f8968d0a1ecca1f8,
+        type: 2}
+    - target: {fileID: 6685391519484111099, guid: 72fec712b86322e4a86060c37a805d29,
+        type: 3}
       propertyPath: IsAutoRefreshCollapsibleBanner
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: 6685391519484111099, guid: 72fec712b86322e4a86060c37a805d29,
+        type: 3}
+      propertyPath: <AndroidSdkSetup>k__BackingField
+      value: 
+      objectReference: {fileID: 11400000, guid: 578c5b1b3d53b5640a6145f17dd14991,
+        type: 2}
     - target: {fileID: 6685391519484111099, guid: 72fec712b86322e4a86060c37a805d29,
         type: 3}
       propertyPath: m_AutoCloseTimeCollapsibleBanner
@@ -3943,7 +3970,7 @@ PrefabInstance:
     - target: {fileID: 6685391519484111099, guid: 72fec712b86322e4a86060c37a805d29,
         type: 3}
       propertyPath: <MainAdsMediationType>k__BackingField
-      value: 3
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6685391519484111099, guid: 72fec712b86322e4a86060c37a805d29,
         type: 3}
@@ -4083,17 +4110,17 @@ PrefabInstance:
     - target: {fileID: 6685391519484111099, guid: 72fec712b86322e4a86060c37a805d29,
         type: 3}
       propertyPath: <AdsConfigs>k__BackingField.Array.data[0].adsMediationType
-      value: 2
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6685391519484111099, guid: 72fec712b86322e4a86060c37a805d29,
         type: 3}
       propertyPath: <AdsConfigs>k__BackingField.Array.data[1].adsMediationType
-      value: 3
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6685391519484111099, guid: 72fec712b86322e4a86060c37a805d29,
         type: 3}
       propertyPath: <AdsConfigs>k__BackingField.Array.data[2].adsMediationType
-      value: 2
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6685391519484111099, guid: 72fec712b86322e4a86060c37a805d29,
         type: 3}
@@ -4108,7 +4135,7 @@ PrefabInstance:
     - target: {fileID: 6685391519484111099, guid: 72fec712b86322e4a86060c37a805d29,
         type: 3}
       propertyPath: <AdsConfigs>k__BackingField.Array.data[5].adsMediationType
-      value: 2
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6685391520706141682, guid: 72fec712b86322e4a86060c37a805d29,
         type: 3}
@@ -4413,6 +4440,7 @@ MonoBehaviour:
   m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0
+  m_characterHorizontalScale: 1
   m_wordSpacing: 0
   m_lineSpacing: 0
   m_lineSpacingMax: 0

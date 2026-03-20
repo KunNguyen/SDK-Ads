@@ -1,0 +1,27 @@
+{
+    "name": "JisSDKAds.Editor.Admob",
+    "rootNamespace": "",
+    "references": [
+        "JisSDKAds.Editor",
+        "GoogleMobileAds.Editor"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [
+        "GoogleMobileAds.dll",
+        "GoogleMobileAds.Unity.dll",
+        "GoogleMobileAds.Ump.dll",
+        "GoogleMobileAds.Ump.Unity.dll",
+        "GoogleMobileAds.Common.dll",
+        "GoogleMobileAds.Core.dll"
+    ],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "UNITY_AD_ADMOB",
+        "UNITY_EDITOR"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
