@@ -2,16 +2,18 @@
   "name": "com.jis.sdkads",
   "version": "3.0.0",
   "displayName": "Jis SDK Ads",
-  "description": "SDK for Ads, Analytics and IAP Services",
-  "unity": "6000.2.12f",
+  "description": "SDK for Ads, Analytics and IAP Services. Supports AppLovin MAX, Google AdMob, IronSource.",
+  "unity": "2021.3",
   "author": {
-    "name": "Kun"
+    "name": "JustIdleGames"
   },
-  "dependencies": {
-  },
+  "dependencies": {},
   "keywords": [
     "ads",
     "sdk",
-    "unity"
+    "mediation",
+    "admob",
+    "max",
+    "ironsource"
   ]
 }

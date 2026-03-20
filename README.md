@@ -4,6 +4,51 @@ SDK quảng cáo cho Unity (Unity 2021.3+, Unity 6), hỗ trợ AppLovin MAX, Go
 
 ---
 
+## Cài đặt qua UPM (Unity Package Manager)
+
+### Cách 1: Git URL (khuyến nghị)
+
+1. Mở **Window** → **Package Manager**
+2. Nhấn **+** → **Add package from git URL**
+3. Nhập URL (thay `main` bằng branch nếu cần):
+
+```
+https://github.com/JustIdleGames/SDK-Ads.git?path=/Assets/JisSDKAds#main
+```
+
+4. Nhấn **Add**
+
+### Cách 2: Thêm vào manifest.json
+
+Mở `Packages/manifest.json` và thêm vào `dependencies`:
+
+```json
+{
+  "dependencies": {
+    "com.jis.sdkads": "https://github.com/JustIdleGames/SDK-Ads.git?path=/Assets/JisSDKAds#main"
+  }
+}
+```
+
+- `?path=/Assets/JisSDKAds` – chỉ định thư mục chứa `package.json`
+- `#main` – branch (có thể đổi thành `#v3.0.0` cho tag cụ thể)
+
+### Cách 3: Local path (phát triển)
+
+Khi clone repo vào cùng thư mục với project:
+
+```json
+{
+  "dependencies": {
+    "com.jis.sdkads": "file:../SDK-Ads/Assets/JisSDKAds"
+  }
+}
+```
+
+> **Lưu ý:** Đường dẫn `file:` phải tương đối từ thư mục gốc project (chứa `Packages/`).
+
+---
+
 ## Yêu cầu & Dependencies
 
 | Package | Version | Link |
