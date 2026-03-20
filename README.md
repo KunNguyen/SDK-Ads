@@ -13,7 +13,7 @@ SDK quảng cáo cho Unity (Unity 2021.3+, Unity 6), hỗ trợ AppLovin MAX, Go
 3. Nhập URL (thay `main` bằng branch nếu cần):
 
 ```
-https://github.com/JustIdleGames/SDK-Ads.git?path=/Assets/JisSDKAds#main
+https://github.com/KunNguyen/SDK-Ads.git?path=/Assets/JisSDKAds#main
 ```
 
 4. Nhấn **Add**
@@ -25,7 +25,7 @@ Mở `Packages/manifest.json` và thêm vào `dependencies`:
 ```json
 {
   "dependencies": {
-    "com.jis.sdkads": "https://github.com/JustIdleGames/SDK-Ads.git?path=/Assets/JisSDKAds#main"
+    "com.jis.sdkads": "https://github.com/KunNguyen/SDK-Ads.git?path=/Assets/JisSDKAds#main"
   }
 }
 ```
