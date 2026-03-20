@@ -1,12 +1,22 @@
 using System.Collections.Generic;
-using UnityEngine;
 using UnityEngine.Purchasing;
 using UnityEngine.Purchasing.Security;
 
-namespace SDK.IAP
+namespace ABIMaxSDKAds.Scripts.IAPServices
 {
     public class IAPLogger
     {
+        public bool IsActiveLogger
+        {
+            get
+            {
+                #if UNITY_EDITOR
+                    return false;
+                #else
+                    return true;
+                #endif
+            }
+        }
         public void LogFetchedProducts(List<Product> products)
         {
             if (products.Count > 0)
@@ -55,7 +65,7 @@ namespace SDK.IAP
             if (appleReceipt != null)
             {
                 LogConsole(
-                    $"Apple - Original Transaction: '{appleReceipt.originalTransactionIdentifier}', Expiration Date : '{appleReceipt.subscriptionExpirationDate}', Cancellation Date : '{appleReceipt.cancellationDate}', Quantity : '{appleReceipt.quantity}'");
+                    $"Apple - Original Transaction: '{appleReceipt.originalTransactionIdentifier}', Expiration Date : '{appleReceipt.subscriptionExpirationDate}', Cancellation Date : '{appleReceipt.cancellationDate}', Quandtity : '{appleReceipt.quantity}'");
             }
         }
 
@@ -98,7 +108,10 @@ namespace SDK.IAP
 
         public void LogConsole(string msg)
         {
-            Debug.Log(msg);
+            if (IsActiveLogger)
+            {
+                DebugAds.Log(msg);    
+            }
         }
     }
 }

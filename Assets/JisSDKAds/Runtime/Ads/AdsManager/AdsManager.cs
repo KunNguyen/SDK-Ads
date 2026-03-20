@@ -15,6 +15,12 @@ namespace SDK
     [ScriptOrder(-99)]
     public partial class AdsManager : MonoBehaviour
     {
+        public enum AdsInitializationMode
+        {
+            AutoOnStart = 0,
+            Manual = 1
+        }
+
         #region Fields
 
         public bool isCheatAds;
@@ -40,6 +46,9 @@ namespace SDK
 
         [field: SerializeField, PropertyOrder(-1)]
         public bool IsReady { get; set; }
+
+        [field: SerializeField, PropertyOrder(-1)]
+        public AdsInitializationMode InitializationMode { get; set; } = AdsInitializationMode.AutoOnStart;
 
         [field: SerializeField] 
         public AdsMediationType MainAdsMediationType { get; set; } = AdsMediationType.MAX;
@@ -148,7 +157,10 @@ namespace SDK
 
         private void Start()
         {
-            Init();
+            if (InitializationMode == AdsInitializationMode.AutoOnStart)
+            {
+                Init();
+            }
         }
 
         private void OnApplicationPause(bool paused)
@@ -196,17 +208,66 @@ namespace SDK
             StartCoroutine(CoWaitForFirebaseInitialization());
         }
 
+        /// <summary>
+        /// Option 2: game code can call async init in loading flow.
+        /// </summary>
+        public async Task InitializeAllAsync(bool fetchRemoteConfig = false)
+        {
+            await InitializeFirebaseAsync(fetchRemoteConfig);
+            InitializeAdsFlow();
+        }
+
+        public async Task InitializeFirebaseAsync(bool fetchRemoteConfig = false)
+        {
+            if (FirebaseManager.Instance == null)
+            {
+                DebugAds.LogError("[AdsManager] FirebaseManager instance is missing in scene.");
+                return;
+            }
+
+            await FirebaseManager.Instance.InitAsync();
+            if (fetchRemoteConfig)
+            {
+                await FirebaseManager.Instance.FetchRemoteConfigAsync();
+            }
+        }
+
+        public void InitializeAdsFlow()
+        {
+            if (AdsStateMachine == null)
+            {
+                AdsStateMachine = new AdsStateMachine();
+            }
+            AdsStateMachine.ChangeState(AdsStateMachine.AdsState.Initializing);
+            InitConfig();
+            SetupUnitAdManager();
+            InitAdsMediation();
+            InitAds();
+        }
+
         private IEnumerator CoWaitForFirebaseInitialization()
         {
+            if (FirebaseManager.Instance == null)
+            {
+                DebugAds.LogError("[AdsManager] FirebaseManager instance is missing in scene.");
+                yield break;
+            }
+
+            if (FirebaseManager.Instance != null && !FirebaseManager.Instance.IsFirebaseReady)
+            {
+                var initTask = FirebaseManager.Instance.InitAsync();
+                while (!initTask.IsCompleted)
+                {
+                    yield return null;
+                }
+            }
+
             while (!FirebaseManager.Instance.IsFirebaseReady)
             {
                 yield return new WaitForEndOfFrame();
             }
 
-            InitConfig();
-            SetupUnitAdManager();
-            InitAdsMediation();
-            InitAds();
+            InitializeAdsFlow();
         }
 
         private void InitConfig()
@@ -466,7 +527,7 @@ namespace SDK
             }
             else
             {
-                EventManager.AddEventNextFrame(() => { StartCoroutine(CoWaitingMarkShowingAdsDone()); });
+                EventManager.InvokeNextFrame(() => { StartCoroutine(CoWaitingMarkShowingAdsDone()); });
             }
         }
 

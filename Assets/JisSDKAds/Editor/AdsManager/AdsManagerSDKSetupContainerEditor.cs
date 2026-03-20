@@ -9,6 +9,7 @@ namespace SDK
     {
         private SerializedProperty androidProp;
         private SerializedProperty iosProp;
+        private SerializedProperty adsInitializationModeProp;
 
         private Editor androidEditor;
         private Editor iosEditor;
@@ -20,6 +21,7 @@ namespace SDK
         {
             androidProp = serializedObject.FindProperty("android");
             iosProp = serializedObject.FindProperty("ios");
+            adsInitializationModeProp = serializedObject.FindProperty("adsInitializationMode");
         }
 
         private void OnDisable()
@@ -52,6 +54,16 @@ namespace SDK
                     
                     GUI.backgroundColor = originalColor;
                 }
+                EditorGUILayout.Space(8);
+            }
+
+            if (adsInitializationModeProp != null)
+            {
+                EditorGUILayout.PropertyField(adsInitializationModeProp);
+                EditorGUILayout.HelpBox(
+                    "AutoOnStart: chỉ cần add Manager Prefab vào scene là tự init. " +
+                    "Manual: game code tự gọi init async theo loading flow.",
+                    MessageType.Info);
                 EditorGUILayout.Space(8);
             }
 

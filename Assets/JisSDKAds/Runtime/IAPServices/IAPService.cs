@@ -1,28 +1,24 @@
-using System;
+using System.Threading.Tasks;
 using Unity.Services.Core;
 using Unity.Services.Core.Environments;
 
-namespace SDK.IAP
+namespace ABIMaxSDKAds.Scripts.IAPServices
 {
     static class IAPService
     {
-        const string k_Environment = "production";
+        const string k_ProductionEnvironment = "production";
+        const string k_DevelopmentEnvironment = "development";
 
-        public static async void Initialize(Action onSuccess, Action<string> onError)
+        public static async Task InitializeAsync(string environmentName = null)
         {
-            try
-            {
-                var options = new InitializationOptions()
-                    .SetEnvironmentName(k_Environment);
+            var env =
+                string.IsNullOrEmpty(environmentName)
+                    ? (UnityEngine.Debug.isDebugBuild ? k_DevelopmentEnvironment : k_ProductionEnvironment)
+                    : environmentName;
 
-                await UnityServices.InitializeAsync(options);
+            var options = new InitializationOptions().SetEnvironmentName(env);
 
-                onSuccess();
-            }
-            catch (Exception exception)
-            {
-                onError(exception.Message);
-            }
+            await UnityServices.InitializeAsync(options);
         }
     }
 }

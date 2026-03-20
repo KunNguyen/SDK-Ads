@@ -14,6 +14,7 @@ namespace SDK
     {
         public SDKSetup android;
         public SDKSetup ios;
+        public AdsManager.AdsInitializationMode adsInitializationMode = AdsManager.AdsInitializationMode.AutoOnStart;
 
 #if UNITY_EDITOR
         /// <summary>

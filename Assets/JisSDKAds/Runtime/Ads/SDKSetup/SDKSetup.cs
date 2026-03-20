@@ -23,6 +23,7 @@ namespace SDK
           private const string MAX_MEDIATION_SYMBOL = "UNITY_AD_MAX";
           private const string ADMOB_MEDIATION_SYMBOL = "UNITY_AD_ADMOB";
           private const string IRONSOURCE_MEDIATION_SYMBOL = "UNITY_AD_IRONSOURCE";
+          private const string FIREBASE_AUTH_SYMBOL = "FIREBASE_AUTH";
 
           
           
@@ -193,6 +194,15 @@ namespace SDK
                else
                {
                     SymbolHelper.RemoveDefineSymbol(appsflyerDefineSymbol);
+               }
+
+               if (IsActiveFirebaseAuth)
+               {
+                    SymbolHelper.AddDefineSymbol(FIREBASE_AUTH_SYMBOL);
+               }
+               else
+               {
+                    SymbolHelper.RemoveDefineSymbol(FIREBASE_AUTH_SYMBOL);
                }
           }
 

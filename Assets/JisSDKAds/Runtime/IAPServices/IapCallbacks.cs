@@ -1,56 +1,58 @@
 using System.Collections.Generic;
+using SDK.IAP;
 using UnityEngine.Purchasing;
 
-namespace SDK.IAP
+namespace ABIMaxSDKAds.Scripts.IAPServices
 {
     public class IapCallbacks
     {
-        private InAppPurchaser InAppPurchaser { get; set; }
+        private readonly InAppPurchaser inAppPurchaser;
         
-        public IapCallbacks (InAppPurchaser inAppPurchaser)
+        public IapCallbacks(InAppPurchaser inAppPurchaser)
         {
-            this.InAppPurchaser = inAppPurchaser;
+            this.inAppPurchaser = inAppPurchaser;
         }
         
         public void OnInitialProductsFetched(List<Product> products)
         {
-            InAppPurchaser.IAPLogger.LogConsole("===========");
-            InAppPurchaser.IAPLogger.LogConsole("OnInitialProductsFetched:");
-            InAppPurchaser.IAPLogger.LogFetchedProducts(products);
-            InAppPurchaser.LoadProductDetails(products);
-            InAppPurchaser.FetchExistingPurchases();
+            LogSectionHeader();
+            inAppPurchaser.IAPLogger.LogConsole("OnInitialProductsFetched:");
+            inAppPurchaser.IAPLogger.LogFetchedProducts(products);
+            inAppPurchaser.LoadProductDetails(products);
+            inAppPurchaser.FetchExistingPurchases();
         }
+        
         public void OnInitialProductsFetchFailed(ProductFetchFailed failure)
         {
-            InAppPurchaser.IAPLogger.LogConsole("===========");
-            InAppPurchaser.IAPLogger.LogConsole("OnInitialProductsFetchFailed: " + failure.FailureReason);
+            LogSectionHeader();
+            inAppPurchaser.IAPLogger.LogConsole($"OnInitialProductsFetchFailed: {failure.FailureReason}");
         }
+        
         public void OnExistingPurchasesFetched(Orders existingOrders)
         {
-            InAppPurchaser.IAPLogger.LogConsole("===========");
-            InAppPurchaser.IAPLogger.LogConsole("OnExistingPurchasesFetched: " + existingOrders?.ConfirmedOrders.Count + " confirmed orders found.");
+            LogSectionHeader();
+            var confirmedCount = existingOrders?.ConfirmedOrders.Count ?? 0;
+            var pendingCount = existingOrders?.PendingOrders.Count ?? 0;
+            inAppPurchaser.IAPLogger.LogConsole(
+                $"OnExistingPurchasesFetched: {confirmedCount} confirmed, {pendingCount} pending.");
+
             if (existingOrders == null) return;
-            foreach (var order in existingOrders.ConfirmedOrders)
-            {
-                InAppPurchaser.Instance.ValidatePurchaseIfPossible(order.Info);
-            }
+
+            ProcessConfirmedOrders(existingOrders.ConfirmedOrders);
+            ProcessPendingOrders(existingOrders.PendingOrders);
         }
+
         public void OnExistingPurchasesFetchFailed(PurchasesFetchFailureDescription failure)
         {
-            InAppPurchaser.IAPLogger.LogConsole("===========");
-            InAppPurchaser.IAPLogger.LogConsole("OnExistingPurchasesFetchFailed: " + failure.Message);
+            LogSectionHeader();
+            inAppPurchaser.IAPLogger.LogConsole($"OnExistingPurchasesFetchFailed: {failure.Message}");
         }
+
         public void OnPurchasePending(PendingOrder order)
         {
-            foreach (var cartItem in order.CartOrdered.Items())
-            {
-                var product = cartItem.Product;
-                InAppPurchaser.IAPLogger.LogCompletedPurchase(product, order.Info);
-                InAppPurchaser.ValidatePurchaseIfPossible(order.Info);
-            }
-
-            InAppPurchaser.ConfirmOrder(order);
+            inAppPurchaser.ProcessPendingOrder(order);
         }
+
         public void OnPurchaseConfirmed(Order order)
         {
             switch (order)
@@ -64,43 +66,62 @@ namespace SDK.IAP
             }
         }
 
-        void OnConfirmationFailed(FailedOrder failedOrder)
-        {
-            var reason = failedOrder.FailureReason;
-
-            foreach (var cartItem in failedOrder.CartOrdered.Items())
-            {
-                InAppPurchaser.IAPLogger.LogFailedConfirmation(cartItem.Product, reason);
-                InAppPurchaser.OnPurchaseFailed(cartItem.Product, reason);
-            }
-        }
-
         public void OnPurchaseConfirmed(ConfirmedOrder order)
         {
             foreach (var cartItem in order.CartOrdered.Items())
             {
                 var product = cartItem.Product;
-
-                InAppPurchaser.IAPLogger.LogConfirmedOrder(product, order.Info);
-                InAppPurchaser.OnPurchaseConfirmed(product, order.Info);
+                inAppPurchaser.IAPLogger.LogConfirmedOrder(product, order.Info);
+                inAppPurchaser.OnPurchaseConfirmed(product, order.Info);
             }
         }
+
         public void OnPurchaseFailed(FailedOrder failedOrder)
         {
             var reason = failedOrder.FailureReason;
-
             foreach (var cartItem in failedOrder.CartOrdered.Items())
             {
-                InAppPurchaser.IAPLogger.LogFailedPurchase(cartItem.Product, reason);
-                InAppPurchaser.OnPurchaseFailed(cartItem.Product, reason);
+                inAppPurchaser.IAPLogger.LogFailedPurchase(cartItem.Product, reason);
             }
         }
+
         public void OnOrderDeferred(DeferredOrder deferredOrder)
         {
             foreach (var cartItem in deferredOrder.CartOrdered.Items())
             {
-                InAppPurchaser.IAPLogger.LogDeferredPurchase(cartItem.Product);
+                inAppPurchaser.IAPLogger.LogDeferredPurchase(cartItem.Product);
             }
+        }
+
+        private void OnConfirmationFailed(FailedOrder failedOrder)
+        {
+            var reason = failedOrder.FailureReason;
+            foreach (var cartItem in failedOrder.CartOrdered.Items())
+            {
+                inAppPurchaser.IAPLogger.LogFailedConfirmation(cartItem.Product, reason);
+                inAppPurchaser.OnPurchaseFailed(cartItem.Product, reason);
+            }
+        }
+
+        private void ProcessConfirmedOrders(IEnumerable<ConfirmedOrder> confirmedOrders)
+        {
+            foreach (var order in confirmedOrders)
+            {
+                inAppPurchaser.ProcessRestoredOrder(order);
+            }
+        }
+
+        private void ProcessPendingOrders(IEnumerable<PendingOrder> pendingOrders)
+        {
+            foreach (var pending in pendingOrders)
+            {
+                inAppPurchaser.ProcessPendingOrder(pending);
+            }
+        }
+
+        private void LogSectionHeader()
+        {
+            inAppPurchaser.IAPLogger.LogConsole("===========");
         }
     }
 }

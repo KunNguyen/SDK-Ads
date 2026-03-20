@@ -19,6 +19,7 @@ namespace SDK
                if (container == null) return;
                AndroidSdkSetup = container.android;
                IOSSdkSetup = container.ios;
+               InitializationMode = container.adsInitializationMode;
                var setup = EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android
                     ? container.android
                     : container.ios;
