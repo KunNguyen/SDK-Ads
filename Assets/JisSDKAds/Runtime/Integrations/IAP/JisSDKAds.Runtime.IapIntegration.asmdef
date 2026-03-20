@@ -1,0 +1,24 @@
+{
+    "name": "JisSDKAds.Runtime.IapIntegration",
+    "rootNamespace": "",
+    "references": [
+        "JisSDKAds.Runtime",
+        "Unity.Purchasing",
+        "Unity.Purchasing.Stores",
+        "Unity.Purchasing.Security",
+        "Unity.Purchasing.SecurityCore",
+        "Unity.Purchasing.SecurityStub",
+        "Unity.Purchasing.TransactionVerifier"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "UNITY_IAP_ACTIVE"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

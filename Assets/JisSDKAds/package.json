@@ -1,0 +1,17 @@
+{
+  "name": "com.jis.sdkads",
+  "version": "3.0.0",
+  "displayName": "Jis SDK Ads",
+  "description": "SDK for Ads, Analytics and IAP Services",
+  "unity": "6000.2.12f",
+  "author": {
+    "name": "Kun"
+  },
+  "dependencies": {
+  },
+  "keywords": [
+    "ads",
+    "sdk",
+    "unity"
+  ]
+}

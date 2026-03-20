@@ -1,0 +1,71 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 074fc6e48c4aeee4eaaa708414d919ed, type: 3}
+  m_Name: IOSSDKAdsSetup
+  m_EditorClassIdentifier: JisSDKAds.Runtime::SDK.SDKSetup
+  appOpenAdsMediationType: 0
+  bannerAdsMediationType: 0
+  isBannerShowingOnStart: 0
+  isAutoRefreshBannerByCode: 0
+  collapsibleBannerAdsMediationType: 0
+  adsPositionCollapsibleBanner: 0
+  isShowingOnStartCollapsibleBanner: 0
+  isAutoRefreshCollapsibleBanner: 0
+  isAutoRefreshExtendCollapsibleBanner: 0
+  autoRefreshTime: 30
+  isAutoCloseCollapsibleBanner: 0
+  autoCloseTime: 30
+  interstitialAdsMediationType: 0
+  mrecAdsMediationType: 0
+  mrecAdsPosition: 0
+  rewardedAdsMediationType: 0
+  IsLinkToRemoveAds: 1
+  <IsActiveAppsflyer>k__BackingField: 1
+  <IsActiveAdImpressionTracking>k__BackingField: 1
+  <IsActiveCustomAdImpressionTracking>k__BackingField: 1
+  <CustomAdImpressionEventName>k__BackingField: ad_impression_abi
+  adsMediationType: 0
+  maxAdsSetup:
+    sdkKey:
+      AndroidID: 
+    interstitialAdUnitID:
+      AndroidID: 
+    rewardedAdUnitID:
+      AndroidID: 
+    bannerAdUnitID:
+      AndroidID: 
+    collapsibleBannerAdUnitID:
+      AndroidID: 
+    mrecAdUnitID:
+      AndroidID: 
+    appOpenAdUnitID:
+      AndroidID: 
+  admobAdsSetup:
+    interstitialAdUnitID:
+      AndroidID: []
+    rewardedAdUnitID:
+      AndroidID: []
+    bannerAdUnitID:
+      AndroidID: []
+    collapsibleBannerAdUnitID:
+      AndroidID: []
+    mrecAdUnitID:
+      AndroidID: []
+    appOpenAdUnitID:
+      AndroidID: []
+    rewardedInterstitialAdUnitID:
+      AndroidID: []
+  ironSourceAdSetup:
+    appKey: 
+    interstitialID: 
+    rewardedID: 
+    bannerID: 

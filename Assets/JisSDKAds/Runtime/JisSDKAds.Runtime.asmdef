@@ -1,0 +1,37 @@
+{
+    "name": "JisSDKAds.Runtime",
+    "rootNamespace": "",
+    "references": [
+        "GUID:fe25561d224ed4743af4c60938a59d0b",
+        "AppsFlyer",
+        "Unity.Purchasing",
+        "Unity.Purchasing.Stores",
+        "Unity.Purchasing.Security",
+        "Unity.Purchasing.SecurityCore",
+        "Unity.Purchasing.SecurityStub",
+        "Unity.Purchasing.TransactionVerifier",
+        "GUID:6055be8ebefd69e48b49212b09b47b2f",
+        "GUID:70ea675efa2644cef98c7ece24158333",
+        "GUID:f0136c67cf7443ff90e2e1b623f008b5",
+        "GUID:dc5fbdcd718b4ef0843f7e71ba2a24af",
+        "GUID:a1685ce0c3a84ee88c12448807937496",
+        "GUID:de0e2697552540e7b41d1dc4995a791f"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [
+        "Sirenix.OdinInspector.Attributes.dll",
+        "Firebase.App.dll",
+        "Firebase.Analytics.dll",
+        "Firebase.RemoteConfig.dll",
+        "Firebase.Platform.dll",
+        "Firebase.TaskExtension.dll",
+        "Firebase.Editor.dll"
+    ],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
