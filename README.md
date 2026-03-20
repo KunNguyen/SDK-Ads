@@ -70,7 +70,7 @@ JisSDKAds **cần** các package sau để compile. Cài đặt **trước** ho�
 ```json
 {
   "dependencies": {
-    "com.jis.sdkads": "https://github.com/JustIdleGames/SDK-Ads.git?path=/Assets/JisSDKAds#main",
+    "com.jis.sdkads": "https://github.com/KunNguyen/SDK-Ads.git?path=/Assets/JisSDKAds#main",
     "com.unity.purchasing": "5.0.0"
   },
   "scopedRegistries": [
