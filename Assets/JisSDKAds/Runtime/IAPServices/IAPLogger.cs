@@ -1,3 +1,4 @@
+#if UNITY_IAP_ACTIVE
 using System.Collections.Generic;
 using UnityEngine.Purchasing;
 using UnityEngine.Purchasing.Security;
@@ -115,3 +116,4 @@ namespace ABIMaxSDKAds.Scripts.IAPServices
         }
     }
 }
+#endif

@@ -11,6 +11,9 @@ namespace SDK
 
           [field: SerializeField, BoxGroup("SDK Key"), PropertyOrder(1)]
           public bool IsActiveFirebaseAuth { get; set; } = false;
+
+          [field: SerializeField, BoxGroup("SDK Key"), PropertyOrder(1)]
+          public bool IsActiveIAP { get; set; } = false;
           
           [field: SerializeField, BoxGroup("SDK Key"), PropertyOrder(1)]
           public bool IsActiveAdImpressionTracking { get; set; } = true;

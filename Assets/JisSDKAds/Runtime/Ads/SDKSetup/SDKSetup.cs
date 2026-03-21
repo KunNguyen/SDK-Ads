@@ -24,6 +24,7 @@ namespace SDK
           private const string ADMOB_MEDIATION_SYMBOL = "UNITY_AD_ADMOB";
           private const string IRONSOURCE_MEDIATION_SYMBOL = "UNITY_AD_IRONSOURCE";
           private const string FIREBASE_AUTH_SYMBOL = "FIREBASE_AUTH";
+          private const string UNITY_IAP_ACTIVE_SYMBOL = "UNITY_IAP_ACTIVE";
 
           
           
@@ -203,6 +204,15 @@ namespace SDK
                else
                {
                     SymbolHelper.RemoveDefineSymbol(FIREBASE_AUTH_SYMBOL);
+               }
+
+               if (IsActiveIAP)
+               {
+                    SymbolHelper.AddDefineSymbol(UNITY_IAP_ACTIVE_SYMBOL);
+               }
+               else
+               {
+                    SymbolHelper.RemoveDefineSymbol(UNITY_IAP_ACTIVE_SYMBOL);
                }
           }
 

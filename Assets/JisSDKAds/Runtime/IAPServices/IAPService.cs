@@ -1,3 +1,4 @@
+#if UNITY_IAP_ACTIVE
 using System;
 using System.Threading.Tasks;
 using Unity.Services.Core;
@@ -30,3 +31,4 @@ namespace ABIMaxSDKAds.Scripts.IAPServices
         }
     }
 }
+#endif

@@ -1,3 +1,4 @@
+#if UNITY_IAP_ACTIVE
 using System.Collections.Generic;
 using SDK.IAP;
 using Sirenix.OdinInspector;
@@ -13,3 +14,4 @@ namespace ABIMaxSDKAds.Scripts.IAPServices
         
     }
 }
+#endif

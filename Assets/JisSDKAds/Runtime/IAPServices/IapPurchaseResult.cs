@@ -1,3 +1,4 @@
+#if UNITY_IAP_ACTIVE
 namespace ABIMaxSDKAds.Scripts.IAPServices
 {
     public readonly struct IapPurchaseResult
@@ -27,3 +28,4 @@ namespace ABIMaxSDKAds.Scripts.IAPServices
         }
     }
 }
+#endif

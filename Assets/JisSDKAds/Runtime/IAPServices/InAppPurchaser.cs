@@ -1,3 +1,4 @@
+#if UNITY_IAP_ACTIVE
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -467,3 +468,4 @@ namespace SDK.IAP
           }
      }
 }
+#endif

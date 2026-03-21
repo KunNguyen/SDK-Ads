@@ -1,9 +1,11 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 using System;
+#if UNITY_IAP_ACTIVE
 using ABIMaxSDKAds.Scripts.IAPServices;
+#endif
 
 namespace SDK
 {
@@ -124,6 +126,7 @@ namespace SDK
             PlayerSettings.SetScriptingDefineSymbolsForGroup(EditorUserBuildSettings.selectedBuildTargetGroup,
                 currentDefineSymbols);
         }
+#if UNITY_IAP_ACTIVE
         [MenuItem("SDK Setup/Setup IAP Packages")]
         public static void OpenIAPPackageConfig()
         {
@@ -140,6 +143,7 @@ namespace SDK
             Selection.activeObject = selectedScriptableObject;
             EditorGUIUtility.PingObject(selectedScriptableObject);
         }
+#endif
 
         public static string CreateConfigFolder()
         {

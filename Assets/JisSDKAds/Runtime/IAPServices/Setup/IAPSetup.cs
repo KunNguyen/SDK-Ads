@@ -1,3 +1,4 @@
+#if UNITY_IAP_ACTIVE
 using UnityEditor;
 using UnityEngine;
 
@@ -34,3 +35,4 @@ namespace ABIMaxSDKAds.Scripts.IAPServices.Setup
 #endif
     }
 }
+#endif
