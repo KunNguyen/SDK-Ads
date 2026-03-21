@@ -1,4 +1,5 @@
 #if UNITY_EDITOR
+using System;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -16,8 +17,8 @@ namespace SDK
         private const string ContainerFileName = "AdsManagerSDKSetupContainer.asset";
         private const string AndroidSetupFileName = "AndroidSDKAdsSetup.asset";
         private const string IosSetupFileName = "IOSSDKAdsSetup.asset";
-        private const string ManagerPrefabPath = "Assets/JisSDKAds/Prefabs/Manager.prefab";
-        private const string InAppPurchaserPrefabPath = "Assets/JisSDKAds/Prefabs/InAppPurchaser.prefab";
+        private const string AssetPrefabsRoot = "Assets/JisSDKAds/Prefabs";
+        private const string PackagePrefabsRoot = "Packages/com.jis.sdkads/Prefabs";
 
         [MenuItem("SDK Setup/Create or Open SDKSetup Container")]
         public static void CreateOrOpen()
@@ -39,7 +40,7 @@ namespace SDK
         [MenuItem("SDK Setup/Add Prefab/Manager")]
         public static void AddManagerPrefabToCurrentScene()
         {
-            AddPrefabToCurrentScene(ManagerPrefabPath, "Manager");
+            AddPrefabToCurrentScene("Manager");
         }
 
         [MenuItem("GameObject/SDK Setup/Add Manager", false, 10)]
@@ -51,7 +52,7 @@ namespace SDK
         [MenuItem("SDK Setup/Add Prefab/InAppPurchaser")]
         public static void AddInAppPurchaserPrefabToCurrentScene()
         {
-            AddPrefabToCurrentScene(InAppPurchaserPrefabPath, "InAppPurchaser");
+            AddPrefabToCurrentScene("InAppPurchaser");
         }
 
         [MenuItem("GameObject/SDK Setup/Add InAppPurchaser", false, 11)]
@@ -106,12 +107,12 @@ namespace SDK
             AssetDatabase.Refresh();
         }
 
-        private static void AddPrefabToCurrentScene(string prefabPath, string displayName)
+        private static void AddPrefabToCurrentScene(string prefabName)
         {
-            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+            var prefab = ResolvePrefab(prefabName);
             if (prefab == null)
             {
-                Debug.LogError($"[SDK Setup] Cannot find prefab at path: {prefabPath}");
+                Debug.LogError($"[SDK Setup] Cannot find prefab '{prefabName}' in Assets or Packages.");
                 return;
             }
 
@@ -125,14 +126,40 @@ namespace SDK
             var instance = PrefabUtility.InstantiatePrefab(prefab, activeScene) as GameObject;
             if (instance == null)
             {
-                Debug.LogError($"[SDK Setup] Failed to instantiate prefab '{displayName}'.");
+                Debug.LogError($"[SDK Setup] Failed to instantiate prefab '{prefabName}'.");
                 return;
             }
 
-            Undo.RegisterCreatedObjectUndo(instance, $"Add {displayName} Prefab");
+            Undo.RegisterCreatedObjectUndo(instance, $"Add {prefabName} Prefab");
             EditorSceneManager.MarkSceneDirty(activeScene);
             Selection.activeObject = instance;
             EditorGUIUtility.PingObject(instance);
+        }
+
+        private static GameObject ResolvePrefab(string prefabName)
+        {
+            var assetPath = $"{AssetPrefabsRoot}/{prefabName}.prefab";
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(assetPath);
+            if (prefab != null) return prefab;
+
+            var packagePath = $"{PackagePrefabsRoot}/{prefabName}.prefab";
+            prefab = AssetDatabase.LoadAssetAtPath<GameObject>(packagePath);
+            if (prefab != null) return prefab;
+
+            var guids = AssetDatabase.FindAssets($"t:Prefab {prefabName}", new[] { "Assets", "Packages" });
+            foreach (var guid in guids)
+            {
+                var path = AssetDatabase.GUIDToAssetPath(guid);
+                if (!path.EndsWith($"/{prefabName}.prefab", StringComparison.OrdinalIgnoreCase))
+                    continue;
+                if (!path.Contains("/JisSDKAds/Prefabs/", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                if (prefab != null) return prefab;
+            }
+
+            return null;
         }
     }
 }

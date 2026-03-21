@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 using Unity.Services.Core;
 using Unity.Services.Core.Environments;
@@ -9,7 +10,7 @@ namespace ABIMaxSDKAds.Scripts.IAPServices
         const string k_ProductionEnvironment = "production";
         const string k_DevelopmentEnvironment = "development";
 
-        public static async Task InitializeAsync(string environmentName = null)
+        public static async Task InitializeAsync(Action onSuccess, Action<string> onFailed, string environmentName = null)
         {
             var env =
                 string.IsNullOrEmpty(environmentName)
@@ -17,8 +18,15 @@ namespace ABIMaxSDKAds.Scripts.IAPServices
                     : environmentName;
 
             var options = new InitializationOptions().SetEnvironmentName(env);
-
-            await UnityServices.InitializeAsync(options);
+            try
+            {
+                await UnityServices.InitializeAsync(options);
+                onSuccess?.Invoke();
+            }
+            catch (Exception e)
+            {
+                onFailed?.Invoke(e.Message);
+            }
         }
     }
 }
