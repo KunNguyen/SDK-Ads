@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 #if FIREBASE_AUTH
@@ -255,7 +256,7 @@ namespace SDK
                 throw;
             }
 
-            var credential = GameCenterAuthProvider.GetCredential();
+            var credential = CreateGameCenterCredential();
 
             try
             {
@@ -277,6 +278,28 @@ namespace SDK
                 SignInFailed?.Invoke(msg);
                 throw;
             }
+        }
+#endif
+
+#if UNITY_IOS
+        private Credential CreateGameCenterCredential()
+        {
+            var providerType = typeof(GameCenterAuthProvider);
+            var noArgGetCredential = providerType.GetMethod(
+                "GetCredential",
+                BindingFlags.Public | BindingFlags.Static,
+                null,
+                Type.EmptyTypes,
+                null);
+
+            if (noArgGetCredential != null)
+            {
+                return (Credential)noArgGetCredential.Invoke(null, null);
+            }
+
+            throw new NotSupportedException(
+                "Firebase GameCenterAuthProvider.GetCredential() API is not available in this Firebase Auth version. " +
+                "Please update SignInWithGameCenterAsync to match the current SDK method signature.");
         }
 #endif
 

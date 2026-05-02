@@ -238,6 +238,44 @@ namespace SDK.IAP
                PurchaseService.ConfirmPurchase(pendingOrder);
           }
 
+          public void ProcessRestoredOrder(ConfirmedOrder confirmedOrder)
+          {
+               foreach (var cartItem in confirmedOrder.CartOrdered.Items())
+               {
+                    var product = cartItem.Product;
+                    IAPLogger.LogCompletedPurchase(product, confirmedOrder.Info);
+
+                    if (CanCrossPlatformValidate())
+                    {
+                         ValidatePurchase(confirmedOrder.Info);
+                    }
+                    else
+                    {
+                         OnPurchaseSuccess(product.definition.id, confirmedOrder.Info, null);
+                    }
+               }
+          }
+
+          public void ProcessPendingOrder(PendingOrder pendingOrder)
+          {
+               foreach (var cartItem in pendingOrder.CartOrdered.Items())
+               {
+                    var product = cartItem.Product;
+                    IAPLogger.LogCompletedPurchase(product, pendingOrder.Info);
+
+                    if (CanCrossPlatformValidate())
+                    {
+                         ValidatePurchase(pendingOrder.Info);
+                    }
+                    else
+                    {
+                         OnPurchaseSuccess(product.definition.id, pendingOrder.Info, null);
+                    }
+               }
+
+               ConfirmOrder(pendingOrder);
+          }
+
           private async void ConnectToStore()
           {
                try
