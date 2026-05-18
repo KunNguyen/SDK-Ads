@@ -134,6 +134,17 @@
         "com.applovin.mediation.ads": "8.6.3"
       }
     },
+    "com.jis.sdkads.samples": {
+      "version": "file:com.jis.sdkads.samples",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {
+        "com.jis.sdkads.hub": "4.0.0",
+        "com.jis.sdkads.firebase": "4.0.0",
+        "com.jis.sdkads.ads": "4.0.0",
+        "com.jis.sdkads.editor": "4.0.0"
+      }
+    },
     "com.opeious.pokemon3dstounity": {
       "version": "https://github.com/opeious/Pokemon3DStoUnity.git",
       "depth": 0,

@@ -34,7 +34,7 @@ namespace JisSDKAds.Ads
             useCoreForStandardFormats &&
             _core != null &&
             _core.IsInitialized &&
-            _core.PrimaryProvider?.AppOpen is not NullAppOpen;
+            _core.PrimaryProvider?.AppOpen is not NullAppOpenAd;
         public JisSDKAdsSettings Settings => settings;
         public AdsManager Legacy => _legacy;
         public AdManager Core => _core;
