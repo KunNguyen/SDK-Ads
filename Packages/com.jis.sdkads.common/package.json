@@ -1,0 +1,13 @@
+{
+  "name": "com.jis.sdkads.common",
+  "version": "4.0.0",
+  "displayName": "JIS SDK - Common",
+  "description": "Shared utilities: EventManager, InternetChecker, config keys.",
+  "unity": "2022.3",
+  "dependencies": {
+    "com.jis.sdkads.core": "4.0.0"
+  },
+  "author": {
+    "name": "JustIdleGames"
+  }
+}

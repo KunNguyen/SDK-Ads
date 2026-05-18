@@ -1,0 +1,25 @@
+{
+    "name": "JisSDKAds.Ads",
+    "rootNamespace": "JisSDKAds.Ads",
+    "references": [
+        "JisSDKAds.Core",
+        "JisSDKAds.Common",
+        "JisSDKAds.Firebase",
+        "JisSDKAds.Providers.Max",
+        "JisSDKAds.Providers.AdMob",
+        "MaxSdk.Scripts",
+        "GoogleMobileAds",
+        "GoogleMobileAds.Core"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [
+        "Sirenix.OdinInspector.Attributes.dll"
+    ],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

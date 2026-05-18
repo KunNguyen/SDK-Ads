@@ -1,0 +1,14 @@
+{
+  "name": "com.jis.sdkads.analytics.appsflyer",
+  "version": "4.0.0",
+  "displayName": "JIS SDK - AppsFlyer",
+  "description": "Optional AppsFlyer attribution and ad revenue.",
+  "unity": "2022.3",
+  "dependencies": {
+    "com.jis.sdkads.common": "4.0.0",
+    "com.jis.sdkads.ads": "4.0.0"
+  },
+  "author": {
+    "name": "JustIdleGames"
+  }
+}

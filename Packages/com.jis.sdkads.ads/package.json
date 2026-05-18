@@ -1,0 +1,17 @@
+{
+  "name": "com.jis.sdkads.ads",
+  "version": "4.0.0",
+  "displayName": "JIS SDK - Ads",
+  "description": "Full ads stack: AdsManager, mediation, formats, remote config driven behavior.",
+  "unity": "2022.3",
+  "dependencies": {
+    "com.jis.sdkads.core": "4.0.0",
+    "com.jis.sdkads.common": "4.0.0",
+    "com.jis.sdkads.firebase": "4.0.0",
+    "com.jis.sdkads.providers.max": "4.0.0",
+    "com.jis.sdkads.providers.admob": "4.0.0"
+  },
+  "author": {
+    "name": "JustIdleGames"
+  }
+}

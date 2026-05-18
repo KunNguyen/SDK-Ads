@@ -1,0 +1,13 @@
+{
+  "name": "com.jis.sdkads.analytics.facebook",
+  "version": "4.0.0",
+  "displayName": "JIS SDK - Facebook",
+  "description": "Optional Facebook SDK wrapper.",
+  "unity": "2022.3",
+  "dependencies": {
+    "com.jis.sdkads.common": "4.0.0"
+  },
+  "author": {
+    "name": "JustIdleGames"
+  }
+}

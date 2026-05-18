@@ -1,0 +1,20 @@
+{
+    "name": "JisSDKAds.AppReview",
+    "rootNamespace": "",
+    "references": [
+        "JisSDKAds.Common",
+        "Google.Play.Review"
+    ],
+    "includePlatforms": [
+        "Android",
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

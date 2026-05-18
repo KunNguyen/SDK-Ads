@@ -1,0 +1,13 @@
+{
+  "name": "com.jis.sdkads.analytics.solarengine",
+  "version": "4.0.0",
+  "displayName": "JIS SDK - SolarEngine",
+  "description": "Optional SolarEngine analytics.",
+  "unity": "2022.3",
+  "dependencies": {
+    "com.jis.sdkads.common": "4.0.0"
+  },
+  "author": {
+    "name": "JustIdleGames"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "com.jis.sdkads.editor",
+  "version": "4.0.0",
+  "displayName": "JIS SDK - Editor",
+  "description": "Editor tools for ads setup, build handlers, and platform configuration.",
+  "unity": "2022.3",
+  "dependencies": {
+    "com.jis.sdkads.ads": "4.0.0",
+    "com.jis.sdkads.iap": "4.0.0"
+  },
+  "author": {
+    "name": "JustIdleGames"
+  }
+}
