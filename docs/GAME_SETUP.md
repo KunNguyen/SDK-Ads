@@ -1,5 +1,7 @@
 # Game project setup (JIS SDK v4)
 
+> **Chưa cài UPM?** Làm trước: [UPM_INSTALL.md](UPM_INSTALL.md) — thêm Git package + Hub import module.
+
 ## 1. Install packages
 
 Open **JIS SDK → Hub** and import:

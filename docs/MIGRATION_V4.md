@@ -2,9 +2,10 @@
 
 Breaking changes. No backward compatibility with `SDK` / `ABIMaxSDKAds` namespaces.
 
-## 1. Install via Hub
+## 1. Install via UPM + Hub
 
-Use **JIS SDK → Hub** instead of copying `Assets/JisSDKAds`.
+Cài package Git UPM trước: [UPM_INSTALL.md](UPM_INSTALL.md).  
+Sau đó dùng **JIS SDK → Hub** thay vì copy `Assets/JisSDKAds`.
 
 Remove old folder:
 

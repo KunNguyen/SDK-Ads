@@ -32,23 +32,21 @@ Unity package monorepo for **Ads (MAX / AdMob)**, **Firebase**, **IAP**, and opt
 | `com.jis.sdkads.analytics.*` | Optional: AppsFlyer, SolarEngine, Facebook |
 | `com.jis.sdkads.editor` | Setup & build tools |
 
-## Game project setup
+## Add SDK to another Unity project (UPM)
 
-1. Add scoped registries (AppLovin, Google) — Hub can add these.
-2. Install **Firebase** from Google.
-3. Add Hub package:
+**Full guide:** [docs/UPM_INSTALL.md](docs/UPM_INSTALL.md) (Git URL, Hub, scoped registries, private repo, troubleshooting).
+
+Quick start:
+
+1. Add to `Packages/manifest.json`:
 
 ```json
 "com.jis.sdkads.hub": "https://github.com/KunNguyen/SDK-Ads.git?path=Packages/com.jis.sdkads.hub#4.0.0"
 ```
 
-4. Open **JIS SDK → Hub** and import modules (Firebase → Ads → IAP → …).
-
-Or add each package manually:
-
-```json
-"com.jis.sdkads.firebase": "https://github.com/KunNguyen/SDK-Ads.git?path=Packages/com.jis.sdkads.firebase#4.0.0"
-```
+2. Open **JIS SDK → Hub** → disable *embedded packages* → set Git URL → Import **Firebase**, then **Ads**.
+3. Install **Firebase** from Google in the game project.
+4. Scene & API: [docs/GAME_SETUP.md](docs/GAME_SETUP.md).
 
 ## Continuing development
 

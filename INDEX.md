@@ -13,7 +13,7 @@
 | `Packages/com.jis.sdkads.*` | UPM packages (publish via Git `?path=`) |
 | `Assets/MeldAppAds/` | Dev tool only — **not** in UPM |
 | `Assets/Firebase`, `GoogleMobileAds`, … | Third-party SDKs for local dev |
-| `docs/` | HANDOFF, GAME_SETUP, MIGRATION_V4, NAMESPACES |
+| `docs/` | UPM_INSTALL, GAME_SETUP, HANDOFF, MIGRATION_V4, NAMESPACES |
 
 ---
 
@@ -38,12 +38,13 @@
 
 ## Game integration (short)
 
-1. **JIS SDK → Hub** → Import Firebase, Ads, …
-2. Configure `Assets/JisSDKAds/Settings/JisSDKAdsSettings.asset`
-3. Scene: `FirebaseManager` + `AdsManager` + `JisAds`
-4. Code: `JisAds.Instance.ShowInterstitial(...)`
+1. [docs/UPM_INSTALL.md](docs/UPM_INSTALL.md) — add `com.jis.sdkads.hub` via Git UPM
+2. **JIS SDK → Hub** → Import Firebase, Ads, …
+3. Configure `Assets/JisSDKAds/Settings/JisSDKAdsSettings.asset`
+4. Scene: `FirebaseManager` + `AdsManager` + `JisAds`
+5. Code: `JisAds.Instance.ShowInterstitial(...)`
 
-See [docs/GAME_SETUP.md](docs/GAME_SETUP.md), [docs/MIGRATION_V4.md](docs/MIGRATION_V4.md).
+See [docs/UPM_INSTALL.md](docs/UPM_INSTALL.md), [docs/GAME_SETUP.md](docs/GAME_SETUP.md), [docs/MIGRATION_V4.md](docs/MIGRATION_V4.md).
 
 ---
 
