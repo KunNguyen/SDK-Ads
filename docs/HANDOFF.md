@@ -182,13 +182,15 @@ Xem [GAME_SETUP.md](GAME_SETUP.md), [PHASE4_JISADS.md](PHASE4_JISADS.md)
 - Manifest: `Packages/manifest.json`
 - Version package: **4.0.0** (tất cả `package.json` con)
 
-### Git UPM ví dụ (game)
+### Git UPM (game)
+
+Hướng dẫn đầy đủ: **[UPM_INSTALL.md](UPM_INSTALL.md)** (Hub, manifest thủ công, private repo, nâng version).
 
 ```json
-"com.jis.sdkads.hub": "https://github.com/YOUR_ORG/SDK-Ads.git?path=Packages/com.jis.sdkads.hub#4.0.0"
+"com.jis.sdkads.hub": "https://github.com/KunNguyen/SDK-Ads.git?path=Packages/com.jis.sdkads.hub#4.0.0"
 ```
 
-Thay `YOUR_ORG` bằng repo thật; Hub lưu URL trong EditorPrefs `JisSDKAds.Hub.GitBaseUrl`.
+Hub lưu base URL trong EditorPrefs `JisSDKAds.Hub.GitBaseUrl`.
 
 ---
 
