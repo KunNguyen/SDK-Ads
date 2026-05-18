@@ -1,0 +1,23 @@
+{
+    "name": "JisSDKAds.Firebase",
+    "rootNamespace": "JisSDKAds.Firebase",
+    "references": [
+        "JisSDKAds.Common",
+        "JisSDKAds.Core"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "Firebase.App.dll",
+        "Firebase.Analytics.dll",
+        "Firebase.RemoteConfig.dll",
+        "Firebase.Platform.dll",
+        "Firebase.TaskExtension.dll"
+    ],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

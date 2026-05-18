@@ -1,0 +1,15 @@
+{
+  "name": "com.jis.sdkads.iap",
+  "version": "4.0.0",
+  "displayName": "JIS SDK - IAP",
+  "description": "In-app purchasing via Unity Purchasing 5.x.",
+  "unity": "2022.3",
+  "dependencies": {
+    "com.jis.sdkads.common": "4.0.0",
+    "com.unity.purchasing": "5.0.4",
+    "com.unity.services.core": "1.16.0"
+  },
+  "author": {
+    "name": "JustIdleGames"
+  }
+}

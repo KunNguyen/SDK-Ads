@@ -1,0 +1,14 @@
+{
+  "name": "com.jis.sdkads.providers.max",
+  "version": "4.0.0",
+  "displayName": "JIS SDK - MAX Provider",
+  "description": "AppLovin MAX ad provider (IAdService).",
+  "unity": "2022.3",
+  "dependencies": {
+    "com.jis.sdkads.core": "4.0.0",
+    "com.applovin.mediation.ads": "8.6.3"
+  },
+  "author": {
+    "name": "JustIdleGames"
+  }
+}

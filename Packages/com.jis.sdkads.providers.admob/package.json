@@ -1,0 +1,13 @@
+{
+  "name": "com.jis.sdkads.providers.admob",
+  "version": "4.0.0",
+  "displayName": "JIS SDK - AdMob Provider",
+  "description": "Google AdMob ad provider (IAdService). Install Google Mobile Ads via UPM (com.google.ads.mobile) or Assets. Hub adds UPM package on Ads import.",
+  "unity": "2022.3",
+  "dependencies": {
+    "com.jis.sdkads.core": "4.0.0"
+  },
+  "author": {
+    "name": "JustIdleGames"
+  }
+}

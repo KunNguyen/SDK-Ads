@@ -1,0 +1,25 @@
+{
+    "name": "JisSDKAds.Editor",
+    "rootNamespace": "JisSDKAds.Editor",
+    "references": [
+        "JisSDKAds.Ads",
+        "JisSDKAds.IAP",
+        "JisSDKAds.Common",
+        "JisSDKAds.Firebase",
+        "JisSDKAds.Core"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [
+        "Sirenix.OdinInspector.Attributes.dll",
+        "Sirenix.OdinInspector.Editor.dll"
+    ],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

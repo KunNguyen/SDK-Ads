@@ -1,0 +1,33 @@
+{
+    "name": "JisSDKAds.IAP",
+    "rootNamespace": "JisSDKAds.IAP",
+    "references": [
+        "JisSDKAds.Common",
+        "JisSDKAds.Core",
+        "Unity.Purchasing",
+        "Unity.Purchasing.Stores",
+        "Unity.Purchasing.Security",
+        "Unity.Purchasing.SecurityCore",
+        "Unity.Purchasing.SecurityStub",
+        "Unity.Purchasing.TransactionVerifier",
+        "Unity.Services.Core",
+        "Unity.Services.Core.Environments"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [
+        "Sirenix.OdinInspector.Attributes.dll"
+    ],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.unity.purchasing",
+            "expression": "5.0.0",
+            "define": "UNITY_IAP_ACTIVE"
+        }
+    ],
+    "noEngineReferences": false
+}

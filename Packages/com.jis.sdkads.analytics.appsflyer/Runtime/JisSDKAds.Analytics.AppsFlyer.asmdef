@@ -1,0 +1,19 @@
+{
+    "name": "JisSDKAds.Analytics.AppsFlyer",
+    "rootNamespace": "",
+    "references": [
+        "JisSDKAds.Common",
+        "JisSDKAds.Ads",
+        "JisSDKAds.Firebase",
+        "AppsFlyer"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

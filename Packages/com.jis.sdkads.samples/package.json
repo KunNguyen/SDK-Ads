@@ -1,0 +1,23 @@
+{
+  "name": "com.jis.sdkads.samples",
+  "version": "4.0.0",
+  "displayName": "JIS SDK - Samples",
+  "description": "Documentation and sample setup for integrating JIS SDK into game projects.",
+  "unity": "2022.3",
+  "dependencies": {
+    "com.jis.sdkads.hub": "4.0.0",
+    "com.jis.sdkads.firebase": "4.0.0",
+    "com.jis.sdkads.ads": "4.0.0",
+    "com.jis.sdkads.editor": "4.0.0"
+  },
+  "author": {
+    "name": "JustIdleGames"
+  },
+  "samples": [
+    {
+      "displayName": "Minimal integration",
+      "description": "Checklist and scene setup steps for Firebase + JisAds + AdsManager.",
+      "path": "Samples~/MinimalIntegration"
+    }
+  ]
+}

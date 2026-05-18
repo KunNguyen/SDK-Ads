@@ -1,0 +1,13 @@
+{
+  "name": "com.jis.sdkads.appreview",
+  "version": "4.0.0",
+  "displayName": "JIS SDK - App Review",
+  "description": "Google Play In-App Review (Android only).",
+  "unity": "2022.3",
+  "dependencies": {
+    "com.jis.sdkads.common": "4.0.0"
+  },
+  "author": {
+    "name": "JustIdleGames"
+  }
+}

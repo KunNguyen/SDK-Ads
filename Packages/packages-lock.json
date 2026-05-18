@@ -1,7 +1,7 @@
 {
   "dependencies": {
     "com.applovin.mediation.ads": {
-      "version": "8.5.1",
+      "version": "8.6.3",
       "depth": 0,
       "source": "registry",
       "dependencies": {
@@ -24,6 +24,115 @@
       "source": "registry",
       "dependencies": {},
       "url": "https://package.openupm.com"
+    },
+    "com.jis.sdkads.ads": {
+      "version": "file:com.jis.sdkads.ads",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {
+        "com.jis.sdkads.core": "4.0.0",
+        "com.jis.sdkads.common": "4.0.0",
+        "com.jis.sdkads.firebase": "4.0.0",
+        "com.jis.sdkads.providers.max": "4.0.0",
+        "com.jis.sdkads.providers.admob": "4.0.0"
+      }
+    },
+    "com.jis.sdkads.analytics.appsflyer": {
+      "version": "file:com.jis.sdkads.analytics.appsflyer",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {
+        "com.jis.sdkads.common": "4.0.0",
+        "com.jis.sdkads.ads": "4.0.0"
+      }
+    },
+    "com.jis.sdkads.analytics.facebook": {
+      "version": "file:com.jis.sdkads.analytics.facebook",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {
+        "com.jis.sdkads.common": "4.0.0"
+      }
+    },
+    "com.jis.sdkads.analytics.solarengine": {
+      "version": "file:com.jis.sdkads.analytics.solarengine",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {
+        "com.jis.sdkads.common": "4.0.0"
+      }
+    },
+    "com.jis.sdkads.appreview": {
+      "version": "file:com.jis.sdkads.appreview",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {
+        "com.jis.sdkads.common": "4.0.0"
+      }
+    },
+    "com.jis.sdkads.common": {
+      "version": "file:com.jis.sdkads.common",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {
+        "com.jis.sdkads.core": "4.0.0"
+      }
+    },
+    "com.jis.sdkads.core": {
+      "version": "file:com.jis.sdkads.core",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
+    "com.jis.sdkads.editor": {
+      "version": "file:com.jis.sdkads.editor",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {
+        "com.jis.sdkads.ads": "4.0.0",
+        "com.jis.sdkads.iap": "4.0.0"
+      }
+    },
+    "com.jis.sdkads.firebase": {
+      "version": "file:com.jis.sdkads.firebase",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {
+        "com.jis.sdkads.common": "4.0.0"
+      }
+    },
+    "com.jis.sdkads.hub": {
+      "version": "file:com.jis.sdkads.hub",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
+    "com.jis.sdkads.iap": {
+      "version": "file:com.jis.sdkads.iap",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {
+        "com.jis.sdkads.common": "4.0.0",
+        "com.unity.purchasing": "5.0.4",
+        "com.unity.services.core": "1.16.0"
+      }
+    },
+    "com.jis.sdkads.providers.admob": {
+      "version": "file:com.jis.sdkads.providers.admob",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {
+        "com.jis.sdkads.core": "4.0.0"
+      }
+    },
+    "com.jis.sdkads.providers.max": {
+      "version": "file:com.jis.sdkads.providers.max",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {
+        "com.jis.sdkads.core": "4.0.0",
+        "com.applovin.mediation.ads": "8.6.3"
+      }
     },
     "com.opeious.pokemon3dstounity": {
       "version": "https://github.com/opeious/Pokemon3DStoUnity.git",
@@ -219,15 +328,6 @@
         "com.unity.modules.androidjni": "1.0.0",
         "com.unity.nuget.newtonsoft-json": "3.2.1",
         "com.unity.modules.unitywebrequest": "1.0.0"
-      },
-      "url": "https://packages.unity.com"
-    },
-    "com.unity.services.levelplay": {
-      "version": "8.10.2",
-      "depth": 0,
-      "source": "registry",
-      "dependencies": {
-        "com.unity.services.core": "1.8.1"
       },
       "url": "https://packages.unity.com"
     },
