@@ -1,8 +1,8 @@
 #if UNITY_EDITOR
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using UnityEditor;
+using UnityEditor.PackageManager;
 using UnityEngine;
 
 namespace JisSDKAds.Hub
@@ -17,7 +17,7 @@ namespace JisSDKAds.Hub
         private string _gitBaseUrl;
         private string _gitRevision;
         private Vector2 _scroll;
-        private bool _useEmbeddedPackages = true;
+        private bool _useEmbeddedPackages;
 
         [MenuItem("JIS SDK/Hub")]
         public static void Open() => GetWindow<JisSDKHubWindow>("JIS SDK Hub");
@@ -26,8 +26,7 @@ namespace JisSDKAds.Hub
         {
             _gitBaseUrl = EditorPrefs.GetString(PrefsGitBaseUrl, DefaultGitBaseUrl);
             _gitRevision = EditorPrefs.GetString(PrefsGitRevision, DefaultGitRevision);
-            _useEmbeddedPackages = Directory.Exists(
-                Path.Combine(JisSDKHubManifest.ManifestPath, "..", "com.jis.sdkads.core"));
+            _useEmbeddedPackages = JisSDKHubManifest.IsSdkAdsDevRepo();
         }
 
         private void OnGUI()
@@ -35,41 +34,25 @@ namespace JisSDKAds.Hub
             _scroll = EditorGUILayout.BeginScrollView(_scroll);
             EditorGUILayout.LabelField("JIS SDK Hub", EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
-                "Import SDK modules into this Unity project.\n" +
+                "Import or remove SDK modules. Status is read from Packages/manifest.json.\n" +
                 "• Install Firebase from Google before using Firebase module.\n" +
-                "• Dev repo: embedded packages under Packages/com.jis.sdkads.*\n" +
-                "• Game projects: set Git URL and disable embedded mode.",
+                "• Game projects: disable embedded packages; use Git revision main.",
                 MessageType.Info);
 
             _useEmbeddedPackages = EditorGUILayout.Toggle("Use embedded packages (SDK-Ads dev repo)", _useEmbeddedPackages);
-            if (!_useEmbeddedPackages)
+            if (_useEmbeddedPackages && !JisSDKHubManifest.IsSdkAdsDevRepo())
             {
-                _gitBaseUrl = EditorGUILayout.TextField("Git UPM base URL", _gitBaseUrl);
-                _gitRevision = EditorGUILayout.TextField("Git revision (branch or tag)", _gitRevision);
                 EditorGUILayout.HelpBox(
-                    "Use main until a Git tag exists (e.g. 4.0.0). Hub appends #revision to package URLs.\n" +
-                    "Package version in package.json is still 4.0.0 — only the Git ref changes.",
-                    MessageType.None);
-                if (GUILayout.Button("Save Git URL & revision"))
-                {
-                    EditorPrefs.SetString(PrefsGitBaseUrl, _gitBaseUrl);
-                    EditorPrefs.SetString(PrefsGitRevision, _gitRevision);
-                }
-
-                if (GUILayout.Button("Fix com.jis.sdkads.* revisions in manifest.json"))
-                {
-                    var n = JisSDKHubManifest.UpdateJisSdkGitRevisions(_gitRevision);
-                    AssetDatabase.Refresh();
-                    EditorUtility.DisplayDialog("JIS SDK Hub",
-                        n > 0
-                            ? $"Updated {n} package(s) to #{_gitRevision.Trim().TrimStart('#')}."
-                            : "No com.jis.sdkads.* Git entries found to update.",
-                        "OK");
-                }
+                    "Embedded mode needs full packages under Packages/ (dev repo).\n" +
+                    "Game projects: turn OFF — Hub will use Git URLs.",
+                    MessageType.Warning);
             }
 
+            if (!_useEmbeddedPackages)
+                DrawGitSettings();
+
             EditorGUILayout.Space(6);
-            DrawModule("Firebase (required)", "com.jis.sdkads.core + common + firebase + hub", ModuleKind.Firebase);
+            DrawModule("Firebase (required)", "core + common + firebase + hub", ModuleKind.Firebase);
             DrawModule("Ads", "Providers MAX/AdMob + full ads runtime", ModuleKind.Ads);
             DrawModule("IAP", "Unity Purchasing", ModuleKind.Iap);
             DrawModule("App Review", "Android only — Google Play Review", ModuleKind.AppReview);
@@ -80,46 +63,101 @@ namespace JisSDKAds.Hub
             EditorGUILayout.EndScrollView();
         }
 
-        private enum ModuleKind
+        private void DrawGitSettings()
         {
-            Firebase, Ads, Iap, AppReview, AppsFlyer, SolarEngine, Facebook, Editor
+            _gitBaseUrl = EditorGUILayout.TextField("Git UPM base URL", _gitBaseUrl);
+            _gitRevision = EditorGUILayout.TextField("Git revision (branch or tag)", _gitRevision);
+            EditorGUILayout.HelpBox(
+                "Use main until a Git tag exists. Hub appends #revision to package URLs.",
+                MessageType.None);
+            if (GUILayout.Button("Save Git URL & revision"))
+            {
+                EditorPrefs.SetString(PrefsGitBaseUrl, _gitBaseUrl);
+                EditorPrefs.SetString(PrefsGitRevision, _gitRevision);
+            }
+
+            if (GUILayout.Button("Fix com.jis.sdkads.* revisions in manifest.json"))
+            {
+                var n = JisSDKHubManifest.UpdateJisSdkGitRevisions(_gitRevision);
+                RefreshPackages();
+                EditorUtility.DisplayDialog("JIS SDK Hub",
+                    n > 0 ? $"Updated {n} package(s)." : "No com.jis.sdkads.* Git entries to update.", "OK");
+            }
+
+            if (GUILayout.Button("Fix broken file: → Git URLs in manifest.json"))
+            {
+                var n = JisSDKHubManifest.MigrateBrokenFileRefsToGit(_gitBaseUrl, _gitRevision);
+                RefreshPackages();
+                EditorUtility.DisplayDialog("JIS SDK Hub",
+                    n > 0 ? $"Converted {n} broken file: entries." : "No broken file: entries found.", "OK");
+            }
         }
 
         private void DrawModule(string title, string desc, ModuleKind kind)
         {
+            var status = JisSDKHubModules.GetStatus(kind);
+            var statusLabel = JisSDKHubModules.GetStatusLabel(kind);
+
             EditorGUILayout.BeginVertical("box");
             EditorGUILayout.LabelField(title, EditorStyles.boldLabel);
             EditorGUILayout.LabelField(desc, EditorStyles.miniLabel);
-            if (GUILayout.Button($"Import {title}"))
+
+            var prevColor = GUI.contentColor;
+            GUI.contentColor = status switch
+            {
+                ModuleInstallStatus.Installed => new Color(0.5f, 0.95f, 0.55f),
+                ModuleInstallStatus.Partial => new Color(1f, 0.85f, 0.4f),
+                _ => new Color(0.75f, 0.75f, 0.75f)
+            };
+            EditorGUILayout.LabelField($"Status: {statusLabel}", EditorStyles.miniBoldLabel);
+            GUI.contentColor = prevColor;
+
+            EditorGUILayout.BeginHorizontal();
+            var showImport = status != ModuleInstallStatus.Installed;
+            var showRemove = status != ModuleInstallStatus.NotInstalled;
+            JisSDKHubModules.CanRemove(kind, out var blockReason);
+
+            GUI.enabled = showImport;
+            if (GUILayout.Button($"Import {title}", GUILayout.Height(22)))
                 Import(kind);
+            GUI.enabled = true;
+
+            GUI.enabled = showRemove && string.IsNullOrEmpty(blockReason);
+            if (GUILayout.Button($"Remove {title}", GUILayout.Height(22)))
+                Remove(kind);
+            GUI.enabled = true;
+            EditorGUILayout.EndHorizontal();
+
+            if (showRemove && !string.IsNullOrEmpty(blockReason))
+                EditorGUILayout.HelpBox(blockReason, MessageType.Warning);
+
+            if (kind == ModuleKind.Firebase && status == ModuleInstallStatus.Installed)
+                EditorGUILayout.LabelField("Remove keeps com.jis.sdkads.hub so you can re-import modules.", EditorStyles.miniLabel);
+
             EditorGUILayout.EndVertical();
             EditorGUILayout.Space(4);
         }
 
         private void Import(ModuleKind kind)
         {
+            var migrated = JisSDKHubManifest.MigrateBrokenFileRefsToGit(_gitBaseUrl, _gitRevision);
+            if (migrated > 0)
+                Debug.Log($"[JIS SDK Hub] Migrated {migrated} file: dependency(ies) to Git URLs.");
+
             if (!_useEmbeddedPackages)
             {
                 JisSDKHubManifest.UpdateJisSdkGitRevisions(_gitRevision);
-                JisSDKHubManifest.EnsureScopedRegistry(
-                    "AppLovin MAX Unity", "https://unity.packages.applovin.com/",
-                    new[] { "com.applovin.mediation.ads", "com.applovin.mediation.adapters", "com.applovin.mediation.dsp" });
-                JisSDKHubManifest.EnsureScopedRegistry(
-                    "Game Package Registry by Google", "https://unityregistry-pa.googleapis.com",
-                    new[] { "com.google" });
-                JisSDKHubManifest.EnsureScopedRegistry(
-                    "package.openupm.com", "https://package.openupm.com",
-                    new[] { "com.google.ads.mobile" });
+                EnsureRegistriesForImport(kind);
             }
 
-            foreach (var (id, folder) in GetPackages(kind))
+            foreach (var (id, folder) in JisSDKHubModules.GetPackages(kind))
                 JisSDKHubManifest.AddDependency(id, ResolveSource(folder));
 
-            foreach (var (id, ver) in GetExternal(kind))
+            foreach (var (id, ver) in GetExternalForImport(kind))
                 JisSDKHubManifest.AddDependency(id, ver);
 
-            ApplyDefines(kind);
-            AssetDatabase.Refresh();
+            ApplyDefines(kind, add: true);
+            RefreshPackages();
 
             if (kind == ModuleKind.Ads)
             {
@@ -130,91 +168,120 @@ namespace JisSDKAds.Hub
                 };
             }
 
-            EditorUtility.DisplayDialog("JIS SDK Hub", $"Imported {kind}. Check Package Manager and Console.", "OK");
+            EditorUtility.DisplayDialog("JIS SDK Hub", $"Imported {JisSDKHubModules.GetTitle(kind)}.", "OK");
+            Repaint();
+        }
+
+        private void Remove(ModuleKind kind)
+        {
+            if (!JisSDKHubModules.CanRemove(kind, out var blockReason))
+            {
+                EditorUtility.DisplayDialog("JIS SDK Hub", blockReason, "OK");
+                return;
+            }
+
+            var toRemove = JisSDKHubModules.GetPackageIdsToRemove(kind).ToList();
+            var external = JisSDKHubModules.GetExternal(kind).Select(e => e.id).ToList();
+            var defines = JisSDKHubModules.GetDefines(kind);
+
+            var message =
+                $"Remove {JisSDKHubModules.GetTitle(kind)}?\n\nPackages:\n" +
+                string.Join("\n", toRemove.Concat(external).Select(id => "  • " + id));
+            if (defines.Count > 0)
+                message += "\n\nScripting defines:\n" + string.Join(", ", defines);
+
+            if (!EditorUtility.DisplayDialog("JIS SDK Hub — Remove module", message, "Remove", "Cancel"))
+                return;
+
+            foreach (var id in toRemove)
+                JisSDKHubManifest.RemoveDependency(id);
+
+            foreach (var id in external)
+            {
+                if (ShouldRemoveExternal(kind, id))
+                    JisSDKHubManifest.RemoveDependency(id);
+            }
+
+            ApplyDefines(kind, add: false);
+            RefreshPackages();
+
+            EditorUtility.DisplayDialog("JIS SDK Hub", $"Removed {JisSDKHubModules.GetTitle(kind)}.", "OK");
+            Repaint();
+        }
+
+        private static bool ShouldRemoveExternal(ModuleKind kind, string packageId)
+        {
+            if (!JisSDKHubManifest.HasDependency(packageId)) return false;
+
+            switch (kind)
+            {
+                case ModuleKind.Ads:
+                    return true;
+                case ModuleKind.Iap:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        private static IEnumerable<(string id, string version)> GetExternalForImport(ModuleKind kind)
+        {
+            foreach (var entry in JisSDKHubModules.GetExternal(kind))
+            {
+                if (kind == ModuleKind.Ads && entry.id == "com.google.ads.mobile" &&
+                    JisSDKHubManifest.HasDependency("com.google.ads.mobile"))
+                    continue;
+                yield return entry;
+            }
+        }
+
+        private void EnsureRegistriesForImport(ModuleKind kind)
+        {
+            if (kind == ModuleKind.Ads)
+            {
+                JisSDKHubManifest.EnsureScopedRegistry(
+                    "AppLovin MAX Unity", "https://unity.packages.applovin.com/",
+                    new[] { "com.applovin.mediation.ads", "com.applovin.mediation.adapters", "com.applovin.mediation.dsp" });
+                JisSDKHubManifest.EnsureScopedRegistry(
+                    "Game Package Registry by Google", "https://unityregistry-pa.googleapis.com",
+                    new[] { "com.google" });
+                JisSDKHubManifest.EnsureScopedRegistry(
+                    "package.openupm.com", "https://package.openupm.com",
+                    new[] { "com.google.ads.mobile" });
+            }
+        }
+
+        private static void RefreshPackages()
+        {
+            AssetDatabase.Refresh();
+            Client.Resolve();
         }
 
         private string ResolveSource(string folder)
         {
-            if (_useEmbeddedPackages)
+            if (_useEmbeddedPackages && JisSDKHubManifest.HasEmbeddedPackage(folder))
                 return $"file:{folder}";
+
+            if (_useEmbeddedPackages && !JisSDKHubManifest.HasEmbeddedPackage(folder))
+                Debug.LogWarning($"[JIS SDK Hub] Missing Packages/{folder}/package.json — using Git URL.");
+
             var revision = string.IsNullOrWhiteSpace(_gitRevision) ? DefaultGitRevision : _gitRevision.Trim().TrimStart('#');
             return $"{_gitBaseUrl.TrimEnd('/')}?path=Packages/{folder}#{revision}";
         }
 
-        private static IEnumerable<(string id, string folder)> GetPackages(ModuleKind kind)
+        private static void ApplyDefines(ModuleKind kind, bool add)
         {
-            switch (kind)
-            {
-                case ModuleKind.Firebase:
-                    yield return ("com.jis.sdkads.hub", "com.jis.sdkads.hub");
-                    yield return ("com.jis.sdkads.core", "com.jis.sdkads.core");
-                    yield return ("com.jis.sdkads.common", "com.jis.sdkads.common");
-                    yield return ("com.jis.sdkads.firebase", "com.jis.sdkads.firebase");
-                    break;
-                case ModuleKind.Ads:
-                    yield return ("com.jis.sdkads.providers.max", "com.jis.sdkads.providers.max");
-                    yield return ("com.jis.sdkads.providers.admob", "com.jis.sdkads.providers.admob");
-                    yield return ("com.jis.sdkads.ads", "com.jis.sdkads.ads");
-                    break;
-                case ModuleKind.Iap:
-                    yield return ("com.jis.sdkads.iap", "com.jis.sdkads.iap");
-                    break;
-                case ModuleKind.AppReview:
-                    yield return ("com.jis.sdkads.appreview", "com.jis.sdkads.appreview");
-                    break;
-                case ModuleKind.AppsFlyer:
-                    yield return ("com.jis.sdkads.analytics.appsflyer", "com.jis.sdkads.analytics.appsflyer");
-                    break;
-                case ModuleKind.SolarEngine:
-                    yield return ("com.jis.sdkads.analytics.solarengine", "com.jis.sdkads.analytics.solarengine");
-                    break;
-                case ModuleKind.Facebook:
-                    yield return ("com.jis.sdkads.analytics.facebook", "com.jis.sdkads.analytics.facebook");
-                    break;
-                case ModuleKind.Editor:
-                    yield return ("com.jis.sdkads.editor", "com.jis.sdkads.editor");
-                    break;
-            }
-        }
+            var symbols = JisSDKHubModules.GetDefines(kind);
+            if (symbols.Count == 0) return;
 
-        private static IEnumerable<(string id, string version)> GetExternal(ModuleKind kind)
-        {
-            switch (kind)
-            {
-                case ModuleKind.Ads:
-                    yield return ("com.applovin.mediation.ads", "8.6.3");
-                    // Optional: use Assets/GoogleMobileAds in dev repo instead of UPM
-                    if (!JisSDKHubManifest.HasDependency("com.google.ads.mobile"))
-                        yield return ("com.google.ads.mobile", "9.4.0");
-                    break;
-                case ModuleKind.Iap:
-                    yield return ("com.unity.purchasing", "5.0.4");
-                    yield return ("com.unity.services.core", "1.16.0");
-                    break;
-            }
-        }
-
-        private static void ApplyDefines(ModuleKind kind)
-        {
             var group = EditorUserBuildSettings.selectedBuildTargetGroup;
             var set = new HashSet<string>(PlayerSettings.GetScriptingDefineSymbolsForGroup(group)
                 .Split(';').Where(s => !string.IsNullOrEmpty(s)));
 
-            switch (kind)
+            foreach (var symbol in symbols)
             {
-                case ModuleKind.Ads:
-                    set.Add("UNITY_AD_MAX");
-                    set.Add("UNITY_AD_ADMOB");
-                    break;
-                case ModuleKind.Iap:
-                    set.Add("UNITY_IAP_ACTIVE");
-                    break;
-                case ModuleKind.AppReview:
-                    set.Add("GOOGLE_REVIEW");
-                    break;
-                case ModuleKind.AppsFlyer:
-                    set.Add("UNITY_APPSFLYER");
-                    break;
+                if (add) set.Add(symbol);
+                else set.Remove(symbol);
             }
 
             PlayerSettings.SetScriptingDefineSymbolsForGroup(group, string.Join(";", set));

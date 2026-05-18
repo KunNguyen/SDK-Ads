@@ -28,6 +28,20 @@ Nâng cấp từ SDK cũ: [MIGRATION_V4.md](MIGRATION_V4.md).
 
 Bạn **không** cần mở `manifest.json` trừ khi muốn review diff hoặc script hóa build.
 
+### Sửa lỗi `file:` trong game project (Import Ads)
+
+Hub từng ghi `"com.jis.sdkads.ads": "file:com.jis.sdkads.ads"` — Unity tìm `Packages/com.jis.sdkads.ads/package.json` (chỉ có ở repo SDK-Ads dev).
+
+Trong `Packages/manifest.json`, đổi mỗi dòng `file:...` thành Git URL, ví dụ:
+
+```json
+"com.jis.sdkads.ads": "https://github.com/KunNguyen/SDK-Ads.git?path=Packages/com.jis.sdkads.ads#main"
+```
+
+Xóa thư mục rỗng `Packages/com.jis.sdkads.ads` (nếu Hub tạo nhầm, không có `package.json`).
+
+Trong Hub: **tắt** *Use embedded packages*, **Git revision** = `main`, bấm **Fix broken file: → Git URLs** (sau khi cập nhật Hub từ repo).
+
 ### Package Manager (Git URL) — từng bước
 
 1. `Window → Package Manager`
@@ -269,6 +283,7 @@ Package Manager → **JIS SDK - Samples** → **Samples** → *Minimal integrati
 |-------------|------------|
 | `Package name '...' is invalid` | Ô Git URL: **chỉ** paste URL, không paste dòng `"com.jis.sdkads.hub": "..."` |
 | `Cannot clone` / authentication | Cài Git; kiểm tra SSH/`gh auth`; quyền repo |
+| `package.json cannot be found` under `Packages\com.jis.sdkads.*` | Manifest dùng `file:` (embedded) trong game project → tắt embedded trong Hub, **Fix broken file: → Git URLs**, hoặc sửa manifest (mục dưới) |
 | `Make sure [4.0.0] is a valid branch, tag...` | Tag `4.0.0` chưa có trên remote → đổi `#4.0.0` → `#main` trong manifest, hoặc Hub **Fix revisions** / set **Git revision** = `main` |
 | Package không resolve / revision not found | Dùng `#main`; kiểm tra `?path=Packages/com.jis.sdkads.hub` |
 | Lỗi AppLovin / Google Ads | Thêm `scopedRegistries` như mục Cách 2 hoặc Import Ads qua Hub |
