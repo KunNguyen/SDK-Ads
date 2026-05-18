@@ -31,15 +31,27 @@ Bạn **không** cần mở `manifest.json` trừ khi muốn review diff hoặc 
 ### Package Manager (Git URL) — từng bước
 
 1. `Window → Package Manager`
-2. Góc trên trái: chọn **Packages: In Project** hoặc **Unity Registry** (không quan trọng)
-3. Nút **+** → **Add package from git URL…**
-4. Dán:
+2. Nút **+** → chọn đúng **Add package from git URL…** (không phải *Add package by name*)
+3. Dán **chỉ URL** (không có tên package, không có dấu `"`, không có dấu `:`):
 
    ```text
-   https://github.com/KunNguyen/SDK-Ads.git?path=Packages/com.jis.sdkads.hub#4.0.0
+   https://github.com/KunNguyen/SDK-Ads.git?path=Packages/com.jis.sdkads.hub#main
    ```
 
-5. **Add** → đợi clone/resolve → menu **JIS SDK → Hub** xuất hiện
+4. **Add** → đợi clone/resolve → menu **JIS SDK → Hub** xuất hiện
+
+> **Lỗi thường gặp — `Package name '...' is invalid`:**  
+> Bạn đã dán **cả dòng manifest** vào ô Git URL, ví dụ:
+>
+> ```json
+> "com.jis.sdkads.hub": "https://github.com/..."
+> ```
+>
+> Unity coi cả chuỗi đó là “tên package” → lỗi.  
+> - **Git URL dialog:** chỉ URL thuần (mục 3 ở trên).  
+> - **`manifest.json`:** mới cần cả cặp `"com.jis.sdkads.hub": "https://..."`.
+
+**Tag `#4.0.0`:** trên repo GitHub hiện có thể **chưa có tag** `4.0.0`. Dùng `#main` (hoặc branch `migrate-to-UPM` nếu v4 chưa merge) cho đến khi team tạo release tag. Sau khi có tag, đổi `#main` → `#4.0.0`.
 
 Unity 2022.3+ hỗ trợ Git URL có `?path=` và `#tag`. Repo private: Git/SSH phải hoạt động trên máy (giống khi sửa manifest).
 
@@ -255,8 +267,9 @@ Package Manager → **JIS SDK - Samples** → **Samples** → *Minimal integrati
 
 | Triệu chứng | Cách xử lý |
 |-------------|------------|
+| `Package name '...' is invalid` | Ô Git URL: **chỉ** paste URL, không paste dòng `"com.jis.sdkads.hub": "..."` |
 | `Cannot clone` / authentication | Cài Git; kiểm tra SSH/`gh auth`; quyền repo |
-| Package không resolve | URL đúng `?path=Packages/com.jis.sdkads.xxx`; tag `#4.0.0` tồn tại trên remote |
+| Package không resolve / revision not found | Dùng `#main` nếu chưa có tag `4.0.0`; kiểm tra `?path=Packages/com.jis.sdkads.hub` |
 | Lỗi AppLovin / Google Ads | Thêm `scopedRegistries` như mục Cách 2 hoặc Import Ads qua Hub |
 | Lỗi Firebase types | Cài Firebase Unity từ Google vào **game project** |
 | Hub không có menu | Chỉ có sau khi `com.jis.sdkads.hub` compile xong |

@@ -42,9 +42,19 @@ Quick start (manifest hoặc Package Manager Git URL):
 
 1. Add Hub package:
 
-```json
-"com.jis.sdkads.hub": "https://github.com/KunNguyen/SDK-Ads.git?path=Packages/com.jis.sdkads.hub#4.0.0"
+**Package Manager → Add package from git URL** — paste **only** (no quotes):
+
+```text
+https://github.com/KunNguyen/SDK-Ads.git?path=Packages/com.jis.sdkads.hub#main
 ```
+
+**Or** in `manifest.json`:
+
+```json
+"com.jis.sdkads.hub": "https://github.com/KunNguyen/SDK-Ads.git?path=Packages/com.jis.sdkads.hub#main"
+```
+
+Use `#main` until Git tag `4.0.0` is published on the repo.
 
 2. Open **JIS SDK → Hub** → disable *embedded packages* → set Git URL → Import **Firebase**, then **Ads**.
 3. Install **Firebase** from Google in the game project.
