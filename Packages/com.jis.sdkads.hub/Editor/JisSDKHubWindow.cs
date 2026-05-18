@@ -52,7 +52,7 @@ namespace JisSDKAds.Hub
                 DrawGitSettings();
 
             EditorGUILayout.Space(6);
-            DrawModule("Firebase (required)", "core + common + firebase + hub", ModuleKind.Firebase);
+            DrawModule("Firebase (required)", "core + common + firebase + hub + EDM (OpenUPM)", ModuleKind.Firebase);
             DrawAdsModule();
             DrawModule("IAP", "Unity Purchasing", ModuleKind.Iap);
             DrawModule("App Review", "Android only — Google Play Review", ModuleKind.AppReview);
@@ -124,7 +124,7 @@ namespace JisSDKAds.Hub
 
             GUI.enabled = showRemove && string.IsNullOrEmpty(blockReason);
             if (GUILayout.Button($"Remove {title}", GUILayout.Height(22)))
-                Remove(kind);
+                RequestRemoveModule(kind);
             GUI.enabled = true;
             EditorGUILayout.EndHorizontal();
 
@@ -172,7 +172,7 @@ namespace JisSDKAds.Hub
 
             GUI.enabled = showRemove && string.IsNullOrEmpty(blockReason);
             if (GUILayout.Button($"Remove {title}", GUILayout.Height(22)))
-                Remove(kind);
+                RequestRemoveModule(kind);
             GUI.enabled = true;
             EditorGUILayout.EndHorizontal();
 
@@ -204,8 +204,8 @@ namespace JisSDKAds.Hub
             GUI.enabled = true;
 
             GUI.enabled = adsReady && (isOn || status == "Partial");
-            if (GUILayout.Button($"Disable {label}", GUILayout.Height(20)))
-                DisableMediation(provider);
+            if (GUILayout.Button($"Remove {label}", GUILayout.Height(20)))
+                RequestDisableMediation(provider);
             GUI.enabled = true;
 
             EditorGUILayout.EndHorizontal();
@@ -243,7 +243,51 @@ namespace JisSDKAds.Hub
             Repaint();
         }
 
-        private void DisableMediation(MediationProvider provider)
+        private void RequestRemoveModule(ModuleKind kind)
+        {
+            EditorApplication.delayCall += () => RemoveModule(kind);
+        }
+
+        private void RequestDisableMediation(MediationProvider provider)
+        {
+            EditorApplication.delayCall += () => RemoveMediation(provider);
+        }
+
+        private static string BuildRemoveDetails(ModuleKind kind)
+        {
+            var toRemove = JisSDKHubModules.GetPackageIdsToRemove(kind).ToList();
+            var external = JisSDKHubModules.GetExternal(kind).Select(e => e.id).ToList();
+            var defines = JisSDKHubModules.GetDefines(kind);
+
+            var details = "Packages:\n" + string.Join("\n", toRemove.Concat(external).Select(id => "  • " + id));
+            if (defines.Count > 0)
+                details += "\n\nScripting defines:\n  • " + string.Join("\n  • ", defines);
+            return details;
+        }
+
+        private static string BuildMediationRemoveDetails(MediationProvider provider)
+        {
+            var packages = JisSDKHubModules.GetMediationPackageIdsToRemove(provider).ToList();
+            var define = JisSDKHubModules.GetMediationDefine(provider);
+            return "Packages:\n" + string.Join("\n", packages.Select(id => "  • " + id)) +
+                   $"\n\nScripting define:\n  • {define}";
+        }
+
+        private void RemoveModule(ModuleKind kind)
+        {
+            if (!JisSDKHubModules.CanRemove(kind, out var blockReason))
+            {
+                EditorUtility.DisplayDialog("JIS SDK Hub", blockReason, "OK");
+                return;
+            }
+
+            if (!JisSDKHubDialogs.ConfirmRemove(JisSDKHubModules.GetTitle(kind), BuildRemoveDetails(kind)))
+                return;
+
+            ExecuteRemoveModule(kind);
+        }
+
+        private void RemoveMediation(MediationProvider provider)
         {
             if (!JisSDKHubModules.CanDisableMediation(provider, out var blockReason))
             {
@@ -251,9 +295,8 @@ namespace JisSDKAds.Hub
                 return;
             }
 
-            var message = $"Disable {JisSDKHubModules.GetMediationTitle(provider)}?\n\n" +
-                          "Removes provider packages and scripting define from this project.";
-            if (!EditorUtility.DisplayDialog("JIS SDK Hub", message, "Disable", "Cancel"))
+            var title = JisSDKHubModules.GetMediationTitle(provider);
+            if (!JisSDKHubDialogs.ConfirmDisableMediation(title, BuildMediationRemoveDetails(provider)))
                 return;
 
             foreach (var id in JisSDKHubModules.GetMediationPackageIdsToRemove(provider))
@@ -261,6 +304,7 @@ namespace JisSDKAds.Hub
 
             JisSDKHubDefines.SetDefine(JisSDKHubModules.GetMediationDefine(provider), false);
             RefreshPackages();
+            EditorUtility.DisplayDialog("JIS SDK Hub", $"Removed {title}.", "OK");
             Repaint();
         }
 
@@ -277,9 +321,9 @@ namespace JisSDKAds.Hub
                     JisSDKHubManifest.EnsureScopedRegistry(
                         "Game Package Registry by Google", "https://unityregistry-pa.googleapis.com",
                         new[] { "com.google" });
-                    JisSDKHubManifest.EnsureScopedRegistry(
-                        "package.openupm.com", "https://package.openupm.com",
-                        new[] { "com.google.ads.mobile" });
+                    JisSDKHubManifest.EnsureOpenUpmScopes(
+                        JisSDKHubModules.ExternalDependencyManagerId,
+                        "com.google.ads.mobile");
                     break;
             }
         }
@@ -289,6 +333,8 @@ namespace JisSDKAds.Hub
             var migrated = JisSDKHubManifest.MigrateBrokenFileRefsToGit(_gitBaseUrl, _gitRevision);
             if (migrated > 0)
                 Debug.Log($"[JIS SDK Hub] Migrated {migrated} file: dependency(ies) to Git URLs.");
+
+            JisSDKHubModules.EnsureRegistriesForImport(kind);
 
             if (!_useEmbeddedPackages)
                 JisSDKHubManifest.UpdateJisSdkGitRevisions(_gitRevision);
@@ -315,26 +361,10 @@ namespace JisSDKAds.Hub
             Repaint();
         }
 
-        private void Remove(ModuleKind kind)
+        private void ExecuteRemoveModule(ModuleKind kind)
         {
-            if (!JisSDKHubModules.CanRemove(kind, out var blockReason))
-            {
-                EditorUtility.DisplayDialog("JIS SDK Hub", blockReason, "OK");
-                return;
-            }
-
             var toRemove = JisSDKHubModules.GetPackageIdsToRemove(kind).ToList();
             var external = JisSDKHubModules.GetExternal(kind).Select(e => e.id).ToList();
-            var defines = JisSDKHubModules.GetDefines(kind);
-
-            var message =
-                $"Remove {JisSDKHubModules.GetTitle(kind)}?\n\nPackages:\n" +
-                string.Join("\n", toRemove.Concat(external).Select(id => "  • " + id));
-            if (defines.Count > 0)
-                message += "\n\nScripting defines:\n" + string.Join(", ", defines);
-
-            if (!EditorUtility.DisplayDialog("JIS SDK Hub — Remove module", message, "Remove", "Cancel"))
-                return;
 
             foreach (var id in toRemove)
                 JisSDKHubManifest.RemoveDependency(id);

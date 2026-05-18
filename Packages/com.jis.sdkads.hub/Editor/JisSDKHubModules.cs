@@ -160,13 +160,33 @@ namespace JisSDKAds.Hub
                 yield return id;
         }
 
+        public const string ExternalDependencyManagerId = "com.google.external-dependency-manager";
+        public const string ExternalDependencyManagerVersion = "1.2.187";
+
         public static IEnumerable<(string id, string version)> GetExternal(ModuleKind kind)
         {
             switch (kind)
             {
+                case ModuleKind.Firebase:
+                    if (!JisSDKHubManifest.HasDependency(ExternalDependencyManagerId) &&
+                        !JisSDKHubManifest.HasEmbeddedEdmInAssets())
+                    {
+                        yield return (ExternalDependencyManagerId, ExternalDependencyManagerVersion);
+                    }
+                    break;
                 case ModuleKind.Iap:
                     yield return ("com.unity.purchasing", "5.0.4");
                     yield return ("com.unity.services.core", "1.16.0");
+                    break;
+            }
+        }
+
+        public static void EnsureRegistriesForImport(ModuleKind kind)
+        {
+            switch (kind)
+            {
+                case ModuleKind.Firebase:
+                    JisSDKHubManifest.EnsureOpenUpmScopes(ExternalDependencyManagerId);
                     break;
             }
         }

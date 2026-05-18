@@ -60,11 +60,20 @@ namespace JisSDKAds.Hub
             File.WriteAllText(ManifestPath, json);
         }
 
+        public const string OpenUpmRegistryName = "package.openupm.com";
+        public const string OpenUpmRegistryUrl = "https://package.openupm.com";
+
         public static void EnsureScopedRegistry(string name, string url, IReadOnlyList<string> scopes)
         {
+            if (!File.Exists(ManifestPath)) return;
             var json = File.ReadAllText(ManifestPath);
+
             if (json.Contains($"\"name\": \"{name}\""))
+            {
+                json = MergeScopesIntoExistingRegistry(json, name, scopes);
+                File.WriteAllText(ManifestPath, json);
                 return;
+            }
 
             var scopesJson = string.Join(",\n                ", scopes.Select(s => $"\"{s}\""));
             var block = $@"        {{
@@ -86,6 +95,39 @@ namespace JisSDKAds.Hub
                     "\"scopedRegistries\": [\n" + block + ",");
             }
             File.WriteAllText(ManifestPath, json);
+        }
+
+        public static void EnsureOpenUpmScopes(params string[] scopes) =>
+            EnsureScopedRegistry(OpenUpmRegistryName, OpenUpmRegistryUrl, scopes);
+
+        static string MergeScopesIntoExistingRegistry(string json, string registryName, IReadOnlyList<string> scopes)
+        {
+            var registryPattern = new Regex(
+                @"(\{\s*""name""\s*:\s*""" + Regex.Escape(registryName) + @"""\s*,\s*""url""\s*:\s*""[^""]*""\s*,\s*""scopes""\s*:\s*\[)([^\]]*)(\])",
+                RegexOptions.Singleline);
+            var match = registryPattern.Match(json);
+            if (!match.Success)
+                return json;
+
+            var scopesBody = match.Groups[2].Value;
+            foreach (var scope in scopes)
+            {
+                if (scopesBody.Contains($"\"{scope}\""))
+                    continue;
+                var insert = string.IsNullOrWhiteSpace(scopesBody.Trim())
+                    ? $"\n                \"{scope}\""
+                    : $",\n                \"{scope}\"";
+                scopesBody += insert;
+            }
+
+            return json.Remove(match.Index, match.Length)
+                .Insert(match.Index, match.Groups[1].Value + scopesBody + match.Groups[3].Value);
+        }
+
+        public static bool HasEmbeddedEdmInAssets()
+        {
+            var assetsEdm = Path.Combine(UnityEngine.Application.dataPath, "ExternalDependencyManager");
+            return Directory.Exists(assetsEdm);
         }
 
         /// <summary>
