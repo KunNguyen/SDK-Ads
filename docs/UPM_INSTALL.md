@@ -110,7 +110,7 @@ Menu: **JIS SDK → Hub**
 
 - Tắt **Use embedded packages (SDK-Ads dev repo)** — chỉ bật khi đang làm việc trong repo SDK-Ads.
 - **Git UPM base URL:** ví dụ `https://github.com/KunNguyen/SDK-Ads.git` → **Save Git URL**  
-  Hub dùng URL này + `#4.0.0` khi bấm Import.
+  Hub dùng URL này + **Git revision** (mặc định `main`) khi bấm Import — không dùng `#4.0.0` trừ khi tag đã tồn tại trên GitHub.
 
 ### Bước 3: Import module (thứ tự gợi ý)
 
@@ -269,7 +269,8 @@ Package Manager → **JIS SDK - Samples** → **Samples** → *Minimal integrati
 |-------------|------------|
 | `Package name '...' is invalid` | Ô Git URL: **chỉ** paste URL, không paste dòng `"com.jis.sdkads.hub": "..."` |
 | `Cannot clone` / authentication | Cài Git; kiểm tra SSH/`gh auth`; quyền repo |
-| Package không resolve / revision not found | Dùng `#main` nếu chưa có tag `4.0.0`; kiểm tra `?path=Packages/com.jis.sdkads.hub` |
+| `Make sure [4.0.0] is a valid branch, tag...` | Tag `4.0.0` chưa có trên remote → đổi `#4.0.0` → `#main` trong manifest, hoặc Hub **Fix revisions** / set **Git revision** = `main` |
+| Package không resolve / revision not found | Dùng `#main`; kiểm tra `?path=Packages/com.jis.sdkads.hub` |
 | Lỗi AppLovin / Google Ads | Thêm `scopedRegistries` như mục Cách 2 hoặc Import Ads qua Hub |
 | Lỗi Firebase types | Cài Firebase Unity từ Google vào **game project** |
 | Hub không có menu | Chỉ có sau khi `com.jis.sdkads.hub` compile xong |

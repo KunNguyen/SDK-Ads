@@ -187,10 +187,10 @@ Xem [GAME_SETUP.md](GAME_SETUP.md), [PHASE4_JISADS.md](PHASE4_JISADS.md)
 Hướng dẫn đầy đủ: **[UPM_INSTALL.md](UPM_INSTALL.md)** (Hub, manifest thủ công, private repo, nâng version).
 
 ```json
-"com.jis.sdkads.hub": "https://github.com/KunNguyen/SDK-Ads.git?path=Packages/com.jis.sdkads.hub#4.0.0"
+"com.jis.sdkads.hub": "https://github.com/KunNguyen/SDK-Ads.git?path=Packages/com.jis.sdkads.hub#main"
 ```
 
-Hub lưu base URL trong EditorPrefs `JisSDKAds.Hub.GitBaseUrl`.
+Hub: `JisSDKAds.Hub.GitBaseUrl`, `JisSDKAds.Hub.GitRevision` (mặc định `main`). Tag Git `4.0.0` chưa publish → đừng dùng `#4.0.0` trong manifest.
 
 ---
 

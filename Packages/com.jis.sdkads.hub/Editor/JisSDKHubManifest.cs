@@ -62,6 +62,31 @@ namespace JisSDKAds.Hub
             }
             File.WriteAllText(ManifestPath, json);
         }
+
+        /// <summary>
+        /// Updates #revision on all com.jis.sdkads.* Git UPM entries (e.g. #4.0.0 → #main when tag missing).
+        /// </summary>
+        public static int UpdateJisSdkGitRevisions(string revision)
+        {
+            if (!File.Exists(ManifestPath)) return 0;
+            revision = (revision ?? "main").Trim().TrimStart('#');
+            if (string.IsNullOrEmpty(revision)) revision = "main";
+
+            var json = File.ReadAllText(ManifestPath);
+            var pattern = new Regex(
+                @"""(com\.jis\.sdkads\.[^""]+)""\s*:\s*""(https?://[^""]+\?path=Packages/[^""]+)#([^""]*)""",
+                RegexOptions.Multiline);
+            var count = 0;
+            json = pattern.Replace(json, m =>
+            {
+                if (m.Groups[3].Value == revision) return m.Value;
+                count++;
+                return $"\"{m.Groups[1].Value}\": \"{m.Groups[2].Value}#{revision}\"";
+            });
+            if (count > 0)
+                File.WriteAllText(ManifestPath, json);
+            return count;
+        }
     }
 }
 #endif

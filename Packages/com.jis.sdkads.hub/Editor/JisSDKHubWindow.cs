@@ -10,10 +10,12 @@ namespace JisSDKAds.Hub
     public class JisSDKHubWindow : EditorWindow
     {
         private const string PrefsGitBaseUrl = "JisSDKAds.Hub.GitBaseUrl";
-        private const string DefaultGitBaseUrl = "https://github.com/YOUR_ORG/SDK-Ads.git";
-        private const string SdkVersion = "4.0.0";
+        private const string PrefsGitRevision = "JisSDKAds.Hub.GitRevision";
+        private const string DefaultGitBaseUrl = "https://github.com/KunNguyen/SDK-Ads.git";
+        private const string DefaultGitRevision = "main";
 
         private string _gitBaseUrl;
+        private string _gitRevision;
         private Vector2 _scroll;
         private bool _useEmbeddedPackages = true;
 
@@ -23,6 +25,7 @@ namespace JisSDKAds.Hub
         private void OnEnable()
         {
             _gitBaseUrl = EditorPrefs.GetString(PrefsGitBaseUrl, DefaultGitBaseUrl);
+            _gitRevision = EditorPrefs.GetString(PrefsGitRevision, DefaultGitRevision);
             _useEmbeddedPackages = Directory.Exists(
                 Path.Combine(JisSDKHubManifest.ManifestPath, "..", "com.jis.sdkads.core"));
         }
@@ -42,8 +45,27 @@ namespace JisSDKAds.Hub
             if (!_useEmbeddedPackages)
             {
                 _gitBaseUrl = EditorGUILayout.TextField("Git UPM base URL", _gitBaseUrl);
-                if (GUILayout.Button("Save Git URL"))
+                _gitRevision = EditorGUILayout.TextField("Git revision (branch or tag)", _gitRevision);
+                EditorGUILayout.HelpBox(
+                    "Use main until a Git tag exists (e.g. 4.0.0). Hub appends #revision to package URLs.\n" +
+                    "Package version in package.json is still 4.0.0 — only the Git ref changes.",
+                    MessageType.None);
+                if (GUILayout.Button("Save Git URL & revision"))
+                {
                     EditorPrefs.SetString(PrefsGitBaseUrl, _gitBaseUrl);
+                    EditorPrefs.SetString(PrefsGitRevision, _gitRevision);
+                }
+
+                if (GUILayout.Button("Fix com.jis.sdkads.* revisions in manifest.json"))
+                {
+                    var n = JisSDKHubManifest.UpdateJisSdkGitRevisions(_gitRevision);
+                    AssetDatabase.Refresh();
+                    EditorUtility.DisplayDialog("JIS SDK Hub",
+                        n > 0
+                            ? $"Updated {n} package(s) to #{_gitRevision.Trim().TrimStart('#')}."
+                            : "No com.jis.sdkads.* Git entries found to update.",
+                        "OK");
+                }
             }
 
             EditorGUILayout.Space(6);
@@ -78,6 +100,7 @@ namespace JisSDKAds.Hub
         {
             if (!_useEmbeddedPackages)
             {
+                JisSDKHubManifest.UpdateJisSdkGitRevisions(_gitRevision);
                 JisSDKHubManifest.EnsureScopedRegistry(
                     "AppLovin MAX Unity", "https://unity.packages.applovin.com/",
                     new[] { "com.applovin.mediation.ads", "com.applovin.mediation.adapters", "com.applovin.mediation.dsp" });
@@ -114,7 +137,8 @@ namespace JisSDKAds.Hub
         {
             if (_useEmbeddedPackages)
                 return $"file:{folder}";
-            return $"{_gitBaseUrl.TrimEnd('/')}?path=Packages/{folder}#{SdkVersion}";
+            var revision = string.IsNullOrWhiteSpace(_gitRevision) ? DefaultGitRevision : _gitRevision.Trim().TrimStart('#');
+            return $"{_gitBaseUrl.TrimEnd('/')}?path=Packages/{folder}#{revision}";
         }
 
         private static IEnumerable<(string id, string folder)> GetPackages(ModuleKind kind)
