@@ -1,12 +1,8 @@
+using System;
+using System.Reflection;
 using JisSDKAds.Ads.Settings;
 using JisSDKAds.Core.Interfaces;
 using UnityEngine;
-#if UNITY_AD_MAX
-using JisSDKAds.Providers.Max;
-#endif
-#if UNITY_AD_ADMOB
-using JisSDKAds.Providers.AdMob;
-#endif
 
 namespace JisSDKAds.Ads
 {
@@ -26,41 +22,46 @@ namespace JisSDKAds.Ads
             return profile.mediation switch
             {
 #if UNITY_AD_MAX
-                AdsMediationType.MAX => CreateMaxConfig(profile.sdkSetup),
+                AdsMediationType.MAX => CreateProviderConfig("JisSDKAds.Providers.Max.MaxAdConfig, JisSDKAds.Providers.Max", setup =>
+                {
+                    SetField(setup, "sdkKey", profile.sdkSetup.maxAdsSetup.SDKKey);
+                    SetField(setup, "interstitialAdUnitId", profile.sdkSetup.maxAdsSetup.InterstitialAdUnitID);
+                    SetField(setup, "rewardedAdUnitId", profile.sdkSetup.maxAdsSetup.RewardedAdUnitID);
+                    SetField(setup, "bannerAdUnitId", profile.sdkSetup.maxAdsSetup.BannerAdUnitID);
+                    SetField(setup, "appOpenAdUnitId", profile.sdkSetup.maxAdsSetup.AppOpenAdUnitID);
+                }),
 #endif
 #if UNITY_AD_ADMOB
-                AdsMediationType.ADMOB => CreateAdMobConfig(profile.sdkSetup),
+                AdsMediationType.ADMOB => CreateProviderConfig("JisSDKAds.Providers.AdMob.AdMobConfig, JisSDKAds.Providers.AdMob", setup =>
+                {
+                    SetField(setup, "appId", "");
+                    var inter = profile.sdkSetup.admobAdsSetup?.InterstitialAdUnitIDList;
+                    var reward = profile.sdkSetup.admobAdsSetup?.RewardedAdUnitIDList;
+                    var banner = profile.sdkSetup.admobAdsSetup?.BannerAdUnitIDList;
+                    SetField(setup, "interstitialAdUnitId", inter != null && inter.Count > 0 ? inter[0] : "");
+                    SetField(setup, "rewardedAdUnitId", reward != null && reward.Count > 0 ? reward[0] : "");
+                    SetField(setup, "bannerAdUnitId", banner != null && banner.Count > 0 ? banner[0] : "");
+                }),
 #endif
                 _ => null
             };
         }
 
-#if UNITY_AD_MAX
-        static MaxAdConfig CreateMaxConfig(SDKSetup setup)
+        static IAdProviderConfig CreateProviderConfig(string typeNameWithAssembly, Action<ScriptableObject> configure)
         {
-            var config = ScriptableObject.CreateInstance<MaxAdConfig>();
-            config.sdkKey = setup.maxAdsSetup.SDKKey;
-            config.interstitialAdUnitId = setup.maxAdsSetup.InterstitialAdUnitID;
-            config.rewardedAdUnitId = setup.maxAdsSetup.RewardedAdUnitID;
-            config.bannerAdUnitId = setup.maxAdsSetup.BannerAdUnitID;
-            config.appOpenAdUnitId = setup.maxAdsSetup.AppOpenAdUnitID;
-            return config;
-        }
-#endif
+            var type = Type.GetType(typeNameWithAssembly);
+            if (type == null || !typeof(IAdProviderConfig).IsAssignableFrom(type))
+                return null;
 
-#if UNITY_AD_ADMOB
-        static AdMobConfig CreateAdMobConfig(SDKSetup setup)
-        {
-            var config = ScriptableObject.CreateInstance<AdMobConfig>();
-            config.appId = "";
-            var inter = setup.admobAdsSetup?.InterstitialAdUnitIDList;
-            var reward = setup.admobAdsSetup?.RewardedAdUnitIDList;
-            var banner = setup.admobAdsSetup?.BannerAdUnitIDList;
-            config.interstitialAdUnitId = inter != null && inter.Count > 0 ? inter[0] : "";
-            config.rewardedAdUnitId = reward != null && reward.Count > 0 ? reward[0] : "";
-            config.bannerAdUnitId = banner != null && banner.Count > 0 ? banner[0] : "";
-            return config;
+            var instance = ScriptableObject.CreateInstance(type);
+            configure?.Invoke(instance);
+            return instance as IAdProviderConfig;
         }
-#endif
+
+        static void SetField(ScriptableObject target, string fieldName, object value)
+        {
+            var field = target.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            field?.SetValue(target, value);
+        }
     }
 }

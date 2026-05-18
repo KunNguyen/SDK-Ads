@@ -3,6 +3,8 @@
     "rootNamespace": "JisSDKAds.Providers.Max",
     "references": [
         "JisSDKAds.Core",
+        "JisSDKAds.Common",
+        "JisSDKAds.Ads",
         "MaxSdk.Scripts"
     ],
     "includePlatforms": [],

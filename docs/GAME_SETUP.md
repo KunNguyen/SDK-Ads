@@ -8,7 +8,7 @@ Open **JIS SDK → Hub** and import:
 
 1. **Firebase** (required)
 2. Install **Firebase** from Google (Analytics + Remote Config)
-3. **Ads** (adds MAX + AdMob providers + ads runtime)
+3. **Ads** (ads runtime only), then **Enable MAX** / **Enable AdMob** in Hub as needed
 4. Optional: IAP, App Review, AppsFlyer, …
 
 ## 2. Create settings

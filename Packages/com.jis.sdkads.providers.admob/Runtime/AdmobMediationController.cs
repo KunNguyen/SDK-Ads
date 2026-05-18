@@ -18,7 +18,7 @@ namespace JisSDKAds.Ads
      /// AdMob mediation controller. Class luôn tồn tại để prefab có thể reference.
      /// Implementation thực chỉ compile khi UNITY_AD_ADMOB được định nghĩa.
      /// </summary>
-     public class AdmobMediationController : AdsMediationController
+     public partial class AdmobMediationController : AdsMediationController, IAdMobRewardedInterstitialHost
      {
           public AdmobAdSetup m_AdmobAdSetup;
 
@@ -1073,6 +1073,16 @@ namespace JisSDKAds.Ads
           public override bool IsActiveAdsType(AdsType adsType) => false;
 
           public override AdsMediationType GetAdsMediationType() => AdsMediationType.ADMOB;
+
+          public void ConfigureRewardedInterstitial(AdmobAdSetup setup, string androidUnitId, string iosUnitId) { }
+          public void LoadRewardedInterstitial() { }
+          public bool IsRewardedInterstitialLoaded() => false;
+          public void ShowRewardedInterstitial(UnityAction rewardCallback, UnityAction<bool> closedCallback = null,
+               UnityAction failedCallback = null)
+          {
+               failedCallback?.Invoke();
+               closedCallback?.Invoke(false);
+          }
 #endif
      }
 }

@@ -16,6 +16,12 @@ namespace JisSDKAds.Hub
         Editor
     }
 
+    internal enum MediationProvider
+    {
+        Max,
+        AdMob
+    }
+
     internal enum ModuleInstallStatus
     {
         NotInstalled,
@@ -48,8 +54,6 @@ namespace JisSDKAds.Hub
                     yield return ("com.jis.sdkads.firebase", "com.jis.sdkads.firebase");
                     break;
                 case ModuleKind.Ads:
-                    yield return ("com.jis.sdkads.providers.max", "com.jis.sdkads.providers.max");
-                    yield return ("com.jis.sdkads.providers.admob", "com.jis.sdkads.providers.admob");
                     yield return ("com.jis.sdkads.ads", "com.jis.sdkads.ads");
                     break;
                 case ModuleKind.Iap:
@@ -73,6 +77,61 @@ namespace JisSDKAds.Hub
             }
         }
 
+        public static IEnumerable<(string id, string folder)> GetMediationPackages(MediationProvider provider)
+        {
+            switch (provider)
+            {
+                case MediationProvider.Max:
+                    yield return ("com.jis.sdkads.providers.max", "com.jis.sdkads.providers.max");
+                    break;
+                case MediationProvider.AdMob:
+                    yield return ("com.jis.sdkads.providers.admob", "com.jis.sdkads.providers.admob");
+                    break;
+            }
+        }
+
+        public static IEnumerable<(string id, string version)> GetMediationExternal(MediationProvider provider)
+        {
+            switch (provider)
+            {
+                case MediationProvider.Max:
+                    yield return ("com.applovin.mediation.ads", "8.6.3");
+                    break;
+                case MediationProvider.AdMob:
+                    yield return ("com.google.ads.mobile", "9.4.0");
+                    break;
+            }
+        }
+
+        public static string GetMediationDefine(MediationProvider provider) => provider switch
+        {
+            MediationProvider.Max => JisSDKHubDefines.Max,
+            MediationProvider.AdMob => JisSDKHubDefines.AdMob,
+            _ => null
+        };
+
+        public static bool IsMediationEnabled(MediationProvider provider) =>
+            JisSDKHubDefines.HasDefine(GetMediationDefine(provider));
+
+        public static bool IsMediationInstalled(MediationProvider provider)
+        {
+            foreach (var (id, _) in GetMediationPackages(provider))
+            {
+                if (!JisSDKHubManifest.HasDependency(id))
+                    return false;
+            }
+            return true;
+        }
+
+        public static string GetMediationStatusLabel(MediationProvider provider)
+        {
+            var defineOn = IsMediationEnabled(provider);
+            var packagesOn = IsMediationInstalled(provider);
+            if (defineOn && packagesOn) return "On";
+            if (defineOn || packagesOn) return "Partial";
+            return "Off";
+        }
+
         /// <summary>Packages removed with the module (hub is kept when removing Firebase).</summary>
         public static IEnumerable<string> GetPackageIdsToRemove(ModuleKind kind)
         {
@@ -83,6 +142,9 @@ namespace JisSDKAds.Hub
                     yield return "com.jis.sdkads.common";
                     yield return "com.jis.sdkads.firebase";
                     break;
+                case ModuleKind.Ads:
+                    yield return "com.jis.sdkads.ads";
+                    break;
                 default:
                     foreach (var (id, _) in GetPackages(kind))
                         yield return id;
@@ -90,14 +152,18 @@ namespace JisSDKAds.Hub
             }
         }
 
+        public static IEnumerable<string> GetMediationPackageIdsToRemove(MediationProvider provider)
+        {
+            foreach (var (id, _) in GetMediationPackages(provider))
+                yield return id;
+            foreach (var (id, _) in GetMediationExternal(provider))
+                yield return id;
+        }
+
         public static IEnumerable<(string id, string version)> GetExternal(ModuleKind kind)
         {
             switch (kind)
             {
-                case ModuleKind.Ads:
-                    yield return ("com.applovin.mediation.ads", "8.6.3");
-                    yield return ("com.google.ads.mobile", "9.4.0");
-                    break;
                 case ModuleKind.Iap:
                     yield return ("com.unity.purchasing", "5.0.4");
                     yield return ("com.unity.services.core", "1.16.0");
@@ -105,22 +171,13 @@ namespace JisSDKAds.Hub
             }
         }
 
-        public static IReadOnlyList<string> GetDefines(ModuleKind kind)
+        public static IReadOnlyList<string> GetDefines(ModuleKind kind) => kind switch
         {
-            switch (kind)
-            {
-                case ModuleKind.Ads:
-                    return new[] { "UNITY_AD_MAX", "UNITY_AD_ADMOB" };
-                case ModuleKind.Iap:
-                    return new[] { "UNITY_IAP_ACTIVE" };
-                case ModuleKind.AppReview:
-                    return new[] { "GOOGLE_REVIEW" };
-                case ModuleKind.AppsFlyer:
-                    return new[] { "UNITY_APPSFLYER" };
-                default:
-                    return System.Array.Empty<string>();
-            }
-        }
+            ModuleKind.Iap => new[] { "UNITY_IAP_ACTIVE" },
+            ModuleKind.AppReview => new[] { "GOOGLE_REVIEW" },
+            ModuleKind.AppsFlyer => new[] { "UNITY_APPSFLYER" },
+            _ => System.Array.Empty<string>()
+        };
 
         public static ModuleInstallStatus GetStatus(ModuleKind kind)
         {
@@ -172,6 +229,26 @@ namespace JisSDKAds.Hub
                 }
             }
 
+            if (kind == ModuleKind.Ads)
+            {
+                if (IsMediationEnabled(MediationProvider.Max) || IsMediationEnabled(MediationProvider.AdMob))
+                {
+                    blockReason = "Disable MAX and AdMob below before removing Ads runtime.";
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        public static bool CanDisableMediation(MediationProvider provider, out string blockReason)
+        {
+            blockReason = null;
+            if (GetStatus(ModuleKind.Ads) == ModuleInstallStatus.NotInstalled)
+            {
+                blockReason = "Import Ads module first.";
+                return false;
+            }
             return true;
         }
 
@@ -188,8 +265,12 @@ namespace JisSDKAds.Hub
             _ => kind.ToString()
         };
 
-        /// <summary>Modules that still need AppLovin / Google registries after removal.</summary>
-        public static bool NeedsAdsRegistries() => IsInstalled(ModuleKind.Ads);
+        public static string GetMediationTitle(MediationProvider provider) => provider switch
+        {
+            MediationProvider.Max => "AppLovin MAX",
+            MediationProvider.AdMob => "Google AdMob",
+            _ => provider.ToString()
+        };
     }
 }
 #endif

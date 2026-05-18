@@ -2,7 +2,9 @@
     "name": "JisSDKAds.Providers.AdMob",
     "rootNamespace": "JisSDKAds.Providers.AdMob",
     "references": [
-        "JisSDKAds.Core"
+        "JisSDKAds.Core",
+        "JisSDKAds.Common",
+        "JisSDKAds.Ads"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

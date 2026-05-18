@@ -6,6 +6,7 @@
   "unity": "2022.3",
   "dependencies": {
     "com.jis.sdkads.core": "4.0.0",
+    "com.jis.sdkads.ads": "4.0.0",
     "com.applovin.mediation.ads": "8.6.3"
   },
   "author": {

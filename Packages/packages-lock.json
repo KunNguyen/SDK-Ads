@@ -32,9 +32,7 @@
       "dependencies": {
         "com.jis.sdkads.core": "4.0.0",
         "com.jis.sdkads.common": "4.0.0",
-        "com.jis.sdkads.firebase": "4.0.0",
-        "com.jis.sdkads.providers.max": "4.0.0",
-        "com.jis.sdkads.providers.admob": "4.0.0"
+        "com.jis.sdkads.firebase": "4.0.0"
       }
     },
     "com.jis.sdkads.analytics.appsflyer": {
@@ -122,7 +120,8 @@
       "depth": 0,
       "source": "embedded",
       "dependencies": {
-        "com.jis.sdkads.core": "4.0.0"
+        "com.jis.sdkads.core": "4.0.0",
+        "com.jis.sdkads.ads": "4.0.0"
       }
     },
     "com.jis.sdkads.providers.max": {
@@ -131,6 +130,7 @@
       "source": "embedded",
       "dependencies": {
         "com.jis.sdkads.core": "4.0.0",
+        "com.jis.sdkads.ads": "4.0.0",
         "com.applovin.mediation.ads": "8.6.3"
       }
     },

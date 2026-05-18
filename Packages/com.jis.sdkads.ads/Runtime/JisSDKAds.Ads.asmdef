@@ -4,12 +4,7 @@
     "references": [
         "JisSDKAds.Core",
         "JisSDKAds.Common",
-        "JisSDKAds.Firebase",
-        "JisSDKAds.Providers.Max",
-        "JisSDKAds.Providers.AdMob",
-        "MaxSdk.Scripts",
-        "GoogleMobileAds",
-        "GoogleMobileAds.Core"
+        "JisSDKAds.Firebase"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

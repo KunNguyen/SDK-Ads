@@ -53,7 +53,7 @@ namespace JisSDKAds.Hub
 
             EditorGUILayout.Space(6);
             DrawModule("Firebase (required)", "core + common + firebase + hub", ModuleKind.Firebase);
-            DrawModule("Ads", "Providers MAX/AdMob + full ads runtime", ModuleKind.Ads);
+            DrawAdsModule();
             DrawModule("IAP", "Unity Purchasing", ModuleKind.Iap);
             DrawModule("App Review", "Android only — Google Play Review", ModuleKind.AppReview);
             DrawModule("AppsFlyer", "Optional", ModuleKind.AppsFlyer);
@@ -138,6 +138,152 @@ namespace JisSDKAds.Hub
             EditorGUILayout.Space(4);
         }
 
+        private void DrawAdsModule()
+        {
+            const string title = "Ads";
+            const string desc = "Ads runtime (JisAds / AdsManager). Enable MAX or AdMob below.";
+            var kind = ModuleKind.Ads;
+            var status = JisSDKHubModules.GetStatus(kind);
+            var statusLabel = JisSDKHubModules.GetStatusLabel(kind);
+
+            EditorGUILayout.BeginVertical("box");
+            EditorGUILayout.LabelField(title, EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(desc, EditorStyles.miniLabel);
+
+            var prevColor = GUI.contentColor;
+            GUI.contentColor = status switch
+            {
+                ModuleInstallStatus.Installed => new Color(0.5f, 0.95f, 0.55f),
+                ModuleInstallStatus.Partial => new Color(1f, 0.85f, 0.4f),
+                _ => new Color(0.75f, 0.75f, 0.75f)
+            };
+            EditorGUILayout.LabelField($"Status: {statusLabel}", EditorStyles.miniBoldLabel);
+            GUI.contentColor = prevColor;
+
+            EditorGUILayout.BeginHorizontal();
+            var showImport = status != ModuleInstallStatus.Installed;
+            var showRemove = status != ModuleInstallStatus.NotInstalled;
+            JisSDKHubModules.CanRemove(kind, out var blockReason);
+
+            GUI.enabled = showImport;
+            if (GUILayout.Button($"Import {title}", GUILayout.Height(22)))
+                Import(kind);
+            GUI.enabled = true;
+
+            GUI.enabled = showRemove && string.IsNullOrEmpty(blockReason);
+            if (GUILayout.Button($"Remove {title}", GUILayout.Height(22)))
+                Remove(kind);
+            GUI.enabled = true;
+            EditorGUILayout.EndHorizontal();
+
+            if (showRemove && !string.IsNullOrEmpty(blockReason))
+                EditorGUILayout.HelpBox(blockReason, MessageType.Warning);
+
+            EditorGUILayout.Space(4);
+            EditorGUILayout.LabelField("Mediation (optional)", EditorStyles.miniBoldLabel);
+            DrawMediationToggle(MediationProvider.Max);
+            DrawMediationToggle(MediationProvider.AdMob);
+
+            EditorGUILayout.EndVertical();
+            EditorGUILayout.Space(4);
+        }
+
+        private void DrawMediationToggle(MediationProvider provider)
+        {
+            var label = JisSDKHubModules.GetMediationTitle(provider);
+            var status = JisSDKHubModules.GetMediationStatusLabel(provider);
+            var isOn = status == "On";
+            var adsReady = JisSDKHubModules.GetStatus(ModuleKind.Ads) != ModuleInstallStatus.NotInstalled;
+
+            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.LabelField($"{label}: {status}", GUILayout.Width(180));
+
+            GUI.enabled = adsReady && !isOn;
+            if (GUILayout.Button($"Enable {label}", GUILayout.Height(20)))
+                EnableMediation(provider);
+            GUI.enabled = true;
+
+            GUI.enabled = adsReady && (isOn || status == "Partial");
+            if (GUILayout.Button($"Disable {label}", GUILayout.Height(20)))
+                DisableMediation(provider);
+            GUI.enabled = true;
+
+            EditorGUILayout.EndHorizontal();
+
+            if (!adsReady)
+                EditorGUILayout.HelpBox("Import Ads module first.", MessageType.None);
+        }
+
+        private void EnableMediation(MediationProvider provider)
+        {
+            if (JisSDKHubModules.GetStatus(ModuleKind.Ads) == ModuleInstallStatus.NotInstalled)
+            {
+                EditorUtility.DisplayDialog("JIS SDK Hub", "Import Ads module first.", "OK");
+                return;
+            }
+
+            if (!_useEmbeddedPackages)
+            {
+                JisSDKHubManifest.UpdateJisSdkGitRevisions(_gitRevision);
+                EnsureMediationRegistries(provider);
+            }
+
+            foreach (var (id, folder) in JisSDKHubModules.GetMediationPackages(provider))
+                JisSDKHubManifest.AddDependency(id, ResolveSource(folder));
+
+            foreach (var (id, ver) in JisSDKHubModules.GetMediationExternal(provider))
+            {
+                if (JisSDKHubManifest.HasDependency(id)) continue;
+                JisSDKHubManifest.AddDependency(id, ver);
+            }
+
+            JisSDKHubDefines.SetDefine(JisSDKHubModules.GetMediationDefine(provider), true);
+            RefreshPackages();
+            EditorUtility.DisplayDialog("JIS SDK Hub", $"Enabled {JisSDKHubModules.GetMediationTitle(provider)}.", "OK");
+            Repaint();
+        }
+
+        private void DisableMediation(MediationProvider provider)
+        {
+            if (!JisSDKHubModules.CanDisableMediation(provider, out var blockReason))
+            {
+                EditorUtility.DisplayDialog("JIS SDK Hub", blockReason, "OK");
+                return;
+            }
+
+            var message = $"Disable {JisSDKHubModules.GetMediationTitle(provider)}?\n\n" +
+                          "Removes provider packages and scripting define from this project.";
+            if (!EditorUtility.DisplayDialog("JIS SDK Hub", message, "Disable", "Cancel"))
+                return;
+
+            foreach (var id in JisSDKHubModules.GetMediationPackageIdsToRemove(provider))
+                JisSDKHubManifest.RemoveDependency(id);
+
+            JisSDKHubDefines.SetDefine(JisSDKHubModules.GetMediationDefine(provider), false);
+            RefreshPackages();
+            Repaint();
+        }
+
+        private void EnsureMediationRegistries(MediationProvider provider)
+        {
+            switch (provider)
+            {
+                case MediationProvider.Max:
+                    JisSDKHubManifest.EnsureScopedRegistry(
+                        "AppLovin MAX Unity", "https://unity.packages.applovin.com/",
+                        new[] { "com.applovin.mediation.ads", "com.applovin.mediation.adapters", "com.applovin.mediation.dsp" });
+                    break;
+                case MediationProvider.AdMob:
+                    JisSDKHubManifest.EnsureScopedRegistry(
+                        "Game Package Registry by Google", "https://unityregistry-pa.googleapis.com",
+                        new[] { "com.google" });
+                    JisSDKHubManifest.EnsureScopedRegistry(
+                        "package.openupm.com", "https://package.openupm.com",
+                        new[] { "com.google.ads.mobile" });
+                    break;
+            }
+        }
+
         private void Import(ModuleKind kind)
         {
             var migrated = JisSDKHubManifest.MigrateBrokenFileRefsToGit(_gitBaseUrl, _gitRevision);
@@ -145,10 +291,7 @@ namespace JisSDKAds.Hub
                 Debug.Log($"[JIS SDK Hub] Migrated {migrated} file: dependency(ies) to Git URLs.");
 
             if (!_useEmbeddedPackages)
-            {
                 JisSDKHubManifest.UpdateJisSdkGitRevisions(_gitRevision);
-                EnsureRegistriesForImport(kind);
-            }
 
             foreach (var (id, folder) in JisSDKHubModules.GetPackages(kind))
                 JisSDKHubManifest.AddDependency(id, ResolveSource(folder));
@@ -209,47 +352,11 @@ namespace JisSDKAds.Hub
             Repaint();
         }
 
-        private static bool ShouldRemoveExternal(ModuleKind kind, string packageId)
-        {
-            if (!JisSDKHubManifest.HasDependency(packageId)) return false;
+        private static bool ShouldRemoveExternal(ModuleKind kind, string packageId) =>
+            JisSDKHubManifest.HasDependency(packageId) && kind == ModuleKind.Iap;
 
-            switch (kind)
-            {
-                case ModuleKind.Ads:
-                    return true;
-                case ModuleKind.Iap:
-                    return true;
-                default:
-                    return false;
-            }
-        }
-
-        private static IEnumerable<(string id, string version)> GetExternalForImport(ModuleKind kind)
-        {
-            foreach (var entry in JisSDKHubModules.GetExternal(kind))
-            {
-                if (kind == ModuleKind.Ads && entry.id == "com.google.ads.mobile" &&
-                    JisSDKHubManifest.HasDependency("com.google.ads.mobile"))
-                    continue;
-                yield return entry;
-            }
-        }
-
-        private void EnsureRegistriesForImport(ModuleKind kind)
-        {
-            if (kind == ModuleKind.Ads)
-            {
-                JisSDKHubManifest.EnsureScopedRegistry(
-                    "AppLovin MAX Unity", "https://unity.packages.applovin.com/",
-                    new[] { "com.applovin.mediation.ads", "com.applovin.mediation.adapters", "com.applovin.mediation.dsp" });
-                JisSDKHubManifest.EnsureScopedRegistry(
-                    "Game Package Registry by Google", "https://unityregistry-pa.googleapis.com",
-                    new[] { "com.google" });
-                JisSDKHubManifest.EnsureScopedRegistry(
-                    "package.openupm.com", "https://package.openupm.com",
-                    new[] { "com.google.ads.mobile" });
-            }
-        }
+        private static IEnumerable<(string id, string version)> GetExternalForImport(ModuleKind kind) =>
+            JisSDKHubModules.GetExternal(kind);
 
         private static void RefreshPackages()
         {
@@ -271,20 +378,8 @@ namespace JisSDKAds.Hub
 
         private static void ApplyDefines(ModuleKind kind, bool add)
         {
-            var symbols = JisSDKHubModules.GetDefines(kind);
-            if (symbols.Count == 0) return;
-
-            var group = EditorUserBuildSettings.selectedBuildTargetGroup;
-            var set = new HashSet<string>(PlayerSettings.GetScriptingDefineSymbolsForGroup(group)
-                .Split(';').Where(s => !string.IsNullOrEmpty(s)));
-
-            foreach (var symbol in symbols)
-            {
-                if (add) set.Add(symbol);
-                else set.Remove(symbol);
-            }
-
-            PlayerSettings.SetScriptingDefineSymbolsForGroup(group, string.Join(";", set));
+            foreach (var symbol in JisSDKHubModules.GetDefines(kind))
+                JisSDKHubDefines.SetDefine(symbol, add);
         }
     }
 }
