@@ -44,7 +44,7 @@
 4. Scene: `FirebaseManager` + `AdsManager` + `JisAds`
 5. Code: `JisAds.Instance.ShowInterstitial(...)`
 
-See [docs/UPM_INSTALL.md](docs/UPM_INSTALL.md), [docs/GAME_SETUP.md](docs/GAME_SETUP.md), [docs/MIGRATION_V4.md](docs/MIGRATION_V4.md).
+See [docs/UPM_INSTALL.md](docs/UPM_INSTALL.md), [docs/GAME_SETUP.md](docs/GAME_SETUP.md), [docs/MIGRATION_V4.md](docs/MIGRATION_V4.md), [docs/TIERED_INVENTORY.md](docs/TIERED_INVENTORY.md).
 
 ---
 

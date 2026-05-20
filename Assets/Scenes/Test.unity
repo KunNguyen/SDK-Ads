@@ -1,0 +1,641 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!29 &1
+OcclusionCullingSettings:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_OcclusionBakeSettings:
+    smallestOccluder: 5
+    smallestHole: 0.25
+    backfaceThreshold: 100
+  m_SceneGUID: 00000000000000000000000000000000
+  m_OcclusionCullingData: {fileID: 0}
+--- !u!104 &2
+RenderSettings:
+  m_ObjectHideFlags: 0
+  serializedVersion: 10
+  m_Fog: 0
+  m_FogColor: {r: 0.5, g: 0.5, b: 0.5, a: 1}
+  m_FogMode: 3
+  m_FogDensity: 0.01
+  m_LinearFogStart: 0
+  m_LinearFogEnd: 300
+  m_AmbientSkyColor: {r: 0.212, g: 0.227, b: 0.259, a: 1}
+  m_AmbientEquatorColor: {r: 0.114, g: 0.125, b: 0.133, a: 1}
+  m_AmbientGroundColor: {r: 0.047, g: 0.043, b: 0.035, a: 1}
+  m_AmbientIntensity: 1
+  m_AmbientMode: 3
+  m_SubtractiveShadowColor: {r: 0.42, g: 0.478, b: 0.627, a: 1}
+  m_SkyboxMaterial: {fileID: 0}
+  m_HaloStrength: 0.5
+  m_FlareStrength: 1
+  m_FlareFadeSpeed: 3
+  m_HaloTexture: {fileID: 0}
+  m_SpotCookie: {fileID: 10001, guid: 0000000000000000e000000000000000, type: 0}
+  m_DefaultReflectionMode: 0
+  m_DefaultReflectionResolution: 128
+  m_ReflectionBounces: 1
+  m_ReflectionIntensity: 1
+  m_CustomReflection: {fileID: 0}
+  m_Sun: {fileID: 0}
+  m_UseRadianceAmbientProbe: 0
+--- !u!157 &3
+LightmapSettings:
+  m_ObjectHideFlags: 0
+  serializedVersion: 13
+  m_BakeOnSceneLoad: 0
+  m_GISettings:
+    serializedVersion: 2
+    m_BounceScale: 1
+    m_IndirectOutputScale: 1
+    m_AlbedoBoost: 1
+    m_EnvironmentLightingMode: 0
+    m_EnableBakedLightmaps: 0
+    m_EnableRealtimeLightmaps: 0
+  m_LightmapEditorSettings:
+    serializedVersion: 12
+    m_Resolution: 2
+    m_BakeResolution: 40
+    m_AtlasSize: 1024
+    m_AO: 0
+    m_AOMaxDistance: 1
+    m_CompAOExponent: 1
+    m_CompAOExponentDirect: 0
+    m_ExtractAmbientOcclusion: 0
+    m_Padding: 2
+    m_LightmapParameters: {fileID: 0}
+    m_LightmapsBakeMode: 1
+    m_TextureCompression: 1
+    m_ReflectionCompression: 2
+    m_MixedBakeMode: 2
+    m_BakeBackend: 2
+    m_PVRSampling: 1
+    m_PVRDirectSampleCount: 32
+    m_PVRSampleCount: 512
+    m_PVRBounces: 2
+    m_PVREnvironmentSampleCount: 256
+    m_PVREnvironmentReferencePointCount: 2048
+    m_PVRFilteringMode: 1
+    m_PVRDenoiserTypeDirect: 1
+    m_PVRDenoiserTypeIndirect: 1
+    m_PVRDenoiserTypeAO: 1
+    m_PVRFilterTypeDirect: 0
+    m_PVRFilterTypeIndirect: 0
+    m_PVRFilterTypeAO: 0
+    m_PVREnvironmentMIS: 1
+    m_PVRCulling: 1
+    m_PVRFilteringGaussRadiusDirect: 1
+    m_PVRFilteringGaussRadiusIndirect: 1
+    m_PVRFilteringGaussRadiusAO: 1
+    m_PVRFilteringAtrousPositionSigmaDirect: 0.5
+    m_PVRFilteringAtrousPositionSigmaIndirect: 2
+    m_PVRFilteringAtrousPositionSigmaAO: 1
+    m_ExportTrainingData: 0
+    m_TrainingDataDestination: TrainingData
+    m_LightProbeSampleCountMultiplier: 4
+  m_LightingDataAsset: {fileID: 20201, guid: 0000000000000000f000000000000000, type: 0}
+  m_LightingSettings: {fileID: 0}
+--- !u!196 &4
+NavMeshSettings:
+  serializedVersion: 2
+  m_ObjectHideFlags: 0
+  m_BuildSettings:
+    serializedVersion: 3
+    agentTypeID: 0
+    agentRadius: 0.5
+    agentHeight: 2
+    agentSlope: 45
+    agentClimb: 0.4
+    ledgeDropHeight: 0
+    maxJumpAcrossDistance: 0
+    minRegionArea: 2
+    manualCellSize: 0
+    cellSize: 0.16666667
+    manualTileSize: 0
+    tileSize: 256
+    buildHeightMesh: 0
+    maxJobWorkers: 0
+    preserveTilesOutsideBounds: 0
+    debug:
+      m_Flags: 0
+  m_NavMeshData: {fileID: 0}
+--- !u!1 &667337911
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 667337914}
+  - component: {fileID: 667337913}
+  - component: {fileID: 667337912}
+  m_Layer: 0
+  m_Name: Main Camera
+  m_TagString: MainCamera
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!81 &667337912
+AudioListener:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 667337911}
+  m_Enabled: 1
+--- !u!20 &667337913
+Camera:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 667337911}
+  m_Enabled: 1
+  serializedVersion: 2
+  m_ClearFlags: 1
+  m_BackGroundColor: {r: 0.19215687, g: 0.3019608, b: 0.4745098, a: 0}
+  m_projectionMatrixMode: 1
+  m_GateFitMode: 2
+  m_FOVAxisMode: 0
+  m_Iso: 200
+  m_ShutterSpeed: 0.005
+  m_Aperture: 16
+  m_FocusDistance: 10
+  m_FocalLength: 50
+  m_BladeCount: 5
+  m_Curvature: {x: 2, y: 11}
+  m_BarrelClipping: 0.25
+  m_Anamorphism: 0
+  m_SensorSize: {x: 36, y: 24}
+  m_LensShift: {x: 0, y: 0}
+  m_NormalizedViewPortRect:
+    serializedVersion: 2
+    x: 0
+    y: 0
+    width: 1
+    height: 1
+  near clip plane: 0.3
+  far clip plane: 1000
+  field of view: 60
+  orthographic: 1
+  orthographic size: 5
+  m_Depth: -1
+  m_CullingMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_RenderingPath: -1
+  m_TargetTexture: {fileID: 0}
+  m_TargetDisplay: 0
+  m_TargetEye: 3
+  m_HDR: 1
+  m_AllowMSAA: 1
+  m_AllowDynamicResolution: 0
+  m_ForceIntoRT: 0
+  m_OcclusionCulling: 1
+  m_StereoConvergence: 10
+  m_StereoSeparation: 0.022
+--- !u!4 &667337914
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 667337911}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: -10}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &708245409
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 708245421}
+  - component: {fileID: 708245420}
+  - component: {fileID: 708245419}
+  - component: {fileID: 708245418}
+  - component: {fileID: 708245417}
+  - component: {fileID: 708245416}
+  - component: {fileID: 708245415}
+  - component: {fileID: 708245414}
+  - component: {fileID: 708245413}
+  - component: {fileID: 708245412}
+  - component: {fileID: 708245411}
+  - component: {fileID: 708245410}
+  m_Layer: 0
+  m_Name: JisSDK_Manager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &708245410
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 708245409}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 24dd91523a66404c97ec7bec154b449c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: JisSDKAds.Ads::JisSDKAds.Ads.UnitAdManagers.Interface.ResumeAdManager
+  <MediationController>k__BackingField: {fileID: 0}
+  <SDKSetup>k__BackingField: {fileID: 0}
+  <AdsConfig>k__BackingField:
+    adsType: 0
+    adsMediationType: 1
+    isActive: 1
+    maxReloadTime: 3
+    adsMediations: []
+  <AdsMediationType>k__BackingField: 0
+  <Status>k__BackingField: 0
+  <IsActive>k__BackingField: 0
+  <IsReady>k__BackingField: 0
+  <IsPaused>k__BackingField: 0
+  <Placement>k__BackingField: 
+  <AdsType>k__BackingField: 0
+  <PauseTimeNeedToShowAds>k__BackingField: 5
+  <AdsResumeCappingTime>k__BackingField: 5
+  <DelayTimeToShowAds>k__BackingField: 0.3
+--- !u!114 &708245411
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 708245409}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: adbce839f8d74235bea5dc34e39a7dd3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: JisSDKAds.Ads::JisSDKAds.Ads.UnitAdManagers.CollapsibleBannerAdManager
+  <MediationController>k__BackingField: {fileID: 0}
+  <SDKSetup>k__BackingField: {fileID: 0}
+  <AdsConfig>k__BackingField:
+    adsType: 0
+    adsMediationType: 1
+    isActive: 1
+    maxReloadTime: 3
+    adsMediations: []
+  <AdsMediationType>k__BackingField: 0
+  <Status>k__BackingField: 0
+  <IsActive>k__BackingField: 0
+  <IsReady>k__BackingField: 0
+  <IsPaused>k__BackingField: 0
+  <Placement>k__BackingField: 
+  <IsOpenOnStart>k__BackingField: 0
+  <IsAutoRefresh>k__BackingField: 0
+  <IsExpanded>k__BackingField: 0
+  <AutoRefreshTime>k__BackingField: 15
+--- !u!114 &708245412
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 708245409}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e65f3dea6b3e4ae5995d79a6e6673188, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: JisSDKAds.Ads::JisSDKAds.Ads.UnitAdManagers.AppOpenAdManager
+  <MediationController>k__BackingField: {fileID: 0}
+  <SDKSetup>k__BackingField: {fileID: 0}
+  <AdsConfig>k__BackingField:
+    adsType: 0
+    adsMediationType: 1
+    isActive: 1
+    maxReloadTime: 3
+    adsMediations: []
+  <AdsMediationType>k__BackingField: 0
+  <Status>k__BackingField: 0
+  <IsActive>k__BackingField: 0
+  <IsReady>k__BackingField: 0
+  <IsPaused>k__BackingField: 0
+  <Placement>k__BackingField: 
+  <IsActiveByRemoteConfig>k__BackingField: 1
+  <IsFirstOpen>k__BackingField: 1
+  <IsActiveShowAdsFirstTime>k__BackingField: 1
+  showOnColdStart: 0
+  firstShowDelayMs: 600
+  firstShowWaitLoadTimeoutSec: 2.5
+  minIntervalBetweenShowsSec: 20
+--- !u!114 &708245413
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 708245409}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2b8b2139893148bfbb1b46d04c5cbc0f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: JisSDKAds.Ads::JisSDKAds.Ads.UnitAdManagers.MRecAdManager
+  <MediationController>k__BackingField: {fileID: 0}
+  <SDKSetup>k__BackingField: {fileID: 0}
+  <AdsConfig>k__BackingField:
+    adsType: 0
+    adsMediationType: 1
+    isActive: 1
+    maxReloadTime: 3
+    adsMediations: []
+  <AdsMediationType>k__BackingField: 0
+  <Status>k__BackingField: 0
+  <IsActive>k__BackingField: 0
+  <IsReady>k__BackingField: 0
+  <IsPaused>k__BackingField: 0
+  <Placement>k__BackingField: 
+--- !u!114 &708245414
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 708245409}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6ebbd3b88ba24f7ca562eae0f64ea81a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: JisSDKAds.Ads::JisSDKAds.Ads.UnitAdManagers.RewardAdManager
+  <MediationController>k__BackingField: {fileID: 0}
+  <SDKSetup>k__BackingField: {fileID: 0}
+  <AdsConfig>k__BackingField:
+    adsType: 0
+    adsMediationType: 1
+    isActive: 1
+    maxReloadTime: 3
+    adsMediations: []
+  <AdsMediationType>k__BackingField: 0
+  <Status>k__BackingField: 0
+  <IsActive>k__BackingField: 0
+  <IsReady>k__BackingField: 0
+  <IsPaused>k__BackingField: 0
+  <Placement>k__BackingField: 
+  <IsLinkRewardWithRemoveAds>k__BackingField: 1
+  <IsActiveInterruptReward>k__BackingField: 0
+  <InterruptAdManager>k__BackingField: {fileID: 0}
+  <AutoLoad>k__BackingField:
+    <Owner>k__BackingField: {fileID: 0}
+    <IntervalTime>k__BackingField: 0
+    <State>k__BackingField: 0
+    <IsActiveLogging>k__BackingField: 0
+--- !u!114 &708245415
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 708245409}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 448d7fe096ff4aaf86c7d668df84eb11, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: JisSDKAds.Ads::JisSDKAds.Ads.UnitAdManagers.InterstitialAdManager
+  <MediationController>k__BackingField: {fileID: 0}
+  <SDKSetup>k__BackingField: {fileID: 0}
+  <AdsConfig>k__BackingField:
+    adsType: 0
+    adsMediationType: 1
+    isActive: 1
+    maxReloadTime: 3
+    adsMediations: []
+  <AdsMediationType>k__BackingField: 0
+  <Status>k__BackingField: 0
+  <IsActive>k__BackingField: 0
+  <IsReady>k__BackingField: 0
+  <IsPaused>k__BackingField: 0
+  <Placement>k__BackingField: 
+  <MaxCappingAdsCooldown>k__BackingField: 0
+  <LevelToShowInterstitial>k__BackingField: 0
+  <IsActiveCooldownFromStart>k__BackingField: 1
+  <AutoLoad>k__BackingField:
+    <Owner>k__BackingField: {fileID: 0}
+    <IntervalTime>k__BackingField: 0
+    <State>k__BackingField: 0
+    <IsActiveLogging>k__BackingField: 0
+  <CooldownSystem>k__BackingField:
+    <Owner>k__BackingField: {fileID: 0}
+    <CooldownTime>k__BackingField: 0
+    <MaxCooldownTime>k__BackingField: 0
+    <State>k__BackingField: 0
+--- !u!114 &708245416
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 708245409}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9495d699701d4ca89089116e86c44154, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: JisSDKAds.Ads::JisSDKAds.Ads.UnitAdManagers.BannerAdManager
+  <MediationController>k__BackingField: {fileID: 0}
+  <SDKSetup>k__BackingField: {fileID: 0}
+  <AdsConfig>k__BackingField:
+    adsType: 0
+    adsMediationType: 1
+    isActive: 1
+    maxReloadTime: 3
+    adsMediations: []
+  <AdsMediationType>k__BackingField: 0
+  <Status>k__BackingField: 0
+  <IsActive>k__BackingField: 0
+  <IsReady>k__BackingField: 0
+  <IsPaused>k__BackingField: 0
+  <Placement>k__BackingField: 
+  <IsAutoRefreshBanner>k__BackingField: 0
+  <BannerAutoResetTime>k__BackingField: 15
+--- !u!114 &708245417
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 708245409}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 02046a2b833dc384abeb49e3663c7ba0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: JisSDKAds.Ads::JisSDKAds.Ads.AdsManager
+  isCheatAds: 0
+  <SdkSettings>k__BackingField: {fileID: 11400000, guid: 582a611213ef44b4a8372eac046a1f2a,
+    type: 2}
+  <AndroidSdkSetup>k__BackingField: {fileID: 11400000, guid: 99c7a73cc9afd424d91b680625257f35,
+    type: 2}
+  <IOSSdkSetup>k__BackingField: {fileID: 11400000, guid: 3b6271665d94d2a41b95c42de739fe81,
+    type: 2}
+  <AdsStateMachine>k__BackingField:
+    <CurrentState>k__BackingField: 0
+  <IsUpdateRemoteConfigSuccess>k__BackingField: 0
+  <IsRemoveAds>k__BackingField: 0
+  <IsFirstOpen>k__BackingField: 0
+  <IsReady>k__BackingField: 0
+  <InitializationMode>k__BackingField: 1
+  <MainAdsMediationType>k__BackingField: 0
+  <AdsConfigs>k__BackingField:
+  - adsType: 1
+    adsMediationType: 0
+    isActive: 0
+    maxReloadTime: 3
+    adsMediations: []
+  - adsType: 2
+    adsMediationType: 0
+    isActive: 0
+    maxReloadTime: 3
+    adsMediations: []
+  - adsType: 0
+    adsMediationType: 0
+    isActive: 0
+    maxReloadTime: 3
+    adsMediations: []
+  - adsType: 5
+    adsMediationType: 0
+    isActive: 0
+    maxReloadTime: 3
+    adsMediations: []
+  - adsType: 3
+    adsMediationType: 0
+    isActive: 0
+    maxReloadTime: 3
+    adsMediations: []
+  - adsType: 4
+    adsMediationType: 0
+    isActive: 0
+    maxReloadTime: 3
+    adsMediations: []
+  <AdsMediationControllers>k__BackingField: []
+  <PrioritizeAppOpenAndThrottleLoads>k__BackingField: 1
+  <DelayBetweenAdInits>k__BackingField: 0.75
+  lifecycleDebounceMs: 250
+  <AppOpenAdManager>k__BackingField: {fileID: 708245412}
+  <BannerAdManager>k__BackingField: {fileID: 708245416}
+  <CollapsibleBannerAdManager>k__BackingField: {fileID: 708245411}
+  <LevelPassToShowInterstitial>k__BackingField: 2
+  <InterstitialAdManager>k__BackingField: {fileID: 708245415}
+  <MRecAdManager>k__BackingField: {fileID: 708245413}
+  <ResumeAdManager>k__BackingField: {fileID: 708245410}
+  <RewardAdManager>k__BackingField: {fileID: 708245414}
+--- !u!114 &708245418
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 708245409}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4bffb78f955387945a3f4b6a2f096b80, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: JisSDKAds.Ads::JisSDKAds.Ads.JisAds
+  settings: {fileID: 11400000, guid: 582a611213ef44b4a8372eac046a1f2a, type: 2}
+  useCoreForStandardFormats: 1
+  autoInitializeOnStart: 1
+  legacyInitMode: 0
+--- !u!114 &708245419
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 708245409}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b240a9f4c7b0e041980effea4a9d887, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: JisSDKAds.Ads::JisSDKAds.Ads.AdsTracker
+--- !u!114 &708245420
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 708245409}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a55174748cdbb4046923cd9271ba749f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: JisSDKAds.Firebase::JisSDKAds.Firebase.FirebaseManager
+  <InitializationMode>k__BackingField: 1
+--- !u!4 &708245421
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 708245409}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &941046179
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 941046181}
+  - component: {fileID: 941046180}
+  m_Layer: 0
+  m_Name: InAppPurchaser
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &941046180
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 941046179}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1a92a584aa3647568f4249fa12b9a659, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: JisSDKAds.IAP::JisSDKAds.IAP.InAppPurchaser
+  <IapProductConfigs>k__BackingField: {fileID: 11400000, guid: 3a84795056185464d9457fd0c9fda3a1,
+    type: 2}
+  <InitializationMode>k__BackingField: 0
+  <IsInitialized>k__BackingField: 0
+--- !u!4 &941046181
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 941046179}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1660057539 &9223372036854775807
+SceneRoots:
+  m_ObjectHideFlags: 0
+  m_Roots:
+  - {fileID: 667337914}
+  - {fileID: 941046181}
+  - {fileID: 708245421}

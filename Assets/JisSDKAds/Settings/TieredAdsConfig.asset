@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 57fc3117f591c864a9a0434d21b57e22, type: 3}
+  m_Name: TieredAdsConfig
+  m_EditorClassIdentifier: JisSDKAds.Core::JisSDKAds.Core.Tiered.Config.TieredAdsConfig
+  EnableTieredInventory: 0
+  EnableTieredInventoryForInterstitial: 1
+  EnableTieredInventoryForRewarded: 1
+  EnableDynamicPromotion: 1
+  PreferLastSuccessfulTier: 1
+  DelayBetweenLoads: 0.75
+  MaxParallelLoads: 1
+  TierDisableDuration: 120
+  PromotionLockDuration: 60
+  RollingWindowSize: 20
+  Interstitial:
+    High: 
+    Mid: 
+    Low: 
+  Rewarded:
+    High: 
+    Mid: 
+    Low: 
+  LegacyInterstitial:
+    UnitId: 
+  LegacyRewarded:
+    UnitId: 

@@ -13,9 +13,14 @@ Open **JIS SDK → Hub** and import:
 
 ## 2. Create settings
 
-**JIS SDK → Create Ads Settings Asset** → `Assets/JisSDKAds/Settings/JisSDKAdsSettings.asset`
+**JIS SDK → Ads → Create Settings Asset** → creates:
 
-Per platform:
+- `Assets/JisSDKAds/Settings/JisSDKAdsSettings.asset`
+- `AndroidSDKSetup.asset` / `IOSSDKSetup.asset` (linked automatically)
+
+See [ADS_EDITOR_SETUP.md](ADS_EDITOR_SETUP.md) for the full editor workflow (platform tabs, active formats, Apply to Scene).
+
+Per platform on `JisSDKAdsSettings`:
 
 | Field | Example |
 |-------|---------|
@@ -36,6 +41,8 @@ Assign **MaxAdConfig** / **AdMobConfig** under provider configs if using Core `A
    - Provider configs optional — auto-built from `SDKSetup` when empty
 
 (`SdkAdsBootstrap` still works: it adds `JisAds` on the same object.)
+
+4. **JIS SDK → Ads → Apply Settings to Scene** (syncs AdsManager + scripting defines for active build target)
 
 ## 4. API (Phase 4 — use `JisAds`)
 

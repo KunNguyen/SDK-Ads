@@ -1,0 +1,17 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f98fb13c29010bf4290a0c0fd645340e, type: 3}
+  m_Name: AdsManagerSDKSetupContainer
+  m_EditorClassIdentifier: JisSDKAds.Ads::JisSDKAds.Ads.AdsManagerSDKSetupContainer
+  android: {fileID: 11400000, guid: c6cbd517d51fb964ead70792dafa33df, type: 2}
+  ios: {fileID: 11400000, guid: 7aadefe191c5800458c092836f83aa33, type: 2}
+  adsInitializationMode: 0

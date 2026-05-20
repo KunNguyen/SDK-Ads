@@ -2,27 +2,20 @@
 using System;
 using JisSDKAds.Ads;
 using UnityEditor;
-using UnityEditor.SceneManagement;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 namespace JisSDKAds.Editor
 {
-    /// <summary>
-    /// Creates and manages AdsManagerSDKSetupContainer and platform-specific SDKSetup assets.
-    /// </summary>
     public static class AdsManagerSDKSetupCreator
     {
-        private const string ConfigRootFolder = "Assets/JisSDKConfigs";
-        private const string PlatformFolder = "Platform";
-        private const string ContainerFileName = "AdsManagerSDKSetupContainer.asset";
-        private const string AndroidSetupFileName = "AndroidSDKAdsSetup.asset";
-        private const string IosSetupFileName = "IOSSDKAdsSetup.asset";
-        private const string AssetPrefabsRoot = "Assets/JisSDKAds/Prefabs";
-        private const string PackagePrefabsRoot = "Packages/com.jis.sdkads/Prefabs";
+        const string ConfigRootFolder = "Assets/JisSDKConfigs";
+        const string PlatformFolder = "Platform";
+        const string ContainerFileName = "AdsManagerSDKSetupContainer.asset";
+        const string AndroidSetupFileName = "AndroidSDKAdsSetup.asset";
+        const string IosSetupFileName = "IOSSDKAdsSetup.asset";
 
-        [MenuItem("SDK Setup/Create or Open SDKSetup Container")]
-        public static void CreateOrOpen()
+        [MenuItem(JisSDKMenuPaths.AdsLegacyCreateContainer, false, 400)]
+        public static void CreateOrOpenLegacyContainer()
         {
             EnsureFolderStructure();
 
@@ -36,33 +29,23 @@ namespace JisSDKAds.Editor
 
             Selection.activeObject = container;
             EditorGUIUtility.PingObject(container);
+            Debug.LogWarning(
+                "[JIS SDK] Legacy Setup Container created. Prefer JIS SDK → Ads → Create Settings Asset.");
         }
 
-        [MenuItem("SDK Setup/Add Prefab/Manager")]
+        [MenuItem(JisSDKMenuPaths.AdsSceneAddManager, false, 200)]
         public static void AddManagerPrefabToCurrentScene()
         {
-            AddPrefabToCurrentScene("Manager");
+            JisSDKScenePrefabUtility.AddPrefabToActiveScene("Manager");
         }
 
-        [MenuItem("GameObject/SDK Setup/Add Manager", false, 10)]
+        [MenuItem(JisSDKMenuPaths.GameObjectAddManager, false, 10)]
         public static void AddManagerPrefabFromHierarchyContext()
         {
             AddManagerPrefabToCurrentScene();
         }
 
-        [MenuItem("SDK Setup/Add Prefab/InAppPurchaser")]
-        public static void AddInAppPurchaserPrefabToCurrentScene()
-        {
-            AddPrefabToCurrentScene("InAppPurchaser");
-        }
-
-        [MenuItem("GameObject/SDK Setup/Add InAppPurchaser", false, 11)]
-        public static void AddInAppPurchaserPrefabFromHierarchyContext()
-        {
-            AddInAppPurchaserPrefabToCurrentScene();
-        }
-
-        private static void EnsureFolderStructure()
+        static void EnsureFolderStructure()
         {
             if (!AssetDatabase.IsValidFolder("Assets/JisSDKConfigs"))
                 AssetDatabase.CreateFolder("Assets", "JisSDKConfigs");
@@ -71,7 +54,7 @@ namespace JisSDKAds.Editor
                 AssetDatabase.CreateFolder(ConfigRootFolder, PlatformFolder);
         }
 
-        private static AdsManagerSDKSetupContainer LoadOrCreateContainer()
+        static AdsManagerSDKSetupContainer LoadOrCreateContainer()
         {
             var path = $"{ConfigRootFolder}/{ContainerFileName}";
             var container = AssetDatabase.LoadAssetAtPath<AdsManagerSDKSetupContainer>(path);
@@ -85,10 +68,9 @@ namespace JisSDKAds.Editor
             return container;
         }
 
-        private static T LoadOrCreateSetup<T>(string path) where T : ScriptableObject
+        static T LoadOrCreateSetup<T>(string path) where T : ScriptableObject
         {
             var setup = AssetDatabase.LoadAssetAtPath<T>(path);
-
             if (setup == null)
             {
                 setup = ScriptableObject.CreateInstance<T>();
@@ -98,69 +80,13 @@ namespace JisSDKAds.Editor
             return setup;
         }
 
-        private static void AssignAndSave(AdsManagerSDKSetupContainer container, SDKSetup android, SDKSetup ios)
+        static void AssignAndSave(AdsManagerSDKSetupContainer container, SDKSetup android, SDKSetup ios)
         {
             container.android = android;
             container.ios = ios;
-
             EditorUtility.SetDirty(container);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-        }
-
-        private static void AddPrefabToCurrentScene(string prefabName)
-        {
-            var prefab = ResolvePrefab(prefabName);
-            if (prefab == null)
-            {
-                Debug.LogError($"[SDK Setup] Cannot find prefab '{prefabName}' in Assets or Packages.");
-                return;
-            }
-
-            var activeScene = SceneManager.GetActiveScene();
-            if (!activeScene.IsValid())
-            {
-                Debug.LogError("[SDK Setup] Active scene is not valid.");
-                return;
-            }
-
-            var instance = PrefabUtility.InstantiatePrefab(prefab, activeScene) as GameObject;
-            if (instance == null)
-            {
-                Debug.LogError($"[SDK Setup] Failed to instantiate prefab '{prefabName}'.");
-                return;
-            }
-
-            Undo.RegisterCreatedObjectUndo(instance, $"Add {prefabName} Prefab");
-            EditorSceneManager.MarkSceneDirty(activeScene);
-            Selection.activeObject = instance;
-            EditorGUIUtility.PingObject(instance);
-        }
-
-        private static GameObject ResolvePrefab(string prefabName)
-        {
-            var assetPath = $"{AssetPrefabsRoot}/{prefabName}.prefab";
-            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(assetPath);
-            if (prefab != null) return prefab;
-
-            var packagePath = $"{PackagePrefabsRoot}/{prefabName}.prefab";
-            prefab = AssetDatabase.LoadAssetAtPath<GameObject>(packagePath);
-            if (prefab != null) return prefab;
-
-            var guids = AssetDatabase.FindAssets($"t:Prefab {prefabName}", new[] { "Assets", "Packages" });
-            foreach (var guid in guids)
-            {
-                var path = AssetDatabase.GUIDToAssetPath(guid);
-                if (!path.EndsWith($"/{prefabName}.prefab", StringComparison.OrdinalIgnoreCase))
-                    continue;
-                if (!path.Contains("/JisSDKAds/Prefabs/", StringComparison.OrdinalIgnoreCase))
-                    continue;
-
-                prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
-                if (prefab != null) return prefab;
-            }
-
-            return null;
         }
     }
 }

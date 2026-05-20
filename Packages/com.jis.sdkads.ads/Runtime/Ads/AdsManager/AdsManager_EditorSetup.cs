@@ -1,4 +1,7 @@
 ﻿using System.Collections.Generic;
+using JisSDKAds.Ads.Settings;
+using JisSDKAds.Ads.UnitAdManagers;
+using JisSDKAds.Ads.UnitAdManagers.Interface;
 using JisSDKAds.Common;
 #if UNITY_EDITOR
 using UnityEditor;
@@ -17,6 +20,13 @@ namespace JisSDKAds.Ads
           public void ApplyFromContainer(AdsManagerSDKSetupContainer container)
           {
                if (container == null) return;
+
+               if (container.unifiedSettings != null)
+               {
+                    container.unifiedSettings.ApplyToAdsManager(this);
+                    return;
+               }
+
                AndroidSdkSetup = container.android;
                IOSSdkSetup = container.ios;
                InitializationMode = container.adsInitializationMode;
@@ -25,6 +35,12 @@ namespace JisSDKAds.Ads
                     : container.ios;
                if (setup != null)
                     UpdateAdsMediationConfig(setup);
+          }
+
+          public void ApplyFromSettings(JisSDKAdsSettings settings)
+          {
+               if (settings == null) return;
+               settings.ApplyToAdsManager(this);
           }
 #endif
 
@@ -36,49 +52,51 @@ namespace JisSDKAds.Ads
 
           public void UpdateAdsMediationConfig(SDKSetup sdkSetup)
           {
+               if (sdkSetup == null) return;
+
                CurrentSDKSetup = sdkSetup;
                MainAdsMediationType = CurrentSDKSetup.adsMediationType;
+               AdsConfigs ??= new List<AdsConfig>();
                AdsConfigs.Clear();
-               AdsConfigs.Add(new AdsConfig()
-               {
-                    adsType = AdsType.INTERSTITIAL,
-                    adsMediationType = CurrentSDKSetup.GetAdsMediationType(AdsType.BANNER),
-                    isActive = true
-               });
-               AdsConfigs.Add(new AdsConfig()
-               {
-                    adsType = AdsType.REWARDED,
-                    adsMediationType = CurrentSDKSetup.GetAdsMediationType(AdsType.REWARDED),
-                    isActive = true
-               });
-               AdsConfigs.Add(new AdsConfig()
-               {
-                    adsType = AdsType.BANNER,
-                    adsMediationType = CurrentSDKSetup.GetAdsMediationType(AdsType.BANNER),
-                    isActive = true
-               });
-               AdsConfigs.Add(new AdsConfig()
-               {
-                    adsType = AdsType.COLLAPSIBLE_BANNER,
-                    adsMediationType = CurrentSDKSetup.GetAdsMediationType(AdsType.COLLAPSIBLE_BANNER),
-                    isActive = true
-               });
-               AdsConfigs.Add(new AdsConfig()
-               {
-                    adsType = AdsType.MREC,
-                    adsMediationType = CurrentSDKSetup.GetAdsMediationType(AdsType.MREC),
-                    isActive = true
-               });
-               AdsConfigs.Add(new AdsConfig()
-               {
-                    adsType = AdsType.APP_OPEN,
-                    adsMediationType = CurrentSDKSetup.GetAdsMediationType(AdsType.APP_OPEN),
-                    isActive = true
-               });
-               RewardAdManager.IsLinkRewardWithRemoveAds = CurrentSDKSetup.IsLinkToRemoveAds;
-               InterstitialAdManager.IsActiveCooldownFromStart = CurrentSDKSetup.IsActiveCooldownInterstitialFromStart;
+               AddAdsConfig(AdsType.INTERSTITIAL);
+               AddAdsConfig(AdsType.REWARDED);
+               AddAdsConfig(AdsType.BANNER);
+               AddAdsConfig(AdsType.COLLAPSIBLE_BANNER);
+               AddAdsConfig(AdsType.MREC);
+               AddAdsConfig(AdsType.APP_OPEN);
+#if UNITY_EDITOR
+               EnsureEditorSubManagersWired();
+#endif
+               if (RewardAdManager != null)
+                    RewardAdManager.IsLinkRewardWithRemoveAds = CurrentSDKSetup.IsLinkToRemoveAds;
+               if (InterstitialAdManager != null)
+                    InterstitialAdManager.IsActiveCooldownFromStart = CurrentSDKSetup.IsActiveCooldownInterstitialFromStart;
                UpdateMaxMediation();
                UpdateAdmobMediation();
+          }
+
+#if UNITY_EDITOR
+          void EnsureEditorSubManagersWired()
+          {
+               var go = gameObject;
+               BannerAdManager ??= go.GetComponent<BannerAdManager>();
+               InterstitialAdManager ??= go.GetComponent<InterstitialAdManager>();
+               RewardAdManager ??= go.GetComponent<RewardAdManager>();
+               MRecAdManager ??= go.GetComponent<MRecAdManager>();
+               AppOpenAdManager ??= go.GetComponent<AppOpenAdManager>();
+               CollapsibleBannerAdManager ??= go.GetComponent<CollapsibleBannerAdManager>();
+               ResumeAdManager ??= go.GetComponent<ResumeAdManager>();
+          }
+#endif
+
+          void AddAdsConfig(AdsType adsType)
+          {
+               AdsConfigs.Add(new AdsConfig
+               {
+                    adsType = adsType,
+                    adsMediationType = CurrentSDKSetup.GetAdsMediationType(adsType),
+                    isActive = CurrentSDKSetup.IsActiveAdsType(adsType)
+               });
           }
 
           private void UpdateMaxMediation()

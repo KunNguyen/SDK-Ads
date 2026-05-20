@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 268a2bb58fed8dd49b0489c08bc7af1d, type: 3}
+  m_Name: JisSDKAdsSettings
+  m_EditorClassIdentifier: JisSDKAds.Ads::JisSDKAds.Ads.Settings.JisSDKAdsSettings
+  android:
+    mediation: 2
+    sdkSetup: {fileID: 11400000, guid: 99c7a73cc9afd424d91b680625257f35, type: 2}
+    maxProviderConfig: {fileID: 0}
+    admobProviderConfig: {fileID: 0}
+    tieredAdsConfig: {fileID: 11400000, guid: a11eea7aedb11d0458bb00f38527ed0a, type: 2}
+  ios:
+    mediation: 1
+    sdkSetup: {fileID: 11400000, guid: 3b6271665d94d2a41b95c42de739fe81, type: 2}
+    maxProviderConfig: {fileID: 0}
+    admobProviderConfig: {fileID: 0}
+    tieredAdsConfig: {fileID: 0}
+  adsInitializationMode: 1
+  singleMediationOnly: 1

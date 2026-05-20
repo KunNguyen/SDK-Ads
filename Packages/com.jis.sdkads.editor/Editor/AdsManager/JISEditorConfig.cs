@@ -5,9 +5,6 @@ using UnityEditor;
 using System;
 using JisSDKAds.Ads;
 using JisSDKAds.Common;
-#if UNITY_IAP_ACTIVE
-using JisSDKAds.IAP;
-#endif
 
 namespace JisSDKAds.Editor
 {
@@ -35,7 +32,7 @@ namespace JisSDKAds.Editor
 
     public static class SDKSetupConfig
     {
-        //[MenuItem("SDK Setup/Setup Ads Mediation")]
+        //[MenuItem(JisSDKMenuPaths.AdsCreateSettings)] — use JisSDKAdsSettingsMenu instead
         public static void OpenMaxAdConfig()
         {
             AddDefineSymbol("UNITY_AD_ADMOB");
@@ -62,7 +59,7 @@ namespace JisSDKAds.Editor
             EditorGUIUtility.PingObject(selectedScriptableObject);
         }
         
-        [MenuItem("SDK Setup/Watch Video Reward Type")]
+        [MenuItem(JisSDKMenuPaths.AdsCreateRewardPlacements, false, 105)]
         public static void OpenRewardAdsPlacementConfig()
         {
             var directory = CreateConfigFolder();
@@ -90,24 +87,6 @@ namespace JisSDKAds.Editor
             PlayerSettings.SetScriptingDefineSymbolsForGroup(EditorUserBuildSettings.selectedBuildTargetGroup,
                 currentDefineSymbols);
         }
-#if UNITY_IAP_ACTIVE
-        [MenuItem("SDK Setup/Setup IAP Packages")]
-        public static void OpenIAPPackageConfig()
-        {
-            var directory = CreateConfigFolder();
-            var assetName = "IAPPackage.asset";
-            var assetPath = $"{directory}{assetName}";
-            var selectedScriptableObject = AssetDatabase.LoadAssetAtPath<IAPPackageConfigs>(assetPath);
-            if (selectedScriptableObject == null)
-            {
-                selectedScriptableObject = ScriptableObject.CreateInstance<IAPPackageConfigs>();
-                AssetDatabase.CreateAsset(selectedScriptableObject, assetPath);
-                AssetDatabase.SaveAssets();
-            }
-            Selection.activeObject = selectedScriptableObject;
-            EditorGUIUtility.PingObject(selectedScriptableObject);
-        }
-#endif
 
         public static string CreateConfigFolder()
         {

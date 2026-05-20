@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace JisSDKAds.IAP
 {
-    [CreateAssetMenu(fileName = "IAPPackageConfigs", menuName = "SDK/IAP/IAPPackageConfigs", order = 0)]
+    [CreateAssetMenu(fileName = "IAPPackageConfigs", menuName = "JIS SDK/IAP/Packages Config", order = 0)]
     public class IAPPackageConfigs : ScriptableObject
     {
         [field: SerializeField, TableList] public List<IAPPackage> Packages { get; set; } = new List<IAPPackage>();

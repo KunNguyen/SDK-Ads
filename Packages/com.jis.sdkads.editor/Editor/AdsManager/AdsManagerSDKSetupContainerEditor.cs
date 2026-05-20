@@ -1,6 +1,8 @@
 ﻿#if UNITY_EDITOR
 using JisSDKAds.Ads;
+using JisSDKAds.Ads.Settings;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 
 namespace JisSDKAds.Editor
@@ -8,24 +10,26 @@ namespace JisSDKAds.Editor
     [CustomEditor(typeof(AdsManagerSDKSetupContainer))]
     public class AdsManagerSDKSetupContainerEditor : UnityEditor.Editor
     {
-        private SerializedProperty androidProp;
-        private SerializedProperty iosProp;
-        private SerializedProperty adsInitializationModeProp;
+        SerializedProperty unifiedSettingsProp;
+        SerializedProperty androidProp;
+        SerializedProperty iosProp;
+        SerializedProperty adsInitializationModeProp;
 
-        private UnityEditor.Editor androidEditor;
-        private UnityEditor.Editor iosEditor;
+        UnityEditor.Editor androidEditor;
+        UnityEditor.Editor iosEditor;
 
-        private bool showAndroid = true;
-        private bool showIos = true;
+        bool showAndroid = true;
+        bool showIos = true;
 
-        private void OnEnable()
+        void OnEnable()
         {
+            unifiedSettingsProp = serializedObject.FindProperty("unifiedSettings");
             androidProp = serializedObject.FindProperty("android");
             iosProp = serializedObject.FindProperty("ios");
             adsInitializationModeProp = serializedObject.FindProperty("adsInitializationMode");
         }
 
-        private void OnDisable()
+        void OnDisable()
         {
             if (androidEditor != null) DestroyImmediate(androidEditor);
             if (iosEditor != null) DestroyImmediate(iosEditor);
@@ -34,96 +38,86 @@ namespace JisSDKAds.Editor
         public override void OnInspectorGUI()
         {
             serializedObject.Update();
+            var container = (AdsManagerSDKSetupContainer)target;
 
-            EditorGUILayout.LabelField("AdsManager SDKSetup Container", EditorStyles.boldLabel);
-            EditorGUILayout.Space(4);
+            EditorGUILayout.HelpBox(
+                "Legacy container. Prefer JIS SDK → Create Ads Settings Asset (JisSDKAdsSettings) as single source of truth.",
+                MessageType.Info);
 
-            // Setup button at the top - always visible
-            var container = target as AdsManagerSDKSetupContainer;
-            if (container != null)
+            EditorGUILayout.PropertyField(unifiedSettingsProp);
+
+            using (new EditorGUILayout.HorizontalScope())
             {
-                using (new EditorGUILayout.HorizontalScope())
+                var prev = GUI.backgroundColor;
+                GUI.backgroundColor = new Color(0.3f, 0.8f, 0.3f);
+                if (GUILayout.Button("Apply to Scene", GUILayout.Height(28)))
                 {
-                    // Prominent Setup button with custom styling
-                    var originalColor = GUI.backgroundColor;
-                    GUI.backgroundColor = new Color(0.3f, 0.8f, 0.3f); // Green color
-                    
-                    if (GUILayout.Button("⚙ Setup", GUILayout.Height(30), GUILayout.ExpandWidth(true)))
-                    {
+                    if (container.unifiedSettings != null)
+                        JisSDKAdsSettingsApplier.Apply(container.unifiedSettings, "Container Apply");
+                    else
                         container.Setup();
-                    }
-                    
-                    GUI.backgroundColor = originalColor;
                 }
-                EditorGUILayout.Space(8);
+                GUI.backgroundColor = prev;
+
+                using (new EditorGUI.DisabledScope(container.unifiedSettings == null))
+                {
+                    if (GUILayout.Button("Sync legacy fields", GUILayout.Width(130), GUILayout.Height(28)))
+                        container.SyncLegacyFieldsFromSettings();
+                }
+            }
+
+            EditorGUILayout.Space(6);
+
+            if (container.unifiedSettings != null)
+            {
+                EditorGUILayout.HelpBox(
+                    "Unified settings assigned — android/ios below are ignored on Apply. Edit profiles on JisSDKAdsSettings.",
+                    MessageType.None);
+                if (GUILayout.Button("Open JisSDKAdsSettings"))
+                {
+                    Selection.activeObject = container.unifiedSettings;
+                    EditorGUIUtility.PingObject(container.unifiedSettings);
+                }
+                serializedObject.ApplyModifiedProperties();
+                return;
             }
 
             if (adsInitializationModeProp != null)
-            {
                 EditorGUILayout.PropertyField(adsInitializationModeProp);
-                EditorGUILayout.HelpBox(
-                    "AutoOnStart: chỉ cần add Manager Prefab vào scene là tự init. " +
-                    "Manual: game code tự gọi init async theo loading flow.",
-                    MessageType.Info);
-                EditorGUILayout.Space(8);
-            }
 
             EditorGUILayout.PropertyField(androidProp);
             DrawEmbeddedSetup(androidProp, ref showAndroid, ref androidEditor, "Android SDKSetup");
 
-            EditorGUILayout.Space(8);
-
+            EditorGUILayout.Space(4);
             EditorGUILayout.PropertyField(iosProp);
             DrawEmbeddedSetup(iosProp, ref showIos, ref iosEditor, "iOS SDKSetup");
 
             serializedObject.ApplyModifiedProperties();
         }
 
-        private void DrawEmbeddedSetup(
+        void DrawEmbeddedSetup(
             SerializedProperty setupProp,
             ref bool foldout,
             ref UnityEditor.Editor cachedEditor,
             string title)
         {
             var setup = setupProp.objectReferenceValue as SDKSetup;
-
             using (new EditorGUILayout.VerticalScope("box"))
             {
                 using (new EditorGUILayout.HorizontalScope())
                 {
                     foldout = EditorGUILayout.Foldout(foldout, title, true);
-
                     GUILayout.FlexibleSpace();
-
                     using (new EditorGUI.DisabledScope(setup == null))
                     {
-                        if (GUILayout.Button("Ping", GUILayout.Width(60)))
+                        if (GUILayout.Button("Ping", GUILayout.Width(50)))
                             EditorGUIUtility.PingObject(setup);
-
-                        if (GUILayout.Button("Open", GUILayout.Width(60)))
-                            Selection.activeObject = setup;
                     }
                 }
 
-                if (!foldout) return;
-
-                if (setup == null)
-                {
-                    EditorGUILayout.HelpBox("SDKSetup has not been assigned yet. Please select asset SDKSetup or create a new one using the setup menu.", MessageType.Info);
-                    return;
-                }
-
-                EditorGUILayout.Space(4);
-
-                // Vẽ inspector của SDKSetup ngay trong Container
+                if (!foldout || setup == null) return;
                 CreateCachedEditor(setup, null, ref cachedEditor);
-                if (cachedEditor != null)
-                {
-                    using (new EditorGUI.IndentLevelScope())
-                    {
-                        cachedEditor.OnInspectorGUI();
-                    }
-                }
+                cachedEditor?.OnInspectorGUI();
             }
         }
     }

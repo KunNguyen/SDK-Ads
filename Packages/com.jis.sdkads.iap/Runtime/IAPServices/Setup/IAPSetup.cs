@@ -7,30 +7,32 @@ namespace JisSDKAds.IAP.Setup
     public static class IAPSetup
     {
 #if UNITY_EDITOR
+        public const string DefaultFolder = "Assets/JisSDKAds/Settings/IAP";
+        public const string DefaultPackagesConfigPath = DefaultFolder + "/IAPPackageConfigs.asset";
+
         public static IAPPackageConfigs CreateIAPPackageConfigs()
         {
-            var directory = CreateConfigFolder();
-            var assetName = "IAPPackageConfigs.asset";
-            var assetPath = $"{directory}{assetName}";
-            var selectedScriptableObject = AssetDatabase.LoadAssetAtPath<IAPPackageConfigs>(assetPath);
+            EnsureFolder();
+            var selectedScriptableObject = AssetDatabase.LoadAssetAtPath<IAPPackageConfigs>(DefaultPackagesConfigPath);
             if (selectedScriptableObject == null)
             {
                 selectedScriptableObject = ScriptableObject.CreateInstance<IAPPackageConfigs>();
-                AssetDatabase.CreateAsset(selectedScriptableObject, assetPath);
+                AssetDatabase.CreateAsset(selectedScriptableObject, DefaultPackagesConfigPath);
                 AssetDatabase.SaveAssets();
             }
             Selection.activeObject = selectedScriptableObject;
             EditorGUIUtility.PingObject(selectedScriptableObject);
             return selectedScriptableObject;
         }
-        private static string CreateConfigFolder()
+
+        static void EnsureFolder()
         {
-            var directory = "Assets/JisSDKConfigs/";
-            if (!AssetDatabase.IsValidFolder(directory))
-            {
-                AssetDatabase.CreateFolder("Assets", "JisSDKConfigs");
-            }
-            return directory;
+            if (!AssetDatabase.IsValidFolder("Assets/JisSDKAds"))
+                AssetDatabase.CreateFolder("Assets", "JisSDKAds");
+            if (!AssetDatabase.IsValidFolder("Assets/JisSDKAds/Settings"))
+                AssetDatabase.CreateFolder("Assets/JisSDKAds", "Settings");
+            if (!AssetDatabase.IsValidFolder(DefaultFolder))
+                AssetDatabase.CreateFolder("Assets/JisSDKAds/Settings", "IAP");
         }
 #endif
     }

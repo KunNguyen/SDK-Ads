@@ -7,15 +7,21 @@ namespace JisSDKAds.Ads.Settings
     [CreateAssetMenu(fileName = "JisSDKAdsSettings", menuName = "JIS SDK/Ads Settings", order = 0)]
     public class JisSDKAdsSettings : ScriptableObject
     {
-        [Title("Platform mediation")]
-        [InfoBox("One mediation per platform (e.g. AdMob on Android, MAX on iOS).")]
-        public PlatformAdsProfile android = new PlatformAdsProfile();
+        [Title("Platform profiles")]
+        [HideInInspector] public PlatformAdsProfile android = new PlatformAdsProfile();
 
-        public PlatformAdsProfile ios = new PlatformAdsProfile();
+        [HideInInspector] public PlatformAdsProfile ios = new PlatformAdsProfile();
+
+        [Title("Runtime")]
+        [Tooltip("AutoOnStart: AdsManager init on Start. Manual: JisAds.InitializeAsync() controls init.")]
+        public AdsManager.AdsInitializationMode adsInitializationMode = AdsManager.AdsInitializationMode.Manual;
 
         [Title("Core AdManager")]
         [Tooltip("When enabled, AdManager will not fall back to another network on the same platform.")]
         public bool singleMediationOnly = true;
+
+        public PlatformAdsProfile GetProfile(BuildTargetPlatform platform) =>
+            platform == BuildTargetPlatform.iOS ? ios : android;
 
         public PlatformAdsProfile GetActiveProfile()
         {
@@ -35,9 +41,15 @@ namespace JisSDKAds.Ads.Settings
         public AdsMediationType GetActiveMediation() =>
             GetActiveProfile() != null ? GetActiveProfile().mediation : AdsMediationType.NONE;
 
+        /// <summary>Assign both platform SDKSetups and sync active build target config to AdsManager.</summary>
         public void ApplyToAdsManager(AdsManager adsManager)
         {
             if (adsManager == null) return;
+
+            adsManager.SdkSettings = this;
+            adsManager.AndroidSdkSetup = android?.sdkSetup;
+            adsManager.IOSSdkSetup = ios?.sdkSetup;
+            adsManager.InitializationMode = adsInitializationMode;
 
             var profile = GetActiveProfile();
             if (profile?.sdkSetup == null)
@@ -46,18 +58,14 @@ namespace JisSDKAds.Ads.Settings
                 return;
             }
 
-#if UNITY_EDITOR
-            if (UnityEditor.EditorUserBuildSettings.activeBuildTarget == UnityEditor.BuildTarget.Android)
-                adsManager.AndroidSdkSetup = profile.sdkSetup;
-            else
-                adsManager.IOSSdkSetup = profile.sdkSetup;
-#else
-            if (Application.platform == RuntimePlatform.Android)
-                adsManager.AndroidSdkSetup = profile.sdkSetup;
-            else
-                adsManager.IOSSdkSetup = profile.sdkSetup;
-#endif
             adsManager.MainAdsMediationType = profile.mediation;
+            adsManager.UpdateAdsMediationConfig(profile.sdkSetup);
         }
+    }
+
+    public enum BuildTargetPlatform
+    {
+        Android = 0,
+        iOS = 1
     }
 }

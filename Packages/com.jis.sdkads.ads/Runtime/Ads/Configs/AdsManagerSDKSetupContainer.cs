@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using JisSDKAds.Ads.Settings;
+using UnityEngine;
 #if UNITY_EDITOR
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -6,21 +7,63 @@ using UnityEditor.SceneManagement;
 
 namespace JisSDKAds.Ads
 {
+    /// <summary>
+    /// Legacy container — prefer <see cref="JisSDKAdsSettings"/> as single source of truth.
+    /// When <see cref="unifiedSettings"/> is assigned, Setup() applies from settings.
+    /// </summary>
     [CreateAssetMenu(
         fileName = "AdsManagerSDKSetupContainer",
-        menuName = "JIS SDK/Ads Setup Container",
+        menuName = "JIS SDK/Legacy/Ads Setup Container",
         order = 10)]
     public class AdsManagerSDKSetupContainer : ScriptableObject
     {
+        [Tooltip("Recommended: assign JisSDKAdsSettings. When set, android/ios below are ignored on Setup.")]
+        public JisSDKAdsSettings unifiedSettings;
+
+        [Tooltip("Legacy — use JisSDKAdsSettings.android.sdkSetup instead.")]
         public SDKSetup android;
+
+        [Tooltip("Legacy — use JisSDKAdsSettings.ios.sdkSetup instead.")]
         public SDKSetup ios;
+
         public AdsManager.AdsInitializationMode adsInitializationMode = AdsManager.AdsInitializationMode.AutoOnStart;
 
+        public SDKSetup GetAndroidSetup() =>
+            unifiedSettings?.android?.sdkSetup ?? android;
+
+        public SDKSetup GetIosSetup() =>
+            unifiedSettings?.ios?.sdkSetup ?? ios;
+
 #if UNITY_EDITOR
-        /// <summary>
-        /// Gán cả Android và iOS setup vào AdsManager, sau đó apply config theo build target hiện tại.
-        /// </summary>
         public void Setup()
+        {
+            if (unifiedSettings != null)
+            {
+                ApplyUnifiedSettings();
+                return;
+            }
+
+            ApplyLegacyContainer();
+        }
+
+        void ApplyUnifiedSettings()
+        {
+            var adsManager = Object.FindFirstObjectByType<AdsManager>();
+            if (adsManager != null)
+            {
+                unifiedSettings.ApplyToAdsManager(adsManager);
+                EditorUtility.SetDirty(adsManager);
+                EditorSceneManager.MarkSceneDirty(adsManager.gameObject.scene);
+            }
+            else
+            {
+                Debug.LogWarning("[AdsManager] No AdsManager in scene — assign JisSDKAdsSettings on JisAds manually.");
+            }
+
+            GetSetupForActiveBuildTarget()?.SetupSymbol();
+        }
+
+        void ApplyLegacyContainer()
         {
             var adsManager = Object.FindFirstObjectByType<AdsManager>();
             if (adsManager == null)
@@ -32,17 +75,23 @@ namespace JisSDKAds.Ads
             adsManager.ApplyFromContainer(this);
             EditorUtility.SetDirty(adsManager);
             EditorSceneManager.MarkSceneDirty(adsManager.gameObject.scene);
-
-            var setupForTarget = GetSetupForActiveBuildTarget();
-            if (setupForTarget != null)
-            {
-                setupForTarget.SetupSymbol();
-            }
+            GetSetupForActiveBuildTarget()?.SetupSymbol();
         }
 
-        private SDKSetup GetSetupForActiveBuildTarget()
+        public void SyncLegacyFieldsFromSettings()
         {
-            return EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android ? android : ios;
+            if (unifiedSettings == null) return;
+            android = unifiedSettings.android?.sdkSetup;
+            ios = unifiedSettings.ios?.sdkSetup;
+            adsInitializationMode = unifiedSettings.adsInitializationMode;
+            EditorUtility.SetDirty(this);
+        }
+
+        SDKSetup GetSetupForActiveBuildTarget()
+        {
+            return EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android
+                ? GetAndroidSetup()
+                : GetIosSetup();
         }
 #endif
     }

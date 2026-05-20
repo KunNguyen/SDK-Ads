@@ -1,5 +1,6 @@
 ﻿using JisSDKAds.Core.Interfaces;
 using JisSDKAds.Core.Models;
+using JisSDKAds.Core.Tiered.Config;
 using Sirenix.OdinInspector;
 using UnityEngine;
 using JisSDKAds.Ads;
@@ -13,7 +14,7 @@ namespace JisSDKAds.Ads.Settings
         public AdsMediationType mediation = AdsMediationType.MAX;
 
         [BoxGroup("Mediation"), LabelText("SDK setup (formats, RC, cooldowns)")]
-        [Required]
+        [Required, HideInInspector]
         public SDKSetup sdkSetup;
 
         [BoxGroup("Provider configs (Core AdManager)"), LabelText("MAX")]
@@ -23,6 +24,11 @@ namespace JisSDKAds.Ads.Settings
         [BoxGroup("Provider configs (Core AdManager)"), LabelText("AdMob")]
         [ShowIf(nameof(mediation), AdsMediationType.ADMOB)]
         public ScriptableObject admobProviderConfig;
+
+        [BoxGroup("Tiered inventory (optional)"), LabelText("Tiered Ads Config")]
+        [Tooltip("When assigned and EnableTieredInventory=true, interstitial/rewarded use tiered inventory.")]
+        [HideInInspector]
+        public TieredAdsConfig tieredAdsConfig;
 
         public AdProviderId ProviderId => mediation switch
         {
