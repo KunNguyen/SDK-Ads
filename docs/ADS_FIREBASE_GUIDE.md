@@ -397,7 +397,8 @@ await FirebaseManager.Instance.SignInWithPlayGames(ct);
 await FirebaseManager.Instance.SignInAnonymously(ct);
 await FirebaseManager.Instance.SignOut();
 
-FirebaseManager.Instance.SignedInWithUser += user => { };
+FirebaseManager.Instance.SignedInWithUserId += userId => { };
+FirebaseManager.Instance.FirebaseAuth.SignedIn += user => { }; // FirebaseUser
 FirebaseManager.Instance.SignedInFailed += msg => Debug.LogWarning(msg);
 ```
 

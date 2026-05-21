@@ -47,9 +47,12 @@ using JisSDKAds.Firebase;
 await FirebaseManager.Instance.InitAsync();
 
 // Events (khuyến nghị — trên FirebaseManager)
-FirebaseManager.Instance.SignedInWithUser += user => Debug.Log($"Signed in: {user.UserId}");
+FirebaseManager.Instance.SignedInWithUserId += userId => Debug.Log($"Signed in: {userId}");
 FirebaseManager.Instance.SignedInFailed += msg => Debug.LogWarning($"Sign-in failed: {msg}");
 FirebaseManager.Instance.SignedOut += () => Debug.Log("Signed out");
+
+// Cần FirebaseUser (display name, email, …)
+FirebaseManager.Instance.FirebaseAuth.SignedIn += user => Debug.Log(user.DisplayName);
 
 try
 {

@@ -8,9 +8,6 @@ using Firebase.Crashlytics;
 #endif
 using Firebase.Extensions;
 using Firebase.RemoteConfig;
-#if FIREBASE_AUTH
-using Firebase.Auth;
-#endif
 using JisSDKAds.Common;
 using UnityEngine;
 using UnityEngine.Events;
@@ -48,8 +45,8 @@ namespace JisSDKAds.Firebase
 
         public bool IsSignedIn => FirebaseAuth != null && FirebaseAuth.IsSignedIn;
 
-        /// <summary>Fired when Firebase Auth sign-in succeeds (includes restored session on <see cref="InitAsync"/>).</summary>
-        public event Action<FirebaseUser> SignedInWithUser;
+        /// <summary>Fired when sign-in succeeds (includes restored session). For full <c>FirebaseUser</c>, use <see cref="FirebaseAuth.SignedIn"/>.</summary>
+        public event Action<string> SignedInWithUserId;
 
         /// <summary>Fired when the user signs out or no session exists.</summary>
         public event Action SignedOut;
@@ -151,7 +148,7 @@ namespace JisSDKAds.Firebase
         void InitAuth()
         {
             FirebaseAuth ??= new FirebaseAuthManager();
-            FirebaseAuth.SignedIn += user => SignedInWithUser?.Invoke(user);
+            FirebaseAuth.SignedIn += user => SignedInWithUserId?.Invoke(user?.UserId);
             FirebaseAuth.SignedOut += () => SignedOut?.Invoke();
             FirebaseAuth.SignedInFailed += message => SignedInFailed?.Invoke(message);
             FirebaseAuth.Init();
