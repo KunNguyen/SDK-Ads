@@ -1,6 +1,6 @@
 {
   "name": "com.jis.sdkads.common",
-  "version": "4.0.1",
+  "version": "4.0.2",
   "displayName": "JIS SDK - Common",
   "description": "Shared utilities: EventManager, InternetChecker, config keys.",
   "unity": "2022.3",

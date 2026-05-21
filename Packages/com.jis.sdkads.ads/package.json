@@ -6,7 +6,7 @@
   "unity": "2022.3",
   "dependencies": {
     "com.jis.sdkads.core": "4.0.0",
-    "com.jis.sdkads.common": "4.0.1",
+    "com.jis.sdkads.common": "4.0.2",
     "com.jis.sdkads.firebase": "4.0.0"
   },
   "author": {

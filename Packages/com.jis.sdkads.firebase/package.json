@@ -5,7 +5,7 @@
   "description": "Firebase Analytics and Remote Config integration. Requires Firebase packages from Google.",
   "unity": "2022.3",
   "dependencies": {
-    "com.jis.sdkads.common": "4.0.1"
+    "com.jis.sdkads.common": "4.0.2"
   },
   "author": {
     "name": "JustIdleGames"

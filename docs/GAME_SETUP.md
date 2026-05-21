@@ -70,6 +70,15 @@ JisAds.Instance.Core    // Core AdManager when enabled
 
 See [NAMESPACES.md](NAMESPACES.md).
 
+### `using JisSDKAds.Common` không hiện / không resolve
+
+1. **Đúng namespace:** `using JisSDKAds.Common;` — **không** có `JisSDKAds.Scripts`.
+2. **Script game có `.asmdef`:** mở asmdef của folder script (vd. `HoaEm`, `_Game`) → **Assembly Definition References** thêm:
+   - `JisSDKAds.Common` (cho `EventManager`, `DebugAds`, `Keys`)
+   - `JisSDKAds.Ads` / `JisSDKAds.Firebase` nếu dùng API tương ứng
+3. **Không dùng asmdef:** script nằm `Assets/` gốc (Assembly-CSharp) — `Common` tự reference khi package compile OK.
+4. Package **Common** lỗi compile → IDE chỉ thấy vài namespace (Core/Firebase). Console Unity xem lỗi `JisSDKAds.Common`; Hub → **Flush PackageCache** → Resolve. Cập nhật `common` ≥ **4.0.2** (bỏ phụ thuộc Sirenix thừa).
+
 ## 5. One mediation per platform
 
 `JisSDKAdsSettings.singleMediationOnly` disables MAX↔AdMob fallback in Core `AdManager`.

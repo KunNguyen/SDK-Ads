@@ -68,4 +68,7 @@ FirebaseManager.Instance...
 | `FirebaseManager` | `JisSDKAds.Firebase` |
 | `InAppPurchaser` | `JisSDKAds.IAP` |
 | `EventManager` | `JisSDKAds.Common` |
+| `DebugAds` | `JisSDKAds.Common` |
 | `Keys` | `JisSDKAds.Common` |
+
+Game scripts in a custom **Assembly Definition** must reference asmdef `JisSDKAds.Common` (package `com.jis.sdkads.common`). There is no `JisSDKAds.Scripts` namespace.
