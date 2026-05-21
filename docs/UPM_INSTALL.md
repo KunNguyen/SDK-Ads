@@ -242,6 +242,12 @@ https://<TOKEN>@github.com/<ORG>/<REPO>.git?path=Packages/...
 
 ---
 
+## Migrate từ ABIMaxSDKAds (project cũ)
+
+Nếu project còn `Assets/ABIMaxSDKAds/`, **phải xóa** trước khi dùng UPM — xem [MIGRATION_GUID_CONFLICT.md](MIGRATION_GUID_CONFLICT.md).
+
+---
+
 ## Test local (không qua Git)
 
 Khi SDK và game cùng máy, có thể trỏ **đường dẫn tuyệt đối** (chỉ dev):

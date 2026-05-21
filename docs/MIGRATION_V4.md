@@ -7,10 +7,14 @@ Breaking changes. No backward compatibility with `SDK` / `ABIMaxSDKAds` namespac
 Cài package Git UPM trước: [UPM_INSTALL.md](UPM_INSTALL.md).  
 Sau đó dùng **JIS SDK → Hub** thay vì copy `Assets/JisSDKAds`.
 
-Remove old folder:
+Remove old folders (**bắt buộc** — trùng GUID với UPM, Unity sẽ ignore package):
 
-- Delete `Assets/JisSDKAds` (monolith) from game project if present
+- Delete `Assets/ABIMaxSDKAds` (legacy SDK scripts)
+- Delete `Assets/JisSDKAds` (monolith) if present
+- Delete `Assets/Plugins/Sirenix` if you use `com.jis.sdkads.core` (Odin bundled in package)
 - Remove `com.unity.services.levelplay` from manifest
+
+Chi tiết lỗi GUID: [MIGRATION_GUID_CONFLICT.md](MIGRATION_GUID_CONFLICT.md)
 
 ## 2. Namespace changes
 
