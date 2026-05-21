@@ -69,6 +69,8 @@ namespace JisSDKAds.Hub
                     yield return ("com.jis.sdkads.analytics.appsflyer", "com.jis.sdkads.analytics.appsflyer");
                     break;
                 case ModuleKind.SolarEngine:
+                    yield return ("com.jis.sdkads.common", "com.jis.sdkads.common");
+                    yield return ("com.jis.sdkads.ads", "com.jis.sdkads.ads");
                     yield return ("com.jis.sdkads.analytics.solarengine", "com.jis.sdkads.analytics.solarengine");
                     break;
                 case ModuleKind.Facebook:

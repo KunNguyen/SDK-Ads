@@ -78,11 +78,6 @@ namespace JisSDKAds.IAP
             LogConsole($"Product transaction id: {orderInfo.TransactionID}.");
             LogConsole($"Product receipt length: {orderInfo.Receipt?.Length}.");
             LogConsole($"Product Type: '{product.definition.type}'");
-            
-            #if UNITY_SOLAR_ENGINE
-            double paymentAmount = (double)product.metadata.localizedPrice * 0.65f;
-            SolarEngineManager.Instance?.TrackPurchase(product.definition.id, paymentAmount, product.metadata.isoCurrencyCode,"success");
-            #endif
         }
 
         public void LogFailedConfirmation(Product product, PurchaseFailureReason reason)

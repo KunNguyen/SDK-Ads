@@ -18,7 +18,7 @@ namespace JisSDKAds.Ads
      /// AdMob mediation controller. Class luôn tồn tại để prefab có thể reference.
      /// Implementation thực chỉ compile khi UNITY_AD_ADMOB được định nghĩa.
      /// </summary>
-     public partial class AdmobMediationController : AdsMediationController, IAdMobRewardedInterstitialHost
+     public partial class AdmobMediationController : AdsMediationController, IAdMobRewardedInterstitialHost, IAdMobConsentHost
      {
           public AdmobAdSetup m_AdmobAdSetup;
 

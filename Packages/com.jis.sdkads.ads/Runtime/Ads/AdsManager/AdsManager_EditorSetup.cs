@@ -2,6 +2,7 @@
 using JisSDKAds.Ads.Settings;
 using JisSDKAds.Ads.UnitAdManagers;
 using JisSDKAds.Ads.UnitAdManagers.Interface;
+using JisSDKAds.Ads.Integration;
 using JisSDKAds.Common;
 #if UNITY_EDITOR
 using UnityEditor;
@@ -102,111 +103,14 @@ namespace JisSDKAds.Ads
           private void UpdateMaxMediation()
           {
 #if UNITY_AD_MAX
-               const AdsMediationType adsMediationType = AdsMediationType.MAX;
-               MaxMediationController maxMediationController =
-                    GetAdsMediationController(adsMediationType) as MaxMediationController;
-               if (maxMediationController == null) return;
-               if (CurrentSDKSetup.adsMediationType == adsMediationType)
-               {
-                    maxMediationController.m_MaxAdConfig.SDKKey = CurrentSDKSetup.maxAdsSetup.SDKKey;
-               }
-
-               maxMediationController.m_MaxAdConfig.InterstitialAdUnitID =
-                    CurrentSDKSetup.interstitialAdsMediationType == adsMediationType
-                         ? CurrentSDKSetup.maxAdsSetup.InterstitialAdUnitID
-                         : "";
-
-               maxMediationController.m_MaxAdConfig.RewardedAdUnitID =
-                    CurrentSDKSetup.rewardedAdsMediationType == adsMediationType ? CurrentSDKSetup.maxAdsSetup.RewardedAdUnitID : "";
-
-               maxMediationController.m_MaxAdConfig.BannerAdUnitID = CurrentSDKSetup.bannerAdsMediationType == adsMediationType
-                    ? CurrentSDKSetup.maxAdsSetup.BannerAdUnitID
-                    : "";
-#if UNITY_AD_MAX
-               maxMediationController.m_BannerPosition = CurrentSDKSetup.maxBannerAdsPosition;
-#endif
-
-               maxMediationController.m_MaxAdConfig.CollapsibleBannerAdUnitID =
-                    CurrentSDKSetup.collapsibleBannerAdsMediationType == adsMediationType
-                         ? CurrentSDKSetup.maxAdsSetup.CollapsibleBannerAdUnitID
-                         : "";
-
-               maxMediationController.m_MaxAdConfig.MrecAdUnitID = CurrentSDKSetup.mrecAdsMediationType == adsMediationType
-                    ? CurrentSDKSetup.maxAdsSetup.MrecAdUnitID
-                    : "";
-
-               maxMediationController.m_MaxAdConfig.AppOpenAdUnitID =
-                    CurrentSDKSetup.appOpenAdsMediationType == adsMediationType ? CurrentSDKSetup.maxAdsSetup.AppOpenAdUnitID : "";
-
-#if UNITY_EDITOR
-               EditorUtility.SetDirty(maxMediationController);
-               DebugAds.Log("Update Max Mediation Done");
-#endif
+               MaxMediationReflection.ApplySdkSetup(this, CurrentSDKSetup);
 #endif
           }
 
           private void UpdateAdmobMediation()
           {
 #if UNITY_AD_ADMOB
-               const AdsMediationType adsMediationType = AdsMediationType.ADMOB;
-               AdmobMediationController admobMediationController =
-                    GetAdsMediationController(adsMediationType) as AdmobMediationController;
-               if (admobMediationController == null) return;
-               if (CurrentSDKSetup.interstitialAdsMediationType == adsMediationType)
-               {
-                    MainAdsMediationType = adsMediationType;
-                    admobMediationController.m_AdmobAdSetup.InterstitialAdUnitIDList =
-                         CurrentSDKSetup.admobAdsSetup.InterstitialAdUnitIDList;
-               }
-               else
-               {
-                    admobMediationController.m_AdmobAdSetup.InterstitialAdUnitIDList = new List<string>();
-               }
-
-               admobMediationController.m_AdmobAdSetup.RewardedAdUnitIDList =
-                    CurrentSDKSetup.rewardedAdsMediationType == adsMediationType
-                         ? CurrentSDKSetup.admobAdsSetup.RewardedAdUnitIDList
-                         : new List<string>();
-
-               {
-                    admobMediationController.m_AdmobAdSetup.BannerAdUnitIDList =
-                         CurrentSDKSetup.bannerAdsMediationType == adsMediationType
-                              ? CurrentSDKSetup.admobAdsSetup.BannerAdUnitIDList
-                              : new List<string>();
-                    admobMediationController.IsBannerShowingOnStart = CurrentSDKSetup.isBannerShowingOnStart;
-                    admobMediationController.m_BannerPosition = CurrentSDKSetup.admobBannerAdsPosition;
-               }
-
-               {
-                    admobMediationController.m_AdmobAdSetup.CollapsibleBannerAdUnitIDList =
-                         CurrentSDKSetup.collapsibleBannerAdsMediationType == adsMediationType
-                              ? CurrentSDKSetup.admobAdsSetup.CollapsibleBannerAdUnitIDList
-                              : new List<string>();
-                    admobMediationController.IsCollapsibleBannerShowingOnStart =
-                         CurrentSDKSetup.isShowingOnStartCollapsibleBanner;
-                    CollapsibleBannerAdManager.IsAutoRefresh = CurrentSDKSetup.isAutoCloseCollapsibleBanner;
-
-
-                    CollapsibleBannerAdManager.IsAutoRefresh = CurrentSDKSetup.isAutoRefreshCollapsibleBanner;
-                    CollapsibleBannerAdManager.AutoRefreshTime = CurrentSDKSetup.autoRefreshTime;
-
-                    admobMediationController.m_CollapsibleBannerPosition = CurrentSDKSetup.adsPositionCollapsibleBanner;
-               }
-               {
-                    admobMediationController.m_AdmobAdSetup.MrecAdUnitIDList =
-                         CurrentSDKSetup.mrecAdsMediationType == adsMediationType
-                              ? CurrentSDKSetup.admobAdsSetup.MrecAdUnitIDList
-                              : new List<string>();
-                    admobMediationController.m_MRecPosition = CurrentSDKSetup.mrecAdsPosition;
-               }
-               admobMediationController.m_AdmobAdSetup.AppOpenAdUnitIDList =
-                    CurrentSDKSetup.appOpenAdsMediationType == adsMediationType
-                         ? CurrentSDKSetup.admobAdsSetup.AppOpenAdUnitIDList
-                         : new List<string>();
-#if UNITY_EDITOR
-               EditorUtility.SetDirty(admobMediationController);
-               DebugAds.Log("Update Admob Mediation Done");
-#endif
+               AdMobMediationReflection.ApplySdkSetup(this, CurrentSDKSetup);
 #endif
           }
 

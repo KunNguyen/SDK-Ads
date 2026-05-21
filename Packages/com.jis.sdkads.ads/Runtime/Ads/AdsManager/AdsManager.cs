@@ -571,10 +571,8 @@ namespace JisSDKAds.Ads
 #if UNITY_APPSFLYER
             AppsflyerManager.TrackAppsflyerAdRevenue(impressionData);
 #endif
-            
-#if UNITY_SOLAR_ENGINE
-            SolarEngineManager.Instance.TrackAdImpression(impressionData);
-#endif
+
+            Integration.AdsAnalyticsBridge.PublishAdImpression(impressionData);
         }
 
         private async Task ShowLoadingPanel()
@@ -592,11 +590,8 @@ namespace JisSDKAds.Ads
         {
             DebugAds.Log("Show Consent Form");
 #if UNITY_AD_ADMOB
-            var controller = GetAdsMediationController(AdsMediationType.ADMOB);
-            if (controller is AdmobMediationController admobMediationController)
-            {
-                admobMediationController.ShowConsentFormAgain();
-            }
+            if (GetAdsMediationController(AdsMediationType.ADMOB) is IAdMobConsentHost consentHost)
+                consentHost.ShowConsentFormAgain();
 #endif
         }
 
@@ -623,7 +618,7 @@ namespace JisSDKAds.Ads
             };
         }
 
-        private AdsMediationController GetAdsMediationController(AdsMediationType adsMediationType)
+        public AdsMediationController GetAdsMediationController(AdsMediationType adsMediationType)
         {
             if (AdsMediationControllers == null) return null;
             return AdsMediationControllers.Find(x => x != null && x.AdsMediationType == adsMediationType);

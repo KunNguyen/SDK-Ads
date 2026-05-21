@@ -9,8 +9,8 @@ Open **JIS SDK → Hub** and import:
 
 1. **Firebase** (required) — Hub also adds [External Dependency Manager](https://openupm.com/packages/com.google.external-dependency-manager/) from OpenUPM if missing (`com.google.external-dependency-manager` **1.2.187**)
 2. Install **Firebase** from Google (Analytics + Remote Config; add **Authentication** if using Firebase Auth — [FIREBASE_AUTH_SETUP.md](FIREBASE_AUTH_SETUP.md))
-3. **Ads** (ads runtime only), then **Enable MAX** / **Enable AdMob** in Hub as needed
-4. Optional: IAP ([IAP_USAGE.md](IAP_USAGE.md)), App Review, AppsFlyer, …
+3. **Ads** (ads runtime only), then **Enable MAX** / **Enable AdMob** in Hub as needed (installs `providers.max` / `providers.admob` — define alone is not enough)
+4. Optional: IAP ([IAP_USAGE.md](IAP_USAGE.md)), App Review, AppsFlyer, **SolarEngine** (Hub module + `UNITY_SOLAR_ENGINE`), …
 
 ## 2. Create settings
 
