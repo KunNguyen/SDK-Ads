@@ -14,7 +14,7 @@ Tài liệu runtime cho **Unity Purchasing 5.x** qua package `com.jis.sdkads.iap
 | `com.jis.sdkads.iap` | Hub import IAP |
 | `com.unity.purchasing` ≥ 5.0.4 | Hub thêm vào manifest |
 | `com.unity.services.core` | Unity Gaming Services init |
-| Scripting define | `UNITY_IAP_ACTIVE` (Hub / **Enable IAP** menu / `SDKSetup.IsActiveIAP`) |
+| Scripting define | `UNITY_IAP_ACTIVE` (bắt buộc — Hub **Enable IAP** hoặc `SDKSetup.IsActiveIAP` + Apply Settings) |
 | Store config | Google Play + App Store product IDs |
 
 ---

@@ -2513,6 +2513,15 @@
             For now, it only exists to denote which internally defined resolvers support prefab modifications being set.
             </summary>
         </member>
+        <member name="T:Sirenix.OdinInspector.Editor.OdinCacheableProcessorAttribute">
+            <summary>
+            Marks an <see cref="T:Sirenix.OdinInspector.Editor.OdinAttributeProcessor"/> or <see cref="T:Sirenix.OdinInspector.Editor.OdinPropertyProcessor"/> as cacheable.
+            </summary>
+            <remarks>
+            Only mark a processor as cacheable if it always produces the same attributes for the same properties in the same order.  
+            Caching is applied only when all processors that run on a property are cacheable; if any running processor is not, the result will not be cached.
+            </remarks>
+        </member>
         <member name="T:Sirenix.OdinInspector.Editor.CollectionChangeInfo">
             <summary>
             Contains information about a change that is going to occur/has occurred to a collection.
@@ -7198,6 +7207,30 @@
             <param name="reference"></param>
             <remarks>Ensure <see cref="M:Sirenix.OdinInspector.Editor.Internal.OdinGUIScrollView.BeginAllocations"/> is called before calling this, and ensure <see cref="M:Sirenix.OdinInspector.Editor.Internal.OdinGUIScrollView.EndAllocations"/> is called after you're done with <see cref="M:Sirenix.OdinInspector.Editor.Internal.OdinGUIScrollView.AllocateRect(System.Single,System.Object)"/></remarks>
         </member>
+        <member name="M:Sirenix.OdinInspector.Editor.Internal.DropCommit.TryCommit(Sirenix.OdinInspector.Editor.Internal.DesignerEditorContext,Sirenix.OdinInspector.Editor.Internal.DragAndDropState)">
+            <summary>
+            Commit a vertical drop using DragAndDropState.
+            Center on an empty group inserts INTO that group.
+            Top/Bottom on any item inserts as a SIBLING in the parent container.
+            Returns true if the model changed.
+            </summary>
+        </member>
+        <member name="M:Sirenix.OdinInspector.Editor.Internal.DesignerEditorWindow.HandleWindowMovement(System.Boolean,UnityEngine.Vector2,UnityEditor.EditorWindow,System.Int32)">
+            <summary>
+            Handles the window's linux-like drag behaviour.
+            </summary>
+            <param name="isDragging">Are we currently dragging (provided by the calling window)</param>
+            <param name="dragStartPosition">Where did the drag start (provided by the calling window)</param>
+            <param name="editorWindow">The window to move</param>
+            <param name="controlID">A passive control id to make sure the window keeps getting events while dragging (provided by the calling window)</param>
+            <returns>A bool so the calling window can update its "isDragging" variable and a Vector2 so the calling window can update its "dragStartPosition" variable</returns>
+        </member>
+        <member name="T:Sirenix.OdinInspector.Editor.Internal.RefList`1.IndexRef">
+            <summary>
+            
+            </summary>
+            <remarks>Does not guarantee stability.</remarks>
+        </member>
         <member name="T:Sirenix.OdinInspector.Editor.Internal.OdinInternalDragAndDropUtils">
             <summary> Temporary. </summary>
             <warning>This implementation <b>will</b> get refactored.</warning>
@@ -10205,6 +10238,9 @@
             <summary>
             Sets the selected types.
             </summary>
+        </member>
+        <member name="M:Sirenix.OdinInspector.Editor.OdinVisualDesignerConfig.ToggleFavorite(System.Type)">
+            <returns>The favorite state *after* toggling.</returns>
         </member>
         <member name="P:Sirenix.OdinInspector.Editor.OdinObjectSelector.SelectorProperty">
             <summary>

@@ -75,6 +75,15 @@ Sau khi xóa `ABIMaxSDKAds`, prefab/scene có thể mất reference script cũ.
 
 ---
 
+## Lỗi `VersionDefines` / NullReferenceException khi compile
+
+Nếu Console có `ExpressionNotValidException` hoặc NRE trong `VersionDefinesConsoleLogs` khi dùng package IAP/MAX cũ:
+
+- Cập nhật SDK bản mới (đã bỏ `versionDefines` sai cú pháp trong asmdef).
+- `UNITY_IAP_ACTIVE` / `UNITY_AD_MAX` do **Hub** hoặc **Apply Settings** thêm — không dựa vào versionDefines tự động.
+
+---
+
 ## Checklist nhanh
 
 - [ ] Đã xóa `Assets/ABIMaxSDKAds`

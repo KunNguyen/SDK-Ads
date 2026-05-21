@@ -24,12 +24,6 @@
     "defineConstraints": [
         "UNITY_IAP_ACTIVE"
     ],
-    "versionDefines": [
-        {
-            "name": "com.unity.purchasing",
-            "expression": "5.0.0",
-            "define": "UNITY_IAP_ACTIVE"
-        }
-    ],
+    "versionDefines": [],
     "noEngineReferences": false
 }

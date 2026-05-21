@@ -16,12 +16,6 @@
     "defineConstraints": [
         "UNITY_AD_MAX"
     ],
-    "versionDefines": [
-        {
-            "name": "com.applovin.mediation.ads",
-            "expression": ">=0.0.0",
-            "define": "UNITY_AD_MAX"
-        }
-    ],
+    "versionDefines": [],
     "noEngineReferences": false
 }
