@@ -183,6 +183,13 @@ namespace JisSDKAds.Hub
                     yield return ("com.unity.purchasing", "5.0.4");
                     yield return ("com.unity.services.core", "1.16.0");
                     break;
+                case ModuleKind.AppReview:
+                    JisSDKHubManifest.EnsureOpenUpmScopes(
+                        "com.google.play.common",
+                        "com.google.play.core",
+                        "com.google.play.review");
+                    yield return ("com.google.play.review", "1.8.4");
+                    break;
             }
         }
 

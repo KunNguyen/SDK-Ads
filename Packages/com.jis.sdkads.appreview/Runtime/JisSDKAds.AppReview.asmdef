@@ -3,7 +3,8 @@
     "rootNamespace": "",
     "references": [
         "JisSDKAds.Common",
-        "Google.Play.Review"
+        "Google.Play.Review",
+        "Google.Play.Common"
     ],
     "includePlatforms": [
         "Android",
@@ -14,7 +15,9 @@
     "overrideReferences": false,
     "precompiledReferences": [],
     "autoReferenced": true,
-    "defineConstraints": [],
+    "defineConstraints": [
+        "GOOGLE_REVIEW"
+    ],
     "versionDefines": [],
     "noEngineReferences": false
 }

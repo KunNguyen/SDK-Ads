@@ -95,13 +95,21 @@ Nếu Console có `ExpressionNotValidException` hoặc NRE trong `VersionDefines
 
 ---
 
-## Cảnh báo Odin: `Unity.Addressables` has no meta file
+## Odin: `Unity.Addressables` — data could not be found
 
-Odin từng ship `Unity.Addressables.data` trong `com.jis.sdkads.core`; Unity giải nén thành folder **không có .meta** trong package immutable.
+SDK **không** ship `Unity.Addressables.data` trong UPM (tránh lỗi meta/immutable package).
 
-- SDK mới: folder `Modules/Unity.Addressables/` + `.meta` (manifest placeholder), đã **xóa** `.data`.
-- Game project: Hub → **Flush PackageCache** → reimport `com.jis.sdkads.core`.
-- Cần Odin + Addressables đầy đủ: cài module từ **Odin Inspector → Tools → Odin Module Manager** (project `Assets`, không phụ thuộc `.data` trong UPM).
+**Trên game project (Editor):**
+
+1. **Odin Inspector → Preferences → Modules** (hoặc Module Manager) → tắt / remove **Unity Addressables** module.
+2. Cần Odin + Addressables: cài module từ **Odin Module Manager** vào `Assets` (bản Odin của project), không dựa file `.data` trong `com.jis.sdkads.core`.
+3. Hub → **Flush PackageCache** → reimport `com.jis.sdkads.core`.
+
+## App Review: `Google.Play.Common` / `PlayAsyncOperation`
+
+Khi bật `GOOGLE_REVIEW`, Hub import thêm OpenUPM packages: `com.google.play.review`, `com.google.play.common`, `com.google.play.core`.
+
+`JisSDKAds.AppReview` asmdef reference `Google.Play.Common` + `defineConstraints: GOOGLE_REVIEW`.
 
 ---
 
