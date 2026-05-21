@@ -29,9 +29,24 @@ namespace JisSDKAds.Ads
                UnityAction closedCallback = null,
                UnityAction showSuccessCallback = null,
                UnityAction showFailCallback = null,
-               bool isTracking = true, bool isSkipCapping = false)
+               bool isTracking = true,
+               bool isSkipCapping = false) =>
+               ShowInterstitial("", closedCallback, showSuccessCallback, showFailCallback, isTracking, isSkipCapping);
+
+          public void ShowInterstitial(
+               string interstitialPlacement,
+               UnityAction closedCallback = null,
+               UnityAction showSuccessCallback = null,
+               UnityAction showFailCallback = null,
+               bool isTracking = true,
+               bool isSkipCapping = false)
           {
-               InterstitialAdManager.CallToShowAd("", closedCallback, showSuccessCallback, showFailCallback, isTracking,
+               InterstitialAdManager.CallToShowAd(
+                    interstitialPlacement,
+                    closedCallback,
+                    showSuccessCallback,
+                    showFailCallback,
+                    isTracking,
                     isSkipCapping);
           }
 

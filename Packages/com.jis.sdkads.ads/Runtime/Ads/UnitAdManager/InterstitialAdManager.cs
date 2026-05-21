@@ -151,9 +151,7 @@ namespace JisSDKAds.Ads.UnitAdManagers
           private void HandleAdTracking(bool isTracking)
           {
                if (isTracking)
-               {
-                    AdsTracker.Instance.TrackAdsInterstitial_ClickOnButton();
-               }
+                    AdsTracker.Instance.TrackAdsInterstitial_ClickOnButton(Placement);
           }
 
           private void HandleAdDisplay(UnityAction showFailCallback, UnityAction closedCallback, UnityAction showSuccessCallback)
@@ -204,7 +202,7 @@ namespace JisSDKAds.Ads.UnitAdManagers
           {
                DebugAds.Log("OnAdShowSuccess Interstitial");
                base.OnAdShowSuccess();
-               AdsTracker.Instance.TrackAdsInterstitial_ShowSuccess();
+               AdsTracker.Instance.TrackAdsInterstitial_ShowSuccess(Placement);
           }
           public override void OnAdShowFailed()
           {

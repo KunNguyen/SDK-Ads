@@ -45,11 +45,27 @@ Nếu chỉ dùng Play Games / Game Center / Anonymous, không cần plugin Goog
 using JisSDKAds.Firebase;
 
 await FirebaseManager.Instance.InitAsync();
-FirebaseManager.Instance.FirebaseAuth.SignInWithPlatformAsync();
 
-// Hoặc
+// Events (khuyến nghị — trên FirebaseManager)
+FirebaseManager.Instance.SignedInWithUser += user => Debug.Log($"Signed in: {user.UserId}");
+FirebaseManager.Instance.SignedInFailed += msg => Debug.LogWarning($"Sign-in failed: {msg}");
+FirebaseManager.Instance.SignedOut += () => Debug.Log("Signed out");
+
+try
+{
+    await FirebaseManager.Instance.FirebaseAuth.SignInWithPlatformAsync();
+}
+catch
+{
+    // SignedInFailed đã được gọi trước khi throw
+}
+
+// Hoặc subscribe trực tiếp trên FirebaseAuth
 FirebaseManager.Instance.FirebaseAuth.SignedIn += user => { };
+FirebaseManager.Instance.FirebaseAuth.SignedInFailed += msg => { };
 ```
+
+`SignedInFailed` chỉ fire khi **gọi sign-in thất bại** (Google / Play Games / Game Center / Anonymous). Không fire khi silent Play Games (`TrySilentSignInPlayGamesAsync` trả `null`).
 
 `FirebaseAuthManager` (obsolete alias) vẫn hoạt động qua property `FirebaseAuthManager`.
 

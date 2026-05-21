@@ -257,6 +257,15 @@ namespace JisSDKAds.Ads
             UnityAction showSuccessCallback = null,
             UnityAction showFailCallback = null,
             bool isTracking = true,
+            bool isSkipCapping = false) =>
+            ShowInterstitial("", closedCallback, showSuccessCallback, showFailCallback, isTracking, isSkipCapping);
+
+        public void ShowInterstitial(
+            string interstitialPlacement,
+            UnityAction closedCallback = null,
+            UnityAction showSuccessCallback = null,
+            UnityAction showFailCallback = null,
+            bool isTracking = true,
             bool isSkipCapping = false)
         {
             if (UseTieredInterstitial && !UseCoreForStandardFormats)
@@ -293,7 +302,13 @@ namespace JisSDKAds.Ads
                 return;
             }
 
-            _legacy?.ShowInterstitial(closedCallback, showSuccessCallback, showFailCallback, isTracking, isSkipCapping);
+            _legacy?.ShowInterstitial(
+                interstitialPlacement,
+                closedCallback,
+                showSuccessCallback,
+                showFailCallback,
+                isTracking,
+                isSkipCapping);
         }
 
         public void ShowRewardVideo(

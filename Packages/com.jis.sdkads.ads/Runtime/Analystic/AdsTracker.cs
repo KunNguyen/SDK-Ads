@@ -206,9 +206,9 @@ namespace JisSDKAds.Ads
             FirebaseManager.Instance.LogEvent(ad_inter_load_fail, parameters);
         }
 
-        public void TrackAdsInterstitial_ShowSuccess()
+        public void TrackAdsInterstitial_ShowSuccess(string placement = "")
         {
-            FirebaseManager.Instance.LogEvent(ad_inter_show);
+            LogInterstitialEvent(ad_inter_show, placement);
             EventManager.InvokeNextFrame(() => { TrackLocalAdImpression(AdsType.INTERSTITIAL); });
 #if UNITY_APPSFLYER
             AppsflyerManager.TrackInterstitial_Displayed();
@@ -225,9 +225,9 @@ namespace JisSDKAds.Ads
             FirebaseManager.Instance.LogEvent(ad_inter_show_fail_by_load);
         }
 
-        public void TrackAdsInterstitial_ClickOnButton()
+        public void TrackAdsInterstitial_ClickOnButton(string placement = "")
         {
-            FirebaseManager.Instance.LogEvent(ad_inter_click);
+            LogInterstitialEvent(ad_inter_click, placement);
 #if UNITY_APPSFLYER
             AppsflyerManager.TrackInterstitial_ClickShowButton();
 #endif
@@ -236,6 +236,14 @@ namespace JisSDKAds.Ads
         public void TrackAdsInterstitial_FirstShow()
         {
             FirebaseManager.Instance.LogEvent(ad_inter_first_show);
+        }
+
+        static void LogInterstitialEvent(string eventName, string placement)
+        {
+            if (string.IsNullOrEmpty(placement))
+                FirebaseManager.Instance.LogEvent(eventName);
+            else
+                FirebaseManager.Instance.LogEvent(eventName, new[] { new Parameter("placement", placement) });
         }
 
         #endregion

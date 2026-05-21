@@ -8,6 +8,9 @@ using Firebase.Crashlytics;
 #endif
 using Firebase.Extensions;
 using Firebase.RemoteConfig;
+#if FIREBASE_AUTH
+using Firebase.Auth;
+#endif
 using JisSDKAds.Common;
 using UnityEngine;
 using UnityEngine.Events;
@@ -37,13 +40,22 @@ namespace JisSDKAds.Firebase
         [field: SerializeField] public FirebaseInitializationMode InitializationMode { get; set; } = FirebaseInitializationMode.AutoOnAwake;
 
 #if FIREBASE_AUTH
-        /// <summary>Sign-in API: <see cref="FirebaseAuthManager.SignInWithGoogleAsync"/>, events on this instance.</summary>
+        /// <summary>Sign-in API: <see cref="FirebaseAuthManager.SignInWithGoogleAsync"/>.</summary>
         public FirebaseAuthManager FirebaseAuth { get; private set; }
 
         [Obsolete("Use FirebaseAuth property.")]
         public FirebaseAuthManager FirebaseAuthManager => FirebaseAuth;
 
         public bool IsSignedIn => FirebaseAuth != null && FirebaseAuth.IsSignedIn;
+
+        /// <summary>Fired when Firebase Auth sign-in succeeds (includes restored session on <see cref="InitAsync"/>).</summary>
+        public event Action<FirebaseUser> SignedInWithUser;
+
+        /// <summary>Fired when the user signs out or no session exists.</summary>
+        public event Action SignedOut;
+
+        /// <summary>Fired when an explicit sign-in attempt fails (Google / Play Games / Game Center / Anonymous).</summary>
+        public event Action<string> SignedInFailed;
 #endif
 
         private FirebaseAnalyticsManager analytics;
@@ -138,7 +150,11 @@ namespace JisSDKAds.Firebase
 #if FIREBASE_AUTH
         void InitAuth()
         {
-            FirebaseAuth?.Init();
+            FirebaseAuth ??= new FirebaseAuthManager();
+            FirebaseAuth.SignedIn += user => SignedInWithUser?.Invoke(user);
+            FirebaseAuth.SignedOut += () => SignedOut?.Invoke();
+            FirebaseAuth.SignedInFailed += message => SignedInFailed?.Invoke(message);
+            FirebaseAuth.Init();
         }
 #endif
 

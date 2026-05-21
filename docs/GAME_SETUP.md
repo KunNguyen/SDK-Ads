@@ -54,7 +54,7 @@ using JisSDKAds.Firebase;
 
 ```csharp
 // Standard formats (Core when ready, else legacy)
-JisAds.Instance.ShowInterstitial(onClosed: () => { });
+JisAds.Instance.ShowInterstitial("level_end", onClosed: () => { });
 JisAds.Instance.ShowRewardVideo("placement", onSuccess: () => { });
 JisAds.Instance.ShowBannerAds();
 JisAds.Instance.HideBannerAds();

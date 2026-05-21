@@ -36,7 +36,22 @@ namespace JisSDKAds.Firebase
         [field: SerializeField] private string GoogleClientId { get; set; } = "101377628372-lol1cepipibdajc1t4cr72dukqog6cfe.apps.googleusercontent.com";
         public event Action<FirebaseUser> SignedIn;
         public event Action SignedOut;
-        public event Action<string> SignInFailed;
+        public event Action<string> SignedInFailed;
+
+        [Obsolete("Use SignedInFailed.")]
+        public event Action<string> SignInFailed
+        {
+            add => SignedInFailed += value;
+            remove => SignedInFailed -= value;
+        }
+
+        void NotifySignedInFailed(string message)
+        {
+            if (string.IsNullOrEmpty(message))
+                message = "Sign-in failed.";
+            Debug.LogWarning($"[FirebaseAuth] {message}");
+            SignedInFailed?.Invoke(message);
+        }
 
         public FirebaseAuth Auth { get; private set; }
         public FirebaseUser CurrentUser => Auth?.CurrentUser;
@@ -133,7 +148,7 @@ namespace JisSDKAds.Firebase
                 {
                     var msg = $"Play Games authentication failed with status: {status}";
                     Debug.LogWarning(msg);
-                    SignInFailed?.Invoke(msg);
+                    NotifySignedInFailed(msg);
                     throw new InvalidOperationException(msg);
                 }
 
@@ -146,7 +161,7 @@ namespace JisSDKAds.Firebase
                 {
                     var msg = "Play Games returned null/empty auth code.";
                     Debug.LogWarning(msg);
-                    SignInFailed?.Invoke(msg);
+                    NotifySignedInFailed(msg);
                     throw new InvalidOperationException(msg);
                 }
             }
@@ -154,7 +169,7 @@ namespace JisSDKAds.Firebase
             {
                 var msg = $"Play Games Sign-In failed: {e.Message}";
                 Debug.LogWarning(msg);
-                SignInFailed?.Invoke(msg);
+                NotifySignedInFailed(msg);
                 throw;
             }
 
@@ -177,7 +192,7 @@ namespace JisSDKAds.Firebase
             {
                 var msg = $"Firebase SignInWithCredential (Play Games) failed: {e.Message}";
                 Debug.LogWarning(msg);
-                SignInFailed?.Invoke(msg);
+                NotifySignedInFailed(msg);
                 throw;
             }
         }
@@ -231,7 +246,7 @@ namespace JisSDKAds.Firebase
                 {
                     var msg = "Game Center authentication failed.";
                     Debug.LogWarning(msg);
-                    SignInFailed?.Invoke(msg);
+                    NotifySignedInFailed(msg);
                     throw new InvalidOperationException(msg);
                 }
             }
@@ -239,7 +254,7 @@ namespace JisSDKAds.Firebase
             {
                 var msg = $"Game Center Sign-In failed: {e.Message}";
                 Debug.LogWarning(msg);
-                SignInFailed?.Invoke(msg);
+                NotifySignedInFailed(msg);
                 throw;
             }
 
@@ -262,7 +277,7 @@ namespace JisSDKAds.Firebase
             {
                 var msg = $"Firebase SignInWithCredential (Game Center) failed: {e.Message}";
                 Debug.LogWarning(msg);
-                SignInFailed?.Invoke(msg);
+                NotifySignedInFailed(msg);
                 throw;
             }
         }
@@ -322,7 +337,7 @@ namespace JisSDKAds.Firebase
                 var msg =
                     "webClientId is null/empty. Provide your OAuth Web Client ID (from Google Cloud / Firebase settings).";
                 Debug.LogError(msg);
-                SignInFailed?.Invoke(msg);
+                NotifySignedInFailed(msg);
                 throw new ArgumentException(msg, nameof(webClientId));
             }
 
@@ -330,7 +345,7 @@ namespace JisSDKAds.Firebase
             {
                 var msg = GoogleSignInReflection.PluginHint;
                 Debug.LogError(msg);
-                SignInFailed?.Invoke(msg);
+                NotifySignedInFailed(msg);
                 throw new InvalidOperationException(msg);
             }
 
@@ -354,8 +369,9 @@ namespace JisSDKAds.Firebase
             }
             catch (Exception e)
             {
-                Debug.LogError($"[FirebaseAuth] Google Sign-In failed: {e}");
-                SignInFailed?.Invoke(e.Message);
+                var msg = e.GetBaseException().Message;
+                Debug.LogError($"[FirebaseAuth] Google Sign-In failed: {msg}");
+                NotifySignedInFailed(msg);
                 throw;
             }
         }
@@ -403,7 +419,7 @@ namespace JisSDKAds.Firebase
             {
                 var msg = $"Anonymous sign-in failed: {e.Message}";
                 Debug.LogWarning(msg);
-                SignInFailed?.Invoke(msg);
+                NotifySignedInFailed(msg);
                 throw;
             }
         }
