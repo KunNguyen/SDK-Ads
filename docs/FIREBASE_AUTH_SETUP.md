@@ -12,7 +12,7 @@ error CS0246: The type or namespace name 'Google' could not be found
 
 1. **`FIREBASE_AUTH` đã bật** (trong `SDKSetup` → Apply Settings) nhưng project **chưa cài** module **Firebase Authentication** (Unity package từ Google) → thiếu `Firebase.Auth.dll`.
 
-2. **`GOOGLE_SIGNIN` đã bật** nhưng **chưa cài** [Google Sign-In Unity plugin](https://github.com/googlesamples/google-signin-unity) → thiếu assembly `Google`.
+2. (Bản SDK cũ) **`GOOGLE_SIGNIN` define** + thiếu Google Sign-In plugin. **Bản mới** dùng reflection — **không cần** define `GOOGLE_SIGNIN`; chỉ cần plugin khi gọi `SignInWithGoogleAsync`.
 
 SDK v4 tách Auth sang assembly `JisSDKAds.Firebase.Auth` (chỉ compile khi có `FIREBASE_AUTH` **và** `Firebase.Auth.dll` trong project).
 
@@ -35,8 +35,9 @@ SDK v4 tách Auth sang assembly `JisSDKAds.Firebase.Auth` (chỉ compile khi có
 
 ### C — Google Sign-In (tùy chọn)
 
-Chỉ thêm define **`GOOGLE_SIGNIN`** khi đã import Google Sign-In Unity vào project.  
-Nếu chỉ dùng Play Games / Game Center / Anonymous, **không** cần `GOOGLE_SIGNIN`.
+Import [Google Sign-In Unity](https://github.com/googlesamples/google-signin-unity) nếu dùng `SignInWithGoogleAsync`.  
+**Gỡ** define `GOOGLE_SIGNIN` khỏi Scripting Define Symbols (không còn bắt buộc).  
+Nếu chỉ dùng Play Games / Game Center / Anonymous, không cần plugin Google Sign-In.
 
 ## API sau khi cài Auth
 
@@ -55,4 +56,5 @@ FirebaseManager.Instance.FirebaseAuth.SignedIn += user => { };
 ## Không dùng Auth nhưng vẫn lỗi
 
 - Cập nhật package `com.jis.sdkads.firebase` bản mới (assembly Auth tách riêng).
-- Gỡ `FIREBASE_AUTH` và `GOOGLE_SIGNIN` khỏi **tất cả** platform trong Scripting Define Symbols.
+- Gỡ `FIREBASE_AUTH` khỏi Scripting Define Symbols (và `GOOGLE_SIGNIN` nếu còn từ bản cũ).
+- Đảm bảo folder `Runtime/Auth` có file `.meta` (bản SDK mới đã có `Auth.meta`).

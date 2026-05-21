@@ -8,10 +8,6 @@ using Firebase.Auth;
 using Firebase.Extensions;
 using UnityEngine;
 
-#if GOOGLE_SIGNIN
-using Google;
-#endif
-
 #if GOOGLE_PLAY_GAMES
 using GooglePlayGames;
 using GooglePlayGames.BasicApi;
@@ -51,10 +47,6 @@ namespace JisSDKAds.Firebase
         private bool stateChangeSubscribed;
         private LoginMethod _currentLoginMethod = LoginMethod.None;
         public LoginMethod CurrentLoginMethod => _currentLoginMethod;
-
-#if GOOGLE_SIGNIN
-        private GoogleSignInConfiguration googleConfig;
-#endif
 
         public void Init()
         {
@@ -114,13 +106,8 @@ namespace JisSDKAds.Firebase
 
             Auth.SignOut();
 
-#if GOOGLE_SIGNIN
             if (_currentLoginMethod == LoginMethod.Google)
-            {
-                // Optional: also sign out from Google plugin to force account chooser next time.
-                GoogleSignIn.DefaultInstance.SignOut();
-            }
-#endif
+                GoogleSignInReflection.SignOutIfAvailable();
 
             _currentLoginMethod = LoginMethod.None;
             PlayerPrefs.SetInt(LAST_LOGIN_METHOD_KEY, (int)LoginMethod.None);
@@ -326,86 +313,37 @@ namespace JisSDKAds.Firebase
 #pragma warning disable CS1998
         public async Task<FirebaseUser> SignInWithGoogleAsync(string webClientId, CancellationToken ct = default)
         {
-#if !GOOGLE_SIGNIN
-            var msg = "GOOGLE_SIGNIN is not enabled. Import Google Sign-In for Unity and define scripting symbol GOOGLE_SIGNIN.";
-            Debug.LogError(msg);
-            SignInFailed?.Invoke(msg);
-            throw new InvalidOperationException(msg);
-#else
-            
-            Debug.Log("Start Google Sign In");
-            if (!IsInitialized) Init();
+            Debug.Log("[FirebaseAuth] Start Google Sign In");
+            if (!IsInitialized)
+                Init();
 
             if (string.IsNullOrEmpty(webClientId))
             {
-                var msg = "webClientId is null/empty. Provide your OAuth Web Client ID (from Google Cloud / Firebase settings).";
+                var msg =
+                    "webClientId is null/empty. Provide your OAuth Web Client ID (from Google Cloud / Firebase settings).";
                 Debug.LogError(msg);
                 SignInFailed?.Invoke(msg);
                 throw new ArgumentException(msg, nameof(webClientId));
             }
 
-            googleConfig ??= new GoogleSignInConfiguration
+            if (!GoogleSignInReflection.IsAvailable)
             {
-                WebClientId = webClientId,
-                RequestIdToken = true,
-                RequestEmail = true,
-                UseGameSignIn = false
-            };
-            
-            Debug.Log("Google Sign In Configuration initialized");
-            Debug.Log($"Web Client ID: {googleConfig.WebClientId}");
-            Debug.Log($"Request ID Token: {googleConfig.RequestIdToken}");
-            Debug.Log($"Request Email: {googleConfig.RequestEmail}");
-            Debug.Log($"Use Game Sign In: {googleConfig.UseGameSignIn}");
-            GoogleSignIn.Configuration = googleConfig;
-            
-            GoogleSignIn.DefaultInstance.EnableDebugLogging(true);
-            GoogleSignInUser googleUser;
-            try
-            {
-                
-                // GoogleSignIn uses Task, wrap into UniTask.
-                googleUser = await GoogleSignIn.DefaultInstance.SignIn()
-                    .ContinueWithOnMainThread(task => task.Result)
-                    ;
-            }
-            catch (Exception e)
-            {
-                if (e is GoogleSignIn.SignInException signInException)
-                {
-                    Debug.LogError(
-                        $"Google Sign-In failed: {signInException.Status} | {signInException.Message}"
-                    );
-                }
-                else
-                {
-                    Debug.LogError($"Google Sign-In exception: {e}");
-                }
-
-                SignInFailed?.Invoke(e.Message);
-                throw;
-            }
-            
-            Debug.Log("Google Sign In completed successfully");
-
-            if (googleUser == null || string.IsNullOrEmpty(googleUser.IdToken))
-            {
-                var msg = "Google Sign-In returned null user or missing IdToken.";
-                Debug.LogWarning(msg);
+                var msg = GoogleSignInReflection.PluginHint;
+                Debug.LogError(msg);
                 SignInFailed?.Invoke(msg);
                 throw new InvalidOperationException(msg);
             }
-            
-            var credential = GoogleAuthProvider.GetCredential(googleUser.IdToken, null);
-            Debug.Log("Google Sign In credential created successfully");
 
             try
             {
+                ct.ThrowIfCancellationRequested();
+                var idToken = await GoogleSignInReflection.SignInForIdTokenAsync(webClientId);
+                var credential = GoogleAuthProvider.GetCredential(idToken, null);
+
                 var user = await Auth.SignInWithCredentialAsync(credential)
-                    .ContinueWithOnMainThread(task => task.Result)
-                    ;
-                
-                Debug.Log("Firebase Sign In completed successfully with user: " + user.DisplayName);
+                    .ContinueWithOnMainThread(task => task.Result);
+
+                Debug.Log("[FirebaseAuth] Firebase sign-in with Google credential: " + user.DisplayName);
 
                 _currentLoginMethod = LoginMethod.Google;
                 PlayerPrefs.SetInt(LAST_LOGIN_METHOD_KEY, (int)_currentLoginMethod);
@@ -416,12 +354,10 @@ namespace JisSDKAds.Firebase
             }
             catch (Exception e)
             {
-                var msg = $"Firebase SignInWithCredential failed: {e.Message}";
-                Debug.LogWarning(msg);
-                SignInFailed?.Invoke(msg);
+                Debug.LogError($"[FirebaseAuth] Google Sign-In failed: {e}");
+                SignInFailed?.Invoke(e.Message);
                 throw;
             }
-#endif
         }
 #pragma warning restore CS1998
         
