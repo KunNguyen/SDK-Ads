@@ -1,0 +1,4 @@
+ManifestVersion: 1
+ModuleID: Unity.Addressables
+ModuleVersion: 1.0.0.0
+ModuleFiles:

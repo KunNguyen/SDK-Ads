@@ -95,6 +95,16 @@ Nếu Console có `ExpressionNotValidException` hoặc NRE trong `VersionDefines
 
 ---
 
+## Cảnh báo Odin: `Unity.Addressables` has no meta file
+
+Odin từng ship `Unity.Addressables.data` trong `com.jis.sdkads.core`; Unity giải nén thành folder **không có .meta** trong package immutable.
+
+- SDK mới: folder `Modules/Unity.Addressables/` + `.meta` (manifest placeholder), đã **xóa** `.data`.
+- Game project: Hub → **Flush PackageCache** → reimport `com.jis.sdkads.core`.
+- Cần Odin + Addressables đầy đủ: cài module từ **Odin Inspector → Tools → Odin Module Manager** (project `Assets`, không phụ thuộc `.data` trong UPM).
+
+---
+
 ## Checklist nhanh
 
 - [ ] Đã xóa `Assets/ABIMaxSDKAds`
