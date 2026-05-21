@@ -2,7 +2,6 @@ using System;
 
 namespace JisSDKAds.Ads.Tracking
 {
-#if UNITY_APPSFLYER
     /// <summary>
     /// Static facade for AppsFlyer tracking. Implementation is wired at runtime by
     /// com.jis.sdkads.analytics.appsflyer when that package is installed.
@@ -62,5 +61,4 @@ namespace JisSDKAds.Ads.Tracking
         public static void TrackAppsflyerAdRevenue(ImpressionData impressionData) =>
             trackAppsflyerAdRevenue?.Invoke(impressionData);
     }
-#endif
 }

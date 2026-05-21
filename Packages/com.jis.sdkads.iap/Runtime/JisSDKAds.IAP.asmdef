@@ -21,7 +21,9 @@
         "Sirenix.OdinInspector.Attributes.dll"
     ],
     "autoReferenced": true,
-    "defineConstraints": [],
+    "defineConstraints": [
+        "UNITY_IAP_ACTIVE"
+    ],
     "versionDefines": [
         {
             "name": "com.unity.purchasing",

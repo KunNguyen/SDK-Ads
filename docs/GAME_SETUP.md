@@ -1,15 +1,16 @@
 # Game project setup (JIS SDK v4)
 
-> **Chưa cài UPM?** Làm trước: [UPM_INSTALL.md](UPM_INSTALL.md) — thêm Git package + Hub import module.
+> **Chưa cài UPM?** Làm trước: [UPM_INSTALL.md](UPM_INSTALL.md) — thêm Git package + Hub import module.  
+> **Hướng dẫn chi tiết Ads + Firebase (API, RC, Analytics):** [ADS_FIREBASE_GUIDE.md](ADS_FIREBASE_GUIDE.md)
 
 ## 1. Install packages
 
 Open **JIS SDK → Hub** and import:
 
 1. **Firebase** (required) — Hub also adds [External Dependency Manager](https://openupm.com/packages/com.google.external-dependency-manager/) from OpenUPM if missing (`com.google.external-dependency-manager` **1.2.187**)
-2. Install **Firebase** from Google (Analytics + Remote Config)
+2. Install **Firebase** from Google (Analytics + Remote Config; add **Authentication** if using Firebase Auth — [FIREBASE_AUTH_SETUP.md](FIREBASE_AUTH_SETUP.md))
 3. **Ads** (ads runtime only), then **Enable MAX** / **Enable AdMob** in Hub as needed
-4. Optional: IAP, App Review, AppsFlyer, …
+4. Optional: IAP ([IAP_USAGE.md](IAP_USAGE.md)), App Review, AppsFlyer, …
 
 ## 2. Create settings
 

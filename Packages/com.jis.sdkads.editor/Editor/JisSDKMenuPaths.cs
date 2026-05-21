@@ -7,10 +7,10 @@ namespace JisSDKAds.Editor
 
         // Ads
         public const string AdsRoot = Root + "Ads/";
-        public const string AdsCreateSettings = AdsRoot + "Create Settings Asset";
+        public const string AdsCreateSettings = AdsRoot + "Create/Open Settings Asset";
         public const string AdsApplyToScene = AdsRoot + "Apply Settings to Scene";
-        public const string AdsCreateRewardPlacements = AdsRoot + "Create Reward Placements Config";
-        public const string AdsCreateTieredConfig = AdsRoot + "Create Tiered Ads Config";
+        public const string AdsCreateRewardPlacements = AdsRoot + "Create/Open Reward Placements Config";
+        public const string AdsCreateTieredConfig = AdsRoot + "Create/Open Tiered Ads Config";
 
         public const string AdsSceneRoot = AdsRoot + "Scene/";
         public const string AdsSceneAddManager = AdsSceneRoot + "Add Manager Prefab";
@@ -22,12 +22,12 @@ namespace JisSDKAds.Editor
         public const string AdsAutoApplyNow = AdsAutoApplyRoot + "Apply Now (Active Build Target)";
 
         public const string AdsLegacyRoot = AdsRoot + "Legacy/";
-        public const string AdsLegacyCreateContainer = AdsLegacyRoot + "Create Setup Container";
+        public const string AdsLegacyCreateContainer = AdsLegacyRoot + "Create/Open Setup Container";
 
         // IAP (separate from Ads)
         public const string IapRoot = Root + "IAP/";
         public const string IapEnable = IapRoot + "Enable IAP";
-        public const string IapCreatePackagesConfig = IapRoot + "Create Packages Config";
+        public const string IapCreatePackagesConfig = IapRoot + "Create/Open Packages Config";
         public const string IapSceneAddPurchaser = IapRoot + "Scene/Add InApp Purchaser Prefab";
 
         // GameObject context

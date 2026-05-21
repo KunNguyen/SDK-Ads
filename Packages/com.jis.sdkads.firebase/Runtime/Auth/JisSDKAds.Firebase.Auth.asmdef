@@ -1,0 +1,23 @@
+{
+    "name": "JisSDKAds.Firebase.Auth",
+    "rootNamespace": "JisSDKAds.Firebase",
+    "references": [
+        "JisSDKAds.Common"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "Firebase.App.dll",
+        "Firebase.Auth.dll",
+        "Firebase.Platform.dll",
+        "Firebase.TaskExtension.dll"
+    ],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "FIREBASE_AUTH"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

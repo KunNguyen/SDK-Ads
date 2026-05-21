@@ -37,13 +37,13 @@ namespace JisSDKAds.Firebase
         [field: SerializeField] public FirebaseInitializationMode InitializationMode { get; set; } = FirebaseInitializationMode.AutoOnAwake;
 
 #if FIREBASE_AUTH
-        [field: SerializeField] public FirebaseAuthManager FirebaseAuthManager { get; private set; }
-        public bool IsSignedIn => FirebaseAuthManager.IsSignedIn;
+        /// <summary>Sign-in API: <see cref="FirebaseAuthManager.SignInWithGoogleAsync"/>, events on this instance.</summary>
+        public FirebaseAuthManager FirebaseAuth { get; private set; }
 
-        public event Action<Firebase.Auth.FirebaseUser> SignedInWithUser;
-        public event Action SignedInWithoutUser;
-        public event Action<string> SignedInFailed;
-        public event Action SignedOut;
+        [Obsolete("Use FirebaseAuth property.")]
+        public FirebaseAuthManager FirebaseAuthManager => FirebaseAuth;
+
+        public bool IsSignedIn => FirebaseAuth != null && FirebaseAuth.IsSignedIn;
 #endif
 
         private FirebaseAnalyticsManager analytics;
@@ -87,7 +87,7 @@ namespace JisSDKAds.Firebase
             remoteConfig = new FirebaseRemoteConfigManager();
 
 #if FIREBASE_AUTH
-            FirebaseAuthManager = new FirebaseAuthManager();
+            FirebaseAuth = new FirebaseAuthManager();
 #endif
 
             var status = await FirebaseApp.CheckAndFixDependenciesAsync();
@@ -136,48 +136,10 @@ namespace JisSDKAds.Firebase
         #region Auth
 
 #if FIREBASE_AUTH
-        private void InitAuth()
+        void InitAuth()
         {
-            FirebaseAuthManager.Init();
-            FirebaseAuthManager.SignedIn += user =>
-            {
-                SignedInWithUser?.Invoke(user);
-                SignedInWithoutUser?.Invoke();
-            };
-            FirebaseAuthManager.SignInFailed += msg =>
-            {
-                SignedInFailed?.Invoke(msg);
-            };
-            FirebaseAuthManager.SignedOut += () =>
-            {
-                SignedOut?.Invoke();
-            };
+            FirebaseAuth?.Init();
         }
-
-        public Task<Firebase.Auth.FirebaseUser> SignInWithGoogle(CancellationToken ct = default)
-            => FirebaseAuthManager.SignInWithGoogleAsync(ct);
-
-        public Task<Firebase.Auth.FirebaseUser> SignInWithPlatform(CancellationToken ct = default)
-            => FirebaseAuthManager.SignInWithPlatformAsync(ct);
-
-#if GOOGLE_PLAY_GAMES
-        public Task<Firebase.Auth.FirebaseUser> SignInWithPlayGames(CancellationToken ct = default)
-            => FirebaseAuthManager.SignInWithPlayGamesAsync(ct);
-
-        public Task<Firebase.Auth.FirebaseUser> TrySilentSignInPlayGames(CancellationToken ct = default)
-            => FirebaseAuthManager.TrySilentSignInPlayGamesAsync(ct);
-#endif
-
-#if UNITY_IOS
-        public Task<Firebase.Auth.FirebaseUser> SignInWithGameCenter(CancellationToken ct = default)
-            => FirebaseAuthManager.SignInWithGameCenterAsync(ct);
-#endif
-
-        public Task<Firebase.Auth.FirebaseUser> SignInAnonymously(CancellationToken ct = default)
-            => FirebaseAuthManager.SignInAnonymouslyAsync(ct);
-        
-        public Task SignOut()
-            => FirebaseAuthManager.SignOut();
 #endif
 
         #endregion

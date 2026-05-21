@@ -1,0 +1,21 @@
+{
+    "name": "JisSDKAds.IAP.Editor",
+    "rootNamespace": "JisSDKAds.IAP.Editor",
+    "references": [
+        "JisSDKAds.IAP",
+        "JisSDKAds.Common"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "UNITY_IAP_ACTIVE"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

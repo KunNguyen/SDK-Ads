@@ -133,7 +133,7 @@ JisAds.Instance.ShowAppOpenAd();  // legacy
 |---------|-------------------|
 | Firebase | hub, core, common, firebase |
 | Ads | providers.max, providers.admob, ads + `UNITY_AD_MAX`, `UNITY_AD_ADMOB` + AppLovin UPM |
-| IAP | iap + Purchasing + `UNITY_IAP_ACTIVE` |
+| IAP | iap + Purchasing + `UNITY_IAP_ACTIVE` — guide [IAP_USAGE.md](IAP_USAGE.md), RemoveAds auto via `ProductKind` |
 | App Review | appreview + `GOOGLE_REVIEW` (Android) |
 | AppsFlyer / Solar / Facebook | package tương ứng |
 | Editor | editor |

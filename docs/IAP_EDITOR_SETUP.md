@@ -1,6 +1,6 @@
 # IAP Editor Setup — JIS SDK
 
-> In-App Purchase setup tách riêng khỏi Ads trong Menu Bar.
+> Runtime API: [IAP_USAGE.md](IAP_USAGE.md)
 
 ---
 
@@ -8,13 +8,17 @@
 
 ```
 JIS SDK/IAP/
-├── Create Packages Config
+├── Enable IAP
+├── Create/Open Packages Config
+├── Validate Packages Config
 └── Scene/Add InApp Purchaser Prefab
 
-GameObject/JIS SDK/IAP/Add InApp Purchaser
+GameObject/JIS SDK/IAP/
+├── Enable IAP
+└── Add InApp Purchaser
 ```
 
-**Yêu cầu:** Import module **IAP** từ **JIS SDK → Hub** (bật scripting define `UNITY_IAP_ACTIVE`).
+**Yêu cầu:** Import module **IAP** từ **JIS SDK → Hub** và scripting define `UNITY_IAP_ACTIVE`.
 
 ---
 
@@ -24,22 +28,34 @@ GameObject/JIS SDK/IAP/Add InApp Purchaser
 |-------|----------------|
 | `IAPPackageConfigs` | `Assets/JisSDKAds/Settings/IAP/IAPPackageConfigs.asset` |
 
-Tạo qua menu **JIS SDK → IAP → Create Packages Config** hoặc **Assets → Create → JIS SDK/IAP/Packages Config**.
+Tạo qua **JIS SDK → IAP → Create/Open Packages Config** hoặc **Assets → Create → JIS SDK/IAP/Packages Config**.
+
+### Product kinds
+
+| ProductKind | Dùng khi |
+|-------------|----------|
+| `Consumable` | Coin, gem, … |
+| `NonConsumable` | Unlock vĩnh viễn (không phải ads) |
+| `Subscription` | Sub |
+| `RemoveAds` | Tắt quảng cáo — SDK tự gọi `JisAds.SetRemoveAds(true)` |
+
+**Validate:** **JIS SDK → IAP → Validate Packages Config** trước khi build.
 
 ---
 
 ## Scene setup
 
-1. **JIS SDK → IAP → Scene → Add InApp Purchaser Prefab** (tự tạo nếu chưa có prefab)
-2. Gán `IAPPackageConfigs` trên component `InAppPurchaser`
-3. (Optional) Link remove-ads với `JisAds.SetRemoveAds()` sau khi mua IAP thành công
+1. **JIS SDK → IAP → Scene → Add InApp Purchaser Prefab**
+2. Gán `IAPPackageConfigs` trên `InAppPurchaser`
+3. `InitializationMode`: `Manual` nếu game init qua `InitializeAsync()` trong loading
 
 ---
 
-## Liên kết với Ads
+## Liên kết Ads
 
-- `SDKSetup.IsActiveIAP` vẫn bật define `UNITY_IAP_ACTIVE` khi Setup Ads (scripting symbols)
-- Menu IAP **không** nằm dưới `JIS SDK/Ads/` — cấu hình IAP độc lập
+- `SDKSetup.IsActiveIAP` → bật `UNITY_IAP_ACTIVE` khi **Apply Settings to Scene**
+- Remove ads: đặt `ProductKind = RemoveAds` — **không cần** code `SetRemoveAds` thủ công
+- Menu IAP tách khỏi `JIS SDK/Ads/`
 
 ---
 
@@ -47,7 +63,10 @@ Tạo qua menu **JIS SDK → IAP → Create Packages Config** hoặc **Assets �
 
 | File | Vai trò |
 |------|---------|
-| `Editor/Settings/JisSDKIapSettingsMenu.cs` | Menu IAP |
-| `Editor/JisSDKMenuPaths.cs` | Đường dẫn menu |
-| `iap/Runtime/IAPServices/IAPPackageConfigs.cs` | Config asset |
 | `iap/Runtime/IAPServices/InAppPurchaser.cs` | Runtime IAP |
+| `iap/Runtime/IAPServices/IAPPackageConfigs.cs` | Config + validate |
+| `iap/Runtime/IAPServices/IapPurchasePersistence.cs` | PlayerPrefs persistence |
+| `ads/Runtime/Integration/IapPurchaseIntegration.cs` | Remove ads + Firebase |
+| `analytics.appsflyer/.../IapAppsflyerIntegration.cs` | AppsFlyer revenue |
+| `common/Runtime/Iap/IapIntegration.cs` | Event hooks |
+| `Editor/IapConfigValidatorMenu.cs` | Validate menu |

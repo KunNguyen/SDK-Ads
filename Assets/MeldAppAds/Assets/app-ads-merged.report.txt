@@ -1,0 +1,51 @@
+﻿App-Ads.txt Merge Report
+Generated: 4/8/2026 12:01:30 AM
+
+Summary
+- Input files (listed): 2
+- Total valid data lines (after normalization): 9638
+- Unique lines: 3578
+- Duplicate lines skipped: 6060
+- Invalid structure lines skipped: 8
+- Lines auto-fixed (normalized): 2584
+
+Options
+- removeComments: True
+- ignoreCase: True
+- trimSpaces: True
+- sortAlphabetically: True
+- autoFixStructure: True
+- strictValidation: True
+
+Duplicate samples (first 20)
+- [app-ads.txt] acd.op.hicloud.com, PUB_HW_1003, RESELLER
+- [app-ads.txt] acexchange.co.kr, 1416775282, RESELLER
+- [app-ads.txt] adcolony.com, 0a0f72cd66122f31, RESELLER, 1ad675c9de6b5176
+- [app-ads.txt] adcolony.com, c7b2bb9f944ae42a, RESELLER, 1ad675c9de6b5176
+- [app-ads.txt] adelement.com, 30208, RESELLER
+- [app-ads.txt] adform.com, 2671, RESELLER
+- [app-ads.txt] adform.com, 2742, RESELLER
+- [app-ads.txt] adform.com, 2845, RESELLER, 9f5210a2f0999e32
+- [app-ads.txt] adiiix.com, db716a4c, RESELLER
+- [app-ads.txt] adingo.jp, 31054, RESELLER
+- [app-ads.txt] admanmedia.com, 2248, RESELLER
+- [app-ads.txt] admanmedia.com, 990, RESELLER
+- [app-ads.txt] admixer.co.kr, 1094, RESELLER
+- [app-ads.txt] admixer.co.kr, 1610, RESELLER
+- [app-ads.txt] admixer.co.kr, 1610, RESELLER
+- [app-ads.txt] adtiming.com, a-126, RESELLER, bf66753b8f380142
+- [app-ads.txt] adview.com, 48045325, RESELLER, 1b2cc038a11ea319
+- [app-ads.txt] adview.com, 06667060, RESELLER, 1b2cc038a11ea319
+- [app-ads.txt] adview.com, 32076181, RESELLER, 1b2cc038a11ea319
+- [app-ads.txt] advlion.com, 3117, RESELLER
+
+Invalid structure samples (first 8)
+- [app-ads.txt] inventorypartnerdomain=bold-win.com  =>  Wrong field count: 1 (expected 3 or 4)
+- [app-ads.txt] inventorypartnerdomain=my-cast.tv  =>  Wrong field count: 1 (expected 3 or 4)
+- [app-ads.txt] unitytk2  =>  Wrong field count: 1 (expected 3 or 4)
+- [app-ads-duc.txt] unitytk2  =>  Wrong field count: 1 (expected 3 or 4)
+- [app-ads-duc.txt] inventorypartnerdomain=my-cast.tv  =>  Wrong field count: 1 (expected 3 or 4)
+- [app-ads-duc.txt] inventorypartnerdomain=bold-win.com  =>  Wrong field count: 1 (expected 3 or 4)
+- [app-ads-duc.txt] inventorypartnerdomain=my-cast.tv  =>  Wrong field count: 1 (expected 3 or 4)
+- [app-ads-duc.txt] inventorypartnerdomain=bold-win.com  =>  Wrong field count: 1 (expected 3 or 4)
+

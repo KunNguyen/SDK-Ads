@@ -3,7 +3,8 @@
     "rootNamespace": "JisSDKAds.Firebase",
     "references": [
         "JisSDKAds.Common",
-        "JisSDKAds.Core"
+        "JisSDKAds.Core",
+        "JisSDKAds.Firebase.Auth"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
