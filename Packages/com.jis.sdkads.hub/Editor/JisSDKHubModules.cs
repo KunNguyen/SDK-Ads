@@ -57,6 +57,9 @@ namespace JisSDKAds.Hub
                     yield return ("com.jis.sdkads.ads", "com.jis.sdkads.ads");
                     break;
                 case ModuleKind.Iap:
+                    // Pin common/core so Git UPM resolves the same revision as IAP (IapProductKind lives in common).
+                    yield return ("com.jis.sdkads.core", "com.jis.sdkads.core");
+                    yield return ("com.jis.sdkads.common", "com.jis.sdkads.common");
                     yield return ("com.jis.sdkads.iap", "com.jis.sdkads.iap");
                     break;
                 case ModuleKind.AppReview:

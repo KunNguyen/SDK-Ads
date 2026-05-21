@@ -15,6 +15,8 @@ Tài liệu runtime cho **Unity Purchasing 5.x** qua package `com.jis.sdkads.iap
 | `com.unity.purchasing` ≥ 5.0.4 | Hub thêm vào manifest |
 | `com.unity.services.core` | Unity Gaming Services init |
 | Scripting define | `UNITY_IAP_ACTIVE` (bắt buộc — Hub **Enable IAP** hoặc `SDKSetup.IsActiveIAP` + Apply Settings) |
+
+> **Lỗi `IapProductKind` / `IapPurchaseNotification` not found:** IAP và `com.jis.sdkads.common` đang ở **hai commit Git khác nhau** trong `Library/PackageCache`. Các type nằm trong **common** (`Runtime/Iap/`). Hub → **Fix revisions** → **Flush PackageCache** → Resolve. Cập nhật `common` ≥ **4.0.1** (cùng revision với IAP).
 | Store config | Google Play + App Store product IDs |
 
 ---

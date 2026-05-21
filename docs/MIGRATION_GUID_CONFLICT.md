@@ -75,6 +75,17 @@ Sau khi xóa `ABIMaxSDKAds`, prefab/scene có thể mất reference script cũ.
 
 ---
 
+## Lỗi `IapProductKind` / `IapPurchaseNotification` not found (CS0246)
+
+IAP package mới tham chiếu type trong **`com.jis.sdkads.common`** (`Runtime/Iap/`), nhưng cache **common cũ** (khác hash Git với `com.jis.sdkads.iap@...`).
+
+1. **JIS SDK → Hub** → **Fix com.jis.sdkads.* revisions** (cùng `main` / tag).
+2. **Flush Library/PackageCache (com.jis.sdkads.\*)** (nút trong Hub).
+3. Package Manager → **Resolve** (hoặc mở lại Unity).
+4. Đảm bảo `common` ≥ **4.0.1** (re-import IAP module từ Hub sau khi pull SDK mới).
+
+---
+
 ## Lỗi `VersionDefines` / NullReferenceException khi compile
 
 Nếu Console có `ExpressionNotValidException` hoặc NRE trong `VersionDefinesConsoleLogs` khi dùng package IAP/MAX cũ:

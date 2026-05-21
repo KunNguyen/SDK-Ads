@@ -91,6 +91,9 @@ namespace JisSDKAds.Hub
                 EditorUtility.DisplayDialog("JIS SDK Hub",
                     n > 0 ? $"Converted {n} broken file: entries." : "No broken file: entries found.", "OK");
             }
+
+            JisSDKHubPackageHealth.DrawFlushPackageCacheButton();
+            JisSDKHubPackageHealth.DrawIapCommonMismatchWarning();
         }
 
         private void DrawModule(string title, string desc, ModuleKind kind)
@@ -133,6 +136,9 @@ namespace JisSDKAds.Hub
 
             if (kind == ModuleKind.Firebase && status == ModuleInstallStatus.Installed)
                 EditorGUILayout.LabelField("Remove keeps com.jis.sdkads.hub so you can re-import modules.", EditorStyles.miniLabel);
+
+            if (kind == ModuleKind.Iap)
+                JisSDKHubPackageHealth.DrawIapCommonMismatchWarning();
 
             EditorGUILayout.EndVertical();
             EditorGUILayout.Space(4);

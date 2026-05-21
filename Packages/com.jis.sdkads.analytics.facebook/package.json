@@ -5,7 +5,7 @@
   "description": "Optional Facebook SDK wrapper.",
   "unity": "2022.3",
   "dependencies": {
-    "com.jis.sdkads.common": "4.0.0"
+    "com.jis.sdkads.common": "4.0.1"
   },
   "author": {
     "name": "JustIdleGames"
