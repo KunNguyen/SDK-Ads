@@ -11,7 +11,6 @@ namespace JisSDKAds.Ads
 {
 #if UNITY_AD_ADMOB
      using GoogleMobileAds.Api;
-     using GoogleMobileAds.Ump.Api;
 #endif
 
      /// <summary>
@@ -46,13 +45,9 @@ namespace JisSDKAds.Ads
                if (Status != MediationStatus.NotInited) return;
                base.Init();
                if (IsActiveConsent)
-               {
-                    InitConsent();     
-               }
+                    InitConsent();
                else
-               {
-                    InitAdmob();     
-               }
+                    InitAdmob();
                
           }
           private void InitAdmob()
@@ -104,77 +99,31 @@ namespace JisSDKAds.Ads
 
           private void InitConsent()
           {
-               ConsentDebugSettings debugSettings = new ConsentDebugSettings
+               if (!AdmobUmpConsent.IsAvailable)
                {
-                    DebugGeography = DebugGeography.EEA,
-                    TestDeviceHashedIds =
-                         new List<string>
-                         {
-                              "8EC8C174AE81E71DF002C15B0B8458D9",
-                              "4849D928DCE8B9A471CE3BAB5E57E08A",
-                              "CA578C5A7014A1C2606A4810118F95C2"
-                         }
-               };
-               ConsentRequestParameters request = new ConsentRequestParameters
-               {
-                    ConsentDebugSettings = debugSettings,
-               };
-               ConsentInformation.Update(request, OnConsentInfoUpdated);
-          }
-
-          private void OnConsentInfoUpdated(FormError consentError)
-          {
-               if (consentError != null)
-               {
-                    // Handle the error.
-                    DebugAds.LogError(consentError.Message);
+                    DebugAds.LogWarning($"[AdMob] UMP not available. {AdmobUmpConsent.PluginHint}");
+                    InitAdmob();
                     return;
                }
 
-               // If the error is null, the consent information state was updated.
-               // You are now ready to check if a form is available.
-               ConsentForm.LoadAndShowConsentFormIfRequired((FormError formError) =>
-               {
-                    if (formError != null)
-                    {
-                         // Consent gathering failed.
-                         DebugAds.LogError(consentError.Message);
-                         return;
-                    }
-
-                    // Consent has been gathered.
-                    if (ConsentInformation.CanRequestAds())
-                    {
-                         // Initialize the Mobile Ads SDK.
-                         InitAdmob();
-                    }
-               });
+               AdmobUmpConsent.RequestConsentAndInitialize(
+                    InitAdmob,
+                    msg => DebugAds.LogError(msg));
           }
+
           public void ShowConsentFormAgain()
           {
-               ConsentForm.Load((ConsentForm form, FormError loadError) =>
+               if (!AdmobUmpConsent.IsAvailable)
                {
-                    if (loadError != null)
-                    {
-                         DebugAds.LogError("Lỗi load CMP: " + loadError.Message);
-                         return;
-                    }
+                    DebugAds.LogWarning($"[AdMob] UMP not available. {AdmobUmpConsent.PluginHint}");
+                    return;
+               }
 
-                    form.Show((FormError showError) =>
-                    {
-                         if (showError != null)
-                         {
-                              DebugAds.LogError("Lỗi hiển thị CMP: " + showError.Message);
-                         }
-                         else
-                         {
-                              DebugAds.Log("User đã cập nhật consent.");
-                         }
-                    });
-               });
+               AdmobUmpConsent.ShowPrivacyOptionsForm(
+                    msg => DebugAds.LogError("Lỗi CMP: " + msg),
+                    () => DebugAds.Log("User đã cập nhật consent."));
           }
 
-          
           #endregion
           
           #region Banner Ads
