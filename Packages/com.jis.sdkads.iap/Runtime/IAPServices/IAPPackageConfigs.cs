@@ -1,7 +1,6 @@
 ﻿#if UNITY_IAP_ACTIVE
 using System.Collections.Generic;
 using JisSDKAds.Common;
-using Sirenix.OdinInspector;
 using UnityEngine;
 using UnityEngine.Purchasing;
 
@@ -10,7 +9,13 @@ namespace JisSDKAds.IAP
     [CreateAssetMenu(fileName = "IAPPackageConfigs", menuName = "JIS SDK/IAP/Packages Config", order = 0)]
     public class IAPPackageConfigs : ScriptableObject
     {
-        [field: SerializeField, TableList] public List<IAPPackage> Packages { get; set; } = new List<IAPPackage>();
+        [SerializeField] List<IAPPackage> packages = new List<IAPPackage>();
+
+        public List<IAPPackage> Packages
+        {
+            get => packages;
+            set => packages = value ?? new List<IAPPackage>();
+        }
 
         public IAPPackage FindPackage(string productId)
         {

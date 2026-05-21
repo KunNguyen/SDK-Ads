@@ -604,7 +604,6 @@ namespace JisSDKAds.IAP
         }
 
 #if UNITY_EDITOR
-        [Sirenix.OdinInspector.Button]
         public void CreateIAPPackageConfigs()
         {
             IapProductConfigs = IAPSetup.CreateIAPPackageConfigs();

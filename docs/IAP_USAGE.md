@@ -16,6 +16,8 @@ Tài liệu runtime cho **Unity Purchasing 5.x** qua package `com.jis.sdkads.iap
 | `com.unity.services.core` | Unity Gaming Services init |
 | Scripting define | `UNITY_IAP_ACTIVE` (bắt buộc — Hub **Enable IAP** hoặc `SDKSetup.IsActiveIAP` + Apply Settings) |
 
+> **Lỗi `Sirenix` / `TableList` trong IAP:** package IAP ≥ **4.0.2** không còn phụ thuộc Odin runtime. Nút tạo config: Inspector **InAppPurchaser** → **Create IAP Package Configs**.
+
 > **Lỗi `IapProductKind` / `IapPurchaseNotification` not found:** IAP và `com.jis.sdkads.common` đang ở **hai commit Git khác nhau** trong `Library/PackageCache`. Các type nằm trong **common** (`Runtime/Iap/`). Hub → **Fix revisions** → **Flush PackageCache** → Resolve. Cập nhật `common` ≥ **4.0.1** (cùng revision với IAP).
 | Store config | Google Play + App Store product IDs |
 
