@@ -35,6 +35,10 @@ namespace JisSDKAds.Firebase
         
         [field: SerializeField] private string GoogleClientId { get; set; } = "101377628372-lol1cepipibdajc1t4cr72dukqog6cfe.apps.googleusercontent.com";
         public event Action<FirebaseUser> SignedIn;
+
+        /// <summary>User id only — safe for <c>JisSDKAds.Firebase</c> without referencing Firebase.Auth.dll.</summary>
+        public event Action<string> SignedInUserId;
+
         public event Action SignedOut;
         public event Action<string> SignedInFailed;
 
@@ -43,6 +47,13 @@ namespace JisSDKAds.Firebase
         {
             add => SignedInFailed += value;
             remove => SignedInFailed -= value;
+        }
+
+        void NotifySignedIn(FirebaseUser user)
+        {
+            if (user == null) return;
+                    NotifySignedIn(user);
+            SignedInUserId?.Invoke(user.UserId);
         }
 
         void NotifySignedInFailed(string message)
@@ -77,7 +88,7 @@ namespace JisSDKAds.Firebase
             if (Auth.CurrentUser != null)
             {
                 _currentLoginMethod = (LoginMethod)PlayerPrefs.GetInt(LAST_LOGIN_METHOD_KEY, (int)LoginMethod.None);
-                SignedIn?.Invoke(Auth.CurrentUser);
+                NotifySignedIn(Auth.CurrentUser);
             }
             else
             {
@@ -103,7 +114,7 @@ namespace JisSDKAds.Firebase
 
             if (Auth.CurrentUser != null)
             {
-                SignedIn?.Invoke(Auth.CurrentUser);
+                NotifySignedIn(Auth.CurrentUser);
             }
             else
             {
@@ -185,7 +196,7 @@ namespace JisSDKAds.Firebase
                 PlayerPrefs.SetInt(LAST_LOGIN_METHOD_KEY, (int)_currentLoginMethod);
                 PlayerPrefs.Save();
 
-                SignedIn?.Invoke(user);
+                NotifySignedIn(user);
                 return user;
             }
             catch (Exception e)
@@ -270,7 +281,7 @@ namespace JisSDKAds.Firebase
                 PlayerPrefs.SetInt(LAST_LOGIN_METHOD_KEY, (int)_currentLoginMethod);
                 PlayerPrefs.Save();
 
-                SignedIn?.Invoke(user);
+                NotifySignedIn(user);
                 return user;
             }
             catch (Exception e)
@@ -364,7 +375,7 @@ namespace JisSDKAds.Firebase
                 PlayerPrefs.SetInt(LAST_LOGIN_METHOD_KEY, (int)_currentLoginMethod);
                 PlayerPrefs.Save();
 
-                SignedIn?.Invoke(user);
+                NotifySignedIn(user);
                 return user;
             }
             catch (Exception e)
@@ -392,7 +403,7 @@ namespace JisSDKAds.Firebase
                     PlayerPrefs.SetInt(LAST_LOGIN_METHOD_KEY, (int)_currentLoginMethod);
                     PlayerPrefs.Save();
 
-                    SignedIn?.Invoke(user);
+                    NotifySignedIn(user);
                     return user;
                 }
             }
@@ -412,7 +423,7 @@ namespace JisSDKAds.Firebase
                 PlayerPrefs.SetInt(LAST_LOGIN_METHOD_KEY, (int)_currentLoginMethod);
                 PlayerPrefs.Save();
 
-                SignedIn?.Invoke(result.User);
+                NotifySignedIn(result.User);
                 return result.User;
             }
             catch (Exception e)

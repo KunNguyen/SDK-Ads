@@ -148,7 +148,7 @@ namespace JisSDKAds.Firebase
         void InitAuth()
         {
             FirebaseAuth ??= new FirebaseAuthManager();
-            FirebaseAuth.SignedIn += user => SignedInWithUserId?.Invoke(user?.UserId);
+            FirebaseAuth.SignedInUserId += userId => SignedInWithUserId?.Invoke(userId);
             FirebaseAuth.SignedOut += () => SignedOut?.Invoke();
             FirebaseAuth.SignedInFailed += message => SignedInFailed?.Invoke(message);
             FirebaseAuth.Init();
