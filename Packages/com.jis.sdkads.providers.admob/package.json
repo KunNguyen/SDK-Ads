@@ -1,6 +1,6 @@
 {
   "name": "com.jis.sdkads.providers.admob",
-  "version": "4.0.2",
+  "version": "4.0.3",
   "displayName": "JIS SDK - AdMob Provider",
   "description": "Google AdMob ad provider. UMP/CMP via AdmobUmpConsent (reflection, no GoogleMobileAds.Ump compile dep). Install com.google.ads.mobile with UMP for consent UI.",
   "unity": "2022.3",

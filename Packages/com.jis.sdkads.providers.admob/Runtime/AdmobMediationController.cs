@@ -2,7 +2,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using JisSDKAds.Common;
-using JisSDKAds.Common;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.Serialization;
@@ -640,14 +639,14 @@ namespace JisSDKAds.Ads
                     {
                          if (RewardedVideoCallbacks.Completed != null)
                          {
-                              EventManager.AddEventNextFrame(RewardedVideoCallbacks.Completed);
+                              EventManager.InvokeNextFrame(RewardedVideoCallbacks.Completed);
                          }
                     }
                }
 
                if (RewardedVideoCallbacks.Closed != null)
                {
-                    EventManager.AddEventNextFrame(() => { RewardedVideoCallbacks.Closed.Invoke(IsWatchSuccess); });
+                    EventManager.InvokeNextFrame(() => { RewardedVideoCallbacks.Closed.Invoke(IsWatchSuccess); });
                }
           }
 
@@ -659,7 +658,7 @@ namespace JisSDKAds.Ads
                {
                     if (RewardedVideoCallbacks.Completed != null)
                     {
-                         EventManager.AddEventNextFrame(RewardedVideoCallbacks.Completed);
+                         EventManager.InvokeNextFrame(RewardedVideoCallbacks.Completed);
                     }
                }
           }

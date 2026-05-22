@@ -191,6 +191,9 @@ namespace JisSDKAds.Common
             Instance.nextFrameEvents.Enqueue(evt);
         }
 
+        /// <summary>Backward-compatible alias for <see cref="InvokeNextFrame"/>.</summary>
+        public static void AddEventNextFrame(UnityAction listener) => InvokeNextFrame(listener);
+
         public static void InvokeDelayed(UnityAction listener, float delay)
         {
             var evt = new UnityEvent();

@@ -1,5 +1,6 @@
 using JisSDKAds.Ads;
 using JisSDKAds.Ads.Settings;
+using JisSDKAds.Common;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif

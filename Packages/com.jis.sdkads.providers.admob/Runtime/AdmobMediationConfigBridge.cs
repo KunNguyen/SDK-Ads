@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using JisSDKAds.Ads;
 using JisSDKAds.Ads.Settings;
 using JisSDKAds.Ads.UnitAdManagers;
+using JisSDKAds.Common;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -51,9 +52,12 @@ namespace JisSDKAds.Providers.AdMob
                     ? setup.admobAdsSetup.CollapsibleBannerAdUnitIDList
                     : new List<string>();
             admobMediationController.IsCollapsibleBannerShowingOnStart = setup.isShowingOnStartCollapsibleBanner;
-            CollapsibleBannerAdManager.IsAutoRefresh = setup.isAutoCloseCollapsibleBanner;
-            CollapsibleBannerAdManager.IsAutoRefresh = setup.isAutoRefreshCollapsibleBanner;
-            CollapsibleBannerAdManager.AutoRefreshTime = setup.autoRefreshTime;
+            var collapsible = manager.CollapsibleBannerAdManager;
+            if (collapsible != null)
+            {
+                collapsible.IsAutoRefresh = setup.isAutoRefreshCollapsibleBanner;
+                collapsible.AutoRefreshTime = setup.autoRefreshTime;
+            }
             admobMediationController.m_CollapsibleBannerPosition = setup.adsPositionCollapsibleBanner;
 
             admobMediationController.m_AdmobAdSetup.MrecAdUnitIDList =

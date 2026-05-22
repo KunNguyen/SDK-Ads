@@ -165,7 +165,7 @@ namespace JisSDKAds.Ads {
                 {
                     if (RewardedVideoCallbacks.Completed != null) {
                         DebugAds.Log("MAX Ads: Watch video Success Callback!");
-                        EventManager.AddEventNextFrame(RewardedVideoCallbacks.Completed);
+                        EventManager.InvokeNextFrame(RewardedVideoCallbacks.Completed);
                         RewardedVideoCallbacks.Completed = null;
                     }
                     break;
@@ -175,7 +175,7 @@ namespace JisSDKAds.Ads {
         void Rewarded_OnAdClosedEvent(string adUnitID, MaxSdkBase.AdInfo adInfo) {
             DebugAds.Log("MAX Ads: I got RewardedVideoAdClosedEvent");
             if (RewardedVideoCallbacks.Completed != null && IsWatchSuccess) {
-                EventManager.AddEventNextFrame(RewardedVideoCallbacks.Completed);
+                EventManager.InvokeNextFrame(RewardedVideoCallbacks.Completed);
                 RewardedVideoCallbacks.Completed = null;
             }
 
