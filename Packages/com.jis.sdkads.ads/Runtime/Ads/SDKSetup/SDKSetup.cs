@@ -5,7 +5,6 @@ using JisSDKAds.Common;
 #if UNITY_AD_ADMOB
 using GoogleMobileAds.Api;
 #endif
-using Sirenix.OdinInspector;
 using UnityEngine;
 using UnityEngine.Serialization;
 #if UNITY_EDITOR
@@ -49,8 +48,6 @@ namespace JisSDKAds.Ads
           }
 
 #if UNITY_EDITOR
-          [Button(ButtonSizes.Large, ButtonStyle.Box)]
-          [GUIColor(0.2f, 0.8f, 0.2f)]
           public void Setup()
           {
                AdsManager adsManager = FindFirstObjectByType<AdsManager>();

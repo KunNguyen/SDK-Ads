@@ -19,7 +19,9 @@ namespace JisSDKAds.Hub
 
         /// <summary>True when this Unity project is the SDK-Ads dev repo (packages live under Packages/).</summary>
         public static bool IsSdkAdsDevRepo() =>
-            HasEmbeddedPackage("com.jis.sdkads.hub") && HasEmbeddedPackage("com.jis.sdkads.core");
+            HasEmbeddedPackage("com.jis.sdkads.hub") &&
+            HasEmbeddedPackage("com.jis.sdkads.core") &&
+            HasEmbeddedPackage("com.jis.sdkads.odin");
 
         public static bool HasDependency(string packageName)
         {

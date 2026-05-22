@@ -1,9 +1,12 @@
 {
   "name": "com.jis.sdkads.core",
-  "version": "4.0.1",
+  "version": "5.0.0",
   "displayName": "JIS SDK - Core",
-  "description": "Ads core interfaces, AdManager, and embedded Odin Inspector attributes.",
+  "description": "Ads core interfaces and AdManager. Odin Inspector is provided by com.jis.sdkads.odin (editor-only consumers).",
   "unity": "2022.3",
+  "dependencies": {
+    "com.jis.sdkads.odin": "5.0.0"
+  },
   "author": {
     "name": "JustIdleGames"
   }

@@ -1,31 +1,21 @@
-﻿using System.Collections.Generic;
-using Sirenix.OdinInspector;
-
-namespace JisSDKAds.Ads
+﻿namespace JisSDKAds.Ads
 {
      public partial class SDKSetup
      {
-          [BoxGroup("REWARDED"), PropertyOrder(3)]
           public AdsMediationType rewardedAdsMediationType;
 
-          [BoxGroup("REWARDED"), PropertyOrder(3)]
-          [ShowInInspector, ShowIf("@rewardedAdsMediationType != AdsMediationType.NONE")]
-          public bool IsLinkToRemoveAds = true;
+          public bool isRewardedShowingOnStart = false;
 
-          [BoxGroup("REWARDED"), PropertyOrder(3)]
-          [ShowInInspector, ShowIf("@rewardedAdsMediationType == AdsMediationType.MAX")]
           public string rewardedAdUnitID_MAX
           {
                get => maxAdsSetup.RewardedAdUnitID;
                set => maxAdsSetup.RewardedAdUnitID = value;
           }
 
-          [BoxGroup("REWARDED"), PropertyOrder(3)]
-          [ShowInInspector, ShowIf("@rewardedAdsMediationType == AdsMediationType.ADMOB")]
-          public List<string> rewardedAdUnitID_ADMOB
+          public string rewardedAdUnitID_ADMOB
           {
-               get => admobAdsSetup.RewardedAdUnitIDList;
-               set => admobAdsSetup.RewardedAdUnitIDList = value;
+               get => admobAdsSetup.RewardedAdUnitID;
+               set => admobAdsSetup.RewardedAdUnitID = value;
           }
 
      }

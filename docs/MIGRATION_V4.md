@@ -11,7 +11,7 @@ Remove old folders (**bắt buộc** — trùng GUID với UPM, Unity sẽ ignor
 
 - Delete `Assets/ABIMaxSDKAds` (legacy SDK scripts)
 - Delete `Assets/JisSDKAds` (monolith) if present
-- Delete `Assets/Plugins/Sirenix` if you use `com.jis.sdkads.core` (Odin bundled in package)
+- Delete `Assets/Plugins/Sirenix` if you use `com.jis.sdkads.odin` (≥ 5.0.0; dependency of `core`)
 - Remove `com.unity.services.levelplay` from manifest
 
 Chi tiết lỗi GUID: [MIGRATION_GUID_CONFLICT.md](MIGRATION_GUID_CONFLICT.md)

@@ -1,4 +1,4 @@
-# Xung đột Odin Inspector (Sirenix) — nhiều package / Assets
+# Odin Inspector (Sirenix) — một nguồn duy nhất
 
 Unity **không** cho phép hai bản `Sirenix.OdinInspector.Attributes.dll` (và các DLL Odin khác) cùng tên assembly trong một project. Khi trùng, Unity thường **không load được assembly nào** → lỗi:
 
@@ -6,20 +6,29 @@ Unity **không** cho phép hai bản `Sirenix.OdinInspector.Attributes.dll` (và
 error CS0246: The type or namespace name 'Sirenix' could not be found
 ```
 
-(ví dụ `com.tw.utility` → `EditorColorGlobalConfig.cs`)
+## Kiến trúc JIS SDK ≥ 5.0.0
+
+| Package | Odin |
+|---------|------|
+| **com.jis.sdkads.odin** | Chứa toàn bộ `Plugins/Sirenix` (DLL + editor) — **nguồn duy nhất** |
+| **com.jis.sdkads.core** | Không chứa Sirenix; phụ thuộc `com.jis.sdkads.odin` (UPM tự cài) |
+| **com.jis.sdkads.ads** | **Runtime không dùng Odin** (chỉ `SerializeField` / Unity Inspector) |
+| **com.jis.sdkads.editor** | Odin cho `AdsManagerEditor` (OdinEditor) |
+| **com.tw.\*** (bên ngoài) | Chỉ dùng attribute; **không** ship DLL — cần reference tới `com.jis.sdkads.odin` |
 
 ## Nguyên tắc
 
 | Quy tắc | Chi tiết |
 |--------|----------|
-| **Một nguồn Odin** | Chỉ **một** trong: `com.jis.sdkads.core`, `Assets/Plugins/Sirenix`, hoặc **một** package UPM khác có nhúng Sirenix |
-| **Không trộn** | Vừa Asset Store Odin trong `Assets` vừa Odin trong package → conflict |
-| **PackageCache** | Không sửa trực tiếp `Library/PackageCache/...` — copy package vào `Packages/` hoặc đợi bản fix từ vendor |
+| **Một nguồn Odin** | `com.jis.sdkads.odin` **hoặc** Asset Store `Assets/Plugins/Sirenix` — không trộn |
+| **Không nhúng Sirenix** trong package UPM khác | Fork vendor và xóa `Plugins/Sirenix` |
+| **Không copy config vào Assets** | Không cần `Assets/Packages/com.jis.sdkads.core/Plugins/Sirenix` |
+| **Hub** | Tự quét duplicate + cố gắng disable plugin import thừa |
 
 ## Cách tìm bản trùng
 
-1. **JIS SDK → Hub** — cảnh báo liệt kê mọi đường dẫn `Sirenix.OdinInspector.Attributes.dll`
-2. Hoặc trong project (PowerShell / bash):
+1. **JIS SDK → Hub** — cảnh báo liệt kê mọi `Sirenix.OdinInspector.Attributes.dll`
+2. PowerShell:
 
 ```powershell
 Get-ChildItem -Recurse -Filter "Sirenix.OdinInspector.Attributes.dll" `
@@ -27,46 +36,46 @@ Get-ChildItem -Recurse -Filter "Sirenix.OdinInspector.Attributes.dll" `
   Select-Object FullName
 ```
 
-## Các tình huống và cách xử lý
+## Các tình huống
 
-### A) Dùng JIS SDK (`com.jis.sdkads.core` có Odin) — **khuyến nghị**
+### A) Project mới / cập nhật lên SDK 5.x (khuyến nghị)
 
-1. Cập nhật **`com.jis.sdkads.core` ≥ 4.0.1** (sửa import Editor cho Attributes DLL).
-2. **Xóa** `Assets/Plugins/Sirenix` nếu có.
-3. Package **khác** (không phải JIS) cũng nhúng `Plugins/Sirenix`:
-   - **Cách 1 (nhanh):** Fork/embed package đó vào `Packages/<tên-package>/` và **xóa** thư mục `Plugins/Sirenix` trong bản embed.
-   - **Cách 2:** Yêu cầu vendor gỡ Odin khỏi package, phụ thuộc `com.jis.sdkads.core` hoặc Odin Asset Store chung.
-   - **Cách 3:** Trong Unity, khi có hộp thoại **Plugin import conflict** → chọn bản từ `Packages/com.jis.sdkads.core/...`, **disable** bản từ package kia (chỉ ổn định nếu không re-import package).
-4. Hub → **Flush PackageCache** (`com.jis.sdkads.*`) → Package Manager → **Resolve**.
-5. Kiểm tra Hub: không còn “Multiple Odin copies” và compile sạch.
+1. Hub → **Fix com.jis.sdkads.\* revisions** (≥ 5.0.0)
+2. Import **Firebase** hoặc **Editor** module (cài `com.jis.sdkads.odin` + `core`)
+3. Xóa `Assets/Plugins/Sirenix` nếu có
+4. Package khác có `Plugins/Sirenix` → fork và xóa thư mục đó
+5. Hub → Flush PackageCache → Resolve
+6. Kiểm tra Hub: một DLL, compile sạch
 
-### B) Chỉ dùng Odin từ package khác (không dùng Odin trong JIS core)
+### B) Đã có Odin Asset Store trong Assets
 
-Hiện JIS SDK **nhúng** Odin trong `core`. Nếu team bắt buộc dùng bản Odin của package X:
+1. Chọn **một**: giữ Asset Store **hoặc** `com.jis.sdkads.odin`
+2. Nếu giữ Asset Store: gỡ `com.jis.sdkads.odin` khỏi manifest (không khuyến nghị với JIS editor)
+3. Nếu giữ JIS odin: xóa `Assets/Plugins/Sirenix`
 
-- Không thể giữ hai bản — phải **gỡ Odin khỏi một phía** (thường là fork `com.jis.sdkads.core` bỏ `Plugins/Sirenix`, hoặc dùng bản SDK không bundle Odin — liên hệ maintainer SDK).
-- Mọi package (`com.tw.*`, `com.jis.sdkads.ads`, …) vẫn cần **cùng một** assembly `Sirenix.OdinInspector.Attributes`.
+### C) `com.tw.*` lỗi CS0246 sau khi cài SDK
 
-### C) Chỉ dùng Odin Asset Store trong `Assets`
+TW không ship DLL. Cần asmdef reference tới Odin trong `com.jis.sdkads.odin`:
 
-1. Cài Odin vào `Assets/Plugins/Sirenix`.
-2. **Gỡ** Odin khỏi mọi UPM package (core + package khác) — chỉ thực hiện được bằng fork hoặc bản SDK tùy chỉnh.
-3. Không khuyến nghị khi đã dùng `com.jis.sdkads.core` chuẩn từ Git.
+- Sửa repo TW: thêm `precompiledReferences` + `overrideReferences: true` (khuyến nghị)
+- Hoặc script game `TwOdinAsmdefPatcher` (workaround tạm)
 
-## `com.tw.*` không phải lỗi của JIS SDK
+## Nâng cấp từ 4.x → 5.0
 
-`com.tw.utility`, `com.tw.gui`, … **chỉ dùng** Odin; họ thường **không** ship DLL Sirenix. Lỗi `CS0246` nghĩa là **toàn project** không load được Odin vì conflict hoặc thiếu `com.jis.sdkads.core`.
+- Odin chuyển từ `core` → **`com.jis.sdkads.odin`**
+- `ads` runtime **không còn** attribute Odin — không cần patch asmdef ads
+- Xóa folder tùy biến `Assets/Packages/com.jis.sdkads.core` chỉ chứa config Sirenix (nếu có)
+- Manifest: thêm/để UPM resolve `com.jis.sdkads.odin` qua dependency `core`
 
 ## Checklist
 
-- [ ] Chỉ còn **một** file `Sirenix.OdinInspector.Attributes.dll` (hoặc một bộ DLL được Unity resolve không conflict)
-- [ ] Đã xóa `Assets/Plugins/Sirenix` nếu dùng `com.jis.sdkads.core`
-- [ ] `com.jis.sdkads.core` ≥ **4.0.1** trong manifest
-- [ ] Đã xử lý package khác có Odin (fork / vendor / disable duplicate)
-- [ ] Hub không báo “Multiple Odin copies”
-- [ ] `com.tw.utility` compile được
+- [ ] Chỉ một `Sirenix.OdinInspector.Attributes.dll` active
+- [ ] `com.jis.sdkads.odin` ≥ 5.0.0 (trực tiếp hoặc qua `core`)
+- [ ] Không `Assets/Plugins/Sirenix` khi dùng JIS odin
+- [ ] Package vendor khác không bundle Sirenix
+- [ ] Hub không báo "Multiple Odin copies"
 
 ## Liên quan
 
-- [MIGRATION_GUID_CONFLICT.md](MIGRATION_GUID_CONFLICT.md) — GUID + Odin Addressables module
-- [GAME_SETUP.md](GAME_SETUP.md) — setup game + `com.tw.*`
+- [GAME_SETUP.md](GAME_SETUP.md)
+- [MIGRATION_GUID_CONFLICT.md](MIGRATION_GUID_CONFLICT.md)

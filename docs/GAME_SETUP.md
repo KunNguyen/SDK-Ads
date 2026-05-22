@@ -81,7 +81,7 @@ See [NAMESPACES.md](NAMESPACES.md).
 
 ### Lỗi `Sirenix` / `Odin` trong `com.tw.utility`, `com.tw.gui`, `com.tw.ugui`, …
 
-Các package **TW** dùng Odin Inspector (attributes + editor drawers). SDK nhúng Odin trong **`com.jis.sdkads.core`** (≥ **4.0.1**).
+Các package **TW** dùng Odin Inspector (attributes + editor drawers). SDK cung cấp Odin qua **`com.jis.sdkads.odin`** (≥ **5.0.0**, tự cài khi có `core`). Runtime **`com.jis.sdkads.ads`** không phụ thuộc Odin.
 
 1. **Manifest** phải có `com.jis.sdkads.core` (thường qua Ads / Hub import Firebase+Ads).
 2. **Xóa** `Assets/Plugins/Sirenix` nếu còn bản cũ — trùng DLL trong package → Unity không load assembly.

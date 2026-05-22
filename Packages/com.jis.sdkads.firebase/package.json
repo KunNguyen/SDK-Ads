@@ -1,11 +1,11 @@
 {
   "name": "com.jis.sdkads.firebase",
-  "version": "4.0.0",
+  "version": "5.0.0",
   "displayName": "JIS SDK - Firebase",
-  "description": "Firebase Analytics and Remote Config integration. Requires Firebase packages from Google.",
+  "description": "Firebase integration for JIS SDK.",
   "unity": "2022.3",
   "dependencies": {
-    "com.jis.sdkads.common": "4.0.2"
+    "com.jis.sdkads.common": "5.0.0"
   },
   "author": {
     "name": "JustIdleGames"

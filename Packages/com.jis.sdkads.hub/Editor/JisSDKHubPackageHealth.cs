@@ -65,27 +65,29 @@ namespace JisSDKAds.Hub
         {
             var odinDlls = FindOdinAttributesDllPaths();
             var hasAssetsOdin = HasLegacyAssetsOdinFolder();
-            var hasCore = JisSDKHubManifest.HasDependency("com.jis.sdkads.core");
+            var hasOdinPkg = JisSDKHubManifest.HasDependency("com.jis.sdkads.odin") ||
+                             JisSDKHubManifest.HasDependency("com.jis.sdkads.core");
 
             if (odinDlls.Count > 1 || (hasAssetsOdin && odinDlls.Count > 0))
             {
                 var lines = string.Join("\n", odinDlls.Select(p => "• " + p));
                 EditorGUILayout.HelpBox(
                     "Multiple Odin (Sirenix) copies detected — Unity may load none → CS0246 in com.tw.* and SDK.\n" +
-                    "Keep exactly ONE source (recommended: com.jis.sdkads.core ≥ 4.0.1).\n" +
-                    "Remove/disable other copies (Assets/Plugins/Sirenix or the other package's Plugins/Sirenix).\n" +
+                    "Keep exactly ONE source (recommended: com.jis.sdkads.odin ≥ 5.0.0, pulled via core/editor).\n" +
+                    "Hub auto-disables duplicate plugin imports when possible.\n" +
+                    "Remove other copies (Assets/Plugins/Sirenix or other packages' Plugins/Sirenix).\n" +
                     "See docs/ODIN_CONFLICT.md.\n\n" + lines,
                     MessageType.Error);
             }
             else if (hasAssetsOdin)
             {
                 EditorGUILayout.HelpBox(
-                    "Found Assets/Plugins/Sirenix — conflicts with Odin in com.jis.sdkads.core.\n" +
-                    "Delete Assets/Plugins/Sirenix (keep package core). See docs/ODIN_CONFLICT.md.",
+                    "Found Assets/Plugins/Sirenix — conflicts with com.jis.sdkads.odin.\n" +
+                    "Delete Assets/Plugins/Sirenix (keep JIS odin package). See docs/ODIN_CONFLICT.md.",
                     MessageType.Warning);
             }
 
-            if (!hasCore)
+            if (!hasOdinPkg)
             {
                 if (odinDlls.Count == 1 && OdinAttributesAssemblyLoaded())
                     return;
@@ -94,7 +96,7 @@ namespace JisSDKAds.Hub
                     return;
 
                 EditorGUILayout.HelpBox(
-                    "Odin DLL found but com.jis.sdkads.core is not in manifest — add core via Hub or keep a single Asset Store Odin in Assets.",
+                    "Odin DLL found but com.jis.sdkads.odin / core is not in manifest — add via Hub (Firebase or Editor module).",
                     MessageType.Warning);
                 return;
             }
@@ -103,11 +105,11 @@ namespace JisSDKAds.Hub
                 return;
 
             EditorGUILayout.HelpBox(
-                "Odin (Sirenix) assemblies are missing — com.tw.* / SDK inspector code will not compile.\n" +
+                "Odin (Sirenix) assemblies are missing — editor / com.tw.* may not compile.\n" +
                 "1) Resolve duplicate Odin copies (see docs/ODIN_CONFLICT.md)\n" +
-                "2) Hub → Fix com.jis.sdkads.* revisions (core ≥ 4.0.1)\n" +
+                "2) Hub → Fix com.jis.sdkads.* revisions (≥ 5.0.0)\n" +
                 "3) Flush PackageCache → Resolve\n" +
-                "4) Or install Odin Inspector from Asset Store (only if you removed Odin from all packages)",
+                "4) Ensure com.jis.sdkads.odin is installed (dependency of core)",
                 MessageType.Error);
         }
 
@@ -162,6 +164,15 @@ namespace JisSDKAds.Hub
                     ? $"Removed {removed} cached package(s). Use Package Manager → Resolve, or restart Unity."
                     : "No com.jis.sdkads.* folders in PackageCache.",
                 "OK");
+
+            if (removed > 0)
+                EditorApplication.delayCall += JisSDKHubOdinConflictResolver.TryResolveDuplicates;
+        }
+
+        public static void DrawResolveOdinDuplicatesButton()
+        {
+            if (GUILayout.Button("Resolve duplicate Odin plugin imports"))
+                JisSDKHubOdinConflictResolver.TryResolveDuplicates();
         }
     }
 }

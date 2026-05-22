@@ -1,8 +1,8 @@
 {
   "name": "com.jis.sdkads.hub",
-  "version": "4.0.0",
-  "displayName": "JIS SDK Hub",
-  "description": "Editor hub to import JIS SDK modules into game projects.",
+  "version": "5.0.0",
+  "displayName": "JIS SDK - Hub",
+  "description": "Unity Editor hub to install and manage JIS SDK UPM packages.",
   "unity": "2022.3",
   "author": {
     "name": "JustIdleGames"

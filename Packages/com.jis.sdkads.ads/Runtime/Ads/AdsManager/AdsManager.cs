@@ -6,7 +6,6 @@ using JisSDKAds.Ads.Tracking;
 using JisSDKAds.Ads.UnitAdManagers;
 using JisSDKAds.Common;
 using JisSDKAds.Firebase;
-using Sirenix.OdinInspector;
 using UnityEngine;
 using UnityEngine.Events;
 #if UNITY_EDITOR
@@ -30,31 +29,31 @@ namespace JisSDKAds.Ads
         /// <summary>Legacy singleton. Prefer <see cref="JisAds.Instance"/> in game code.</summary>
         public static AdsManager Instance { get; private set; }
 
-        [field: SerializeField, PropertyOrder(-1)]
+        [field: SerializeField]
         public JisSDKAdsSettings SdkSettings { get; set; }
 
-        [field: SerializeField, PropertyOrder(-1)]
+        [field: SerializeField]
         public SDKSetup AndroidSdkSetup { get; set; }
         
-        [field: SerializeField, PropertyOrder(-1)]
+        [field: SerializeField]
         public SDKSetup IOSSdkSetup { get; set; }
 
-        [field: SerializeField, PropertyOrder(-1)]
+        [field: SerializeField]
         public AdsStateMachine AdsStateMachine { get; set; }
 
-        [field: SerializeField, ReadOnly, PropertyOrder(-1)]
+        [field: SerializeField]
         private bool IsUpdateRemoteConfigSuccess { get; set; }
 
-        [field: SerializeField, PropertyOrder(-1)]
+        [field: SerializeField]
         public bool IsRemoveAds { get; set; }
 
-        [field: SerializeField, PropertyOrder(-1)]
+        [field: SerializeField]
         public bool IsFirstOpen { get; set; }
 
-        [field: SerializeField, PropertyOrder(-1)]
+        [field: SerializeField]
         public bool IsReady { get; set; }
 
-        [field: SerializeField, PropertyOrder(-1)]
+        [field: SerializeField]
         public AdsInitializationMode InitializationMode { get; set; } = AdsInitializationMode.AutoOnStart;
 
         [field: SerializeField] 
@@ -66,12 +65,11 @@ namespace JisSDKAds.Ads
         [field: SerializeField] 
         public List<AdsMediationController> AdsMediationControllers { get; set; } = new();
 
-        [field: SerializeField, PropertyOrder(-1)]
+        [field: SerializeField]
         [Tooltip("Nếu bật, hệ thống sẽ init/load quảng cáo theo hàng đợi: AppOpen -> Banner -> Interstitial -> Rewarded -> MRec -> Collapsible")]
         public bool PrioritizeAppOpenAndThrottleLoads { get; set; } = true;
 
-        [field: SerializeField, PropertyOrder(-1)]
-        [MinValue(0f)]
+        [field: SerializeField]
         [Tooltip("Độ trễ giữa các bước init/load (giúp tránh spike tài nguyên)")]
         public float DelayBetweenAdInits { get; set; } = 0.75f;
 
@@ -134,17 +132,14 @@ namespace JisSDKAds.Ads
 #endif
         }
 
-        [ShowInInspector, ReadOnly, PropertyOrder(-1)]
         public bool IsActiveAdImpressionTracking => 
             CurrentSDKSetup != null && CurrentSDKSetup.IsActiveAdImpressionTracking;
 
-        [ShowInInspector, ReadOnly, PropertyOrder(-1)]
         public bool IsActiveCustomAdImpressionEvent =>
             CurrentSDKSetup != null && 
             CurrentSDKSetup.IsActiveCustomAdImpressionTracking &&
             !string.IsNullOrEmpty(AdsImpressionEventName);
 
-        [ShowInInspector, ReadOnly, PropertyOrder(-1), ShowIf("@IsActiveCustomAdImpressionEvent == true")]
         public string AdsImpressionEventName => 
             CurrentSDKSetup != null ? CurrentSDKSetup.CustomAdImpressionEventName : "";
 

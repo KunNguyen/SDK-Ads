@@ -1,7 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using JisSDKAds.Ads.Mediation.Callbacks;
-using Sirenix.OdinInspector;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.Serialization;
@@ -208,10 +207,8 @@ namespace JisSDKAds.Ads {
     public class AdUnitID
     {
         #if UNITY_ANDROID
-        [LabelText("ID")]
         public string AndroidID;
         #elif UNITY_IOS
-        [LabelText("ID")]
         public string IOSID;
         #endif
         public string ID

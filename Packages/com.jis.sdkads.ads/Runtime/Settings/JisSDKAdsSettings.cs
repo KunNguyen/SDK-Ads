@@ -1,5 +1,4 @@
-﻿using Sirenix.OdinInspector;
-using UnityEngine;
+﻿using UnityEngine;
 using JisSDKAds.Ads;
 
 namespace JisSDKAds.Ads.Settings
@@ -7,16 +6,13 @@ namespace JisSDKAds.Ads.Settings
     [CreateAssetMenu(fileName = "JisSDKAdsSettings", menuName = "JIS SDK/Ads Settings", order = 0)]
     public class JisSDKAdsSettings : ScriptableObject
     {
-        [Title("Platform profiles")]
         [HideInInspector] public PlatformAdsProfile android = new PlatformAdsProfile();
 
         [HideInInspector] public PlatformAdsProfile ios = new PlatformAdsProfile();
 
-        [Title("Runtime")]
         [Tooltip("AutoOnStart: AdsManager init on Start. Manual: JisAds.InitializeAsync() controls init.")]
         public AdsManager.AdsInitializationMode adsInitializationMode = AdsManager.AdsInitializationMode.Manual;
 
-        [Title("Core AdManager")]
         [Tooltip("When enabled, AdManager will not fall back to another network on the same platform.")]
         public bool singleMediationOnly = true;
 
