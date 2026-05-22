@@ -88,6 +88,7 @@ Các package **TW** dùng Odin Inspector (attributes + editor drawers). SDK nhú
 3. Hub → **Fix com.jis.sdkads.\* revisions** → **Flush PackageCache** → Package Manager → **Resolve**.
 4. Hub hiển thị cảnh báo **Odin assemblies missing** nếu vẫn lỗi — cập nhật core hoặc cài Odin từ Asset Store.
 5. **Odin Module Manager:** tắt module **Unity Addressables** nếu không dùng (xem [MIGRATION_GUID_CONFLICT.md](MIGRATION_GUID_CONFLICT.md)).
+6. **Package khác cũng nhúng Odin:** chỉ giữ **một** bản — xem [ODIN_CONFLICT.md](ODIN_CONFLICT.md).
 
 Assertion `newChildren.size() == childrenArray.size()` thường là lỗi phụ khi Inspector/layout lỗi — thử sau khi compile sạch, hoặc tắt component `HorizontalAutoResizeFitter` / `VerticalAutoResizeFitter` trên object đang chọn.
 

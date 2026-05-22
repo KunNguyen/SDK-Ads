@@ -1,6 +1,8 @@
 #if UNITY_EDITOR
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
@@ -20,17 +22,81 @@ namespace JisSDKAds.Hub
             return Directory.Exists(assetsPlugins);
         }
 
+        /// <summary>
+        /// Finds every Sirenix.OdinInspector.Attributes.dll (duplicate copies break all Odin consumers).
+        /// </summary>
+        public static IReadOnlyList<string> FindOdinAttributesDllPaths()
+        {
+            var projectRoot = Path.GetDirectoryName(Application.dataPath);
+            if (string.IsNullOrEmpty(projectRoot))
+                return Array.Empty<string>();
+
+            var roots = new[]
+            {
+                Path.Combine(projectRoot, "Assets"),
+                Path.Combine(projectRoot, "Packages"),
+                Path.Combine(projectRoot, "Library", "PackageCache")
+            };
+
+            var hits = new List<string>();
+            foreach (var root in roots)
+            {
+                if (!Directory.Exists(root))
+                    continue;
+
+                try
+                {
+                    hits.AddRange(Directory.GetFiles(root, "Sirenix.OdinInspector.Attributes.dll", SearchOption.AllDirectories));
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning($"[JIS SDK Hub] Odin scan failed under {root}: {ex.Message}");
+                }
+            }
+
+            return hits
+                .Select(Path.GetFullPath)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
         public static void DrawOdinHealthWarning()
         {
-            if (!JisSDKHubManifest.HasDependency("com.jis.sdkads.core"))
-                return;
+            var odinDlls = FindOdinAttributesDllPaths();
+            var hasAssetsOdin = HasLegacyAssetsOdinFolder();
+            var hasCore = JisSDKHubManifest.HasDependency("com.jis.sdkads.core");
 
-            if (HasLegacyAssetsOdinFolder())
+            if (odinDlls.Count > 1 || (hasAssetsOdin && odinDlls.Count > 0))
+            {
+                var lines = string.Join("\n", odinDlls.Select(p => "• " + p));
+                EditorGUILayout.HelpBox(
+                    "Multiple Odin (Sirenix) copies detected — Unity may load none → CS0246 in com.tw.* and SDK.\n" +
+                    "Keep exactly ONE source (recommended: com.jis.sdkads.core ≥ 4.0.1).\n" +
+                    "Remove/disable other copies (Assets/Plugins/Sirenix or the other package's Plugins/Sirenix).\n" +
+                    "See docs/ODIN_CONFLICT.md.\n\n" + lines,
+                    MessageType.Error);
+            }
+            else if (hasAssetsOdin)
             {
                 EditorGUILayout.HelpBox(
                     "Found Assets/Plugins/Sirenix — conflicts with Odin in com.jis.sdkads.core.\n" +
-                    "Delete Assets/Plugins/Sirenix (keep package core). See docs/MIGRATION_GUID_CONFLICT.md.",
+                    "Delete Assets/Plugins/Sirenix (keep package core). See docs/ODIN_CONFLICT.md.",
                     MessageType.Warning);
+            }
+
+            if (!hasCore)
+            {
+                if (odinDlls.Count == 1 && OdinAttributesAssemblyLoaded())
+                    return;
+
+                if (odinDlls.Count == 0)
+                    return;
+
+                EditorGUILayout.HelpBox(
+                    "Odin DLL found but com.jis.sdkads.core is not in manifest — add core via Hub or keep a single Asset Store Odin in Assets.",
+                    MessageType.Warning);
+                return;
             }
 
             if (OdinAttributesAssemblyLoaded())
@@ -38,10 +104,10 @@ namespace JisSDKAds.Hub
 
             EditorGUILayout.HelpBox(
                 "Odin (Sirenix) assemblies are missing — com.tw.* / SDK inspector code will not compile.\n" +
-                "1) Hub → Fix com.jis.sdkads.* revisions (core ≥ 4.0.1)\n" +
-                "2) Flush PackageCache → Resolve\n" +
-                "3) Remove duplicate Assets/Plugins/Sirenix if present\n" +
-                "4) Or install Odin Inspector from Asset Store into Assets",
+                "1) Resolve duplicate Odin copies (see docs/ODIN_CONFLICT.md)\n" +
+                "2) Hub → Fix com.jis.sdkads.* revisions (core ≥ 4.0.1)\n" +
+                "3) Flush PackageCache → Resolve\n" +
+                "4) Or install Odin Inspector from Asset Store (only if you removed Odin from all packages)",
                 MessageType.Error);
         }
 
