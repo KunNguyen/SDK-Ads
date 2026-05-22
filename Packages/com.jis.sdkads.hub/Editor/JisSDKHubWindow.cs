@@ -93,6 +93,7 @@ namespace JisSDKAds.Hub
             }
 
             JisSDKHubPackageHealth.DrawFlushPackageCacheButton();
+            JisSDKHubPackageHealth.DrawOdinHealthWarning();
             JisSDKHubPackageHealth.DrawIapCommonMismatchWarning();
         }
 

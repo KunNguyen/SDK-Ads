@@ -1,6 +1,6 @@
 {
   "name": "com.jis.sdkads.core",
-  "version": "4.0.0",
+  "version": "4.0.1",
   "displayName": "JIS SDK - Core",
   "description": "Ads core interfaces, AdManager, and embedded Odin Inspector attributes.",
   "unity": "2022.3",

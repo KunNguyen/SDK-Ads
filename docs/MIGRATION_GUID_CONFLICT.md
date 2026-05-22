@@ -95,6 +95,21 @@ Nếu Console có `ExpressionNotValidException` hoặc NRE trong `VersionDefines
 
 ---
 
+## `com.tw.*` — `Sirenix` / `OdinAttributeDrawer` not found
+
+Packages `com.tw.utility`, `com.tw.gui`, `com.tw.ugui`, `com.tw.reactive` expect **Odin Inspector** assemblies.
+
+| Fix | Action |
+|-----|--------|
+| Core package | Ensure `com.jis.sdkads.core` ≥ **4.0.1** in `Packages/manifest.json` |
+| Duplicate Odin | Delete `Assets/Plugins/Sirenix` when using embedded Odin in core |
+| Stale cache | Hub → Flush PackageCache → Resolve |
+| No core | Install Odin from Asset Store **or** add `com.jis.sdkads.core` via Hub |
+
+**Cause (4.0.0):** `Sirenix.OdinInspector.Attributes.dll` had Editor import disabled — fixed in **4.0.1**.
+
+---
+
 ## Odin: `Unity.Addressables` — data could not be found
 
 SDK **không** ship `Unity.Addressables.data` trong UPM (tránh lỗi meta/immutable package).

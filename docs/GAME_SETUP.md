@@ -79,6 +79,18 @@ See [NAMESPACES.md](NAMESPACES.md).
 3. **Không dùng asmdef:** script nằm `Assets/` gốc (Assembly-CSharp) — `Common` tự reference khi package compile OK.
 4. Package **Common** lỗi compile → IDE chỉ thấy vài namespace (Core/Firebase). Console Unity xem lỗi `JisSDKAds.Common`; Hub → **Flush PackageCache** → Resolve. Cập nhật `common` ≥ **4.0.2** (bỏ phụ thuộc Sirenix thừa).
 
+### Lỗi `Sirenix` / `Odin` trong `com.tw.utility`, `com.tw.gui`, `com.tw.ugui`, …
+
+Các package **TW** dùng Odin Inspector (attributes + editor drawers). SDK nhúng Odin trong **`com.jis.sdkads.core`** (≥ **4.0.1**).
+
+1. **Manifest** phải có `com.jis.sdkads.core` (thường qua Ads / Hub import Firebase+Ads).
+2. **Xóa** `Assets/Plugins/Sirenix` nếu còn bản cũ — trùng DLL trong package → Unity không load assembly.
+3. Hub → **Fix com.jis.sdkads.\* revisions** → **Flush PackageCache** → Package Manager → **Resolve**.
+4. Hub hiển thị cảnh báo **Odin assemblies missing** nếu vẫn lỗi — cập nhật core hoặc cài Odin từ Asset Store.
+5. **Odin Module Manager:** tắt module **Unity Addressables** nếu không dùng (xem [MIGRATION_GUID_CONFLICT.md](MIGRATION_GUID_CONFLICT.md)).
+
+Assertion `newChildren.size() == childrenArray.size()` thường là lỗi phụ khi Inspector/layout lỗi — thử sau khi compile sạch, hoặc tắt component `HorizontalAutoResizeFitter` / `VerticalAutoResizeFitter` trên object đang chọn.
+
 ## 5. One mediation per platform
 
 `JisSDKAdsSettings.singleMediationOnly` disables MAX↔AdMob fallback in Core `AdManager`.

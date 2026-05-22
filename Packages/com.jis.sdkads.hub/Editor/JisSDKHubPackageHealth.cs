@@ -11,6 +11,40 @@ namespace JisSDKAds.Hub
         public static bool CommonAssemblyHasIapTypes() =>
             Type.GetType("JisSDKAds.Common.IapProductKind, JisSDKAds.Common") != null;
 
+        public static bool OdinAttributesAssemblyLoaded() =>
+            Type.GetType("Sirenix.OdinInspector.ShowInInspectorAttribute, Sirenix.OdinInspector.Attributes") != null;
+
+        public static bool HasLegacyAssetsOdinFolder()
+        {
+            var assetsPlugins = Path.Combine(Application.dataPath, "Plugins", "Sirenix");
+            return Directory.Exists(assetsPlugins);
+        }
+
+        public static void DrawOdinHealthWarning()
+        {
+            if (!JisSDKHubManifest.HasDependency("com.jis.sdkads.core"))
+                return;
+
+            if (HasLegacyAssetsOdinFolder())
+            {
+                EditorGUILayout.HelpBox(
+                    "Found Assets/Plugins/Sirenix — conflicts with Odin in com.jis.sdkads.core.\n" +
+                    "Delete Assets/Plugins/Sirenix (keep package core). See docs/MIGRATION_GUID_CONFLICT.md.",
+                    MessageType.Warning);
+            }
+
+            if (OdinAttributesAssemblyLoaded())
+                return;
+
+            EditorGUILayout.HelpBox(
+                "Odin (Sirenix) assemblies are missing — com.tw.* / SDK inspector code will not compile.\n" +
+                "1) Hub → Fix com.jis.sdkads.* revisions (core ≥ 4.0.1)\n" +
+                "2) Flush PackageCache → Resolve\n" +
+                "3) Remove duplicate Assets/Plugins/Sirenix if present\n" +
+                "4) Or install Odin Inspector from Asset Store into Assets",
+                MessageType.Error);
+        }
+
         public static void DrawIapCommonMismatchWarning()
         {
             if (!JisSDKHubManifest.HasDependency("com.jis.sdkads.iap"))

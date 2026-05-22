@@ -34,7 +34,7 @@ PluginImporter:
         Exclude iOS: 0
         Exclude tvOS: 0
     Editor:
-      enabled: 0
+      enabled: 1
       settings:
         DefaultValueInitialized: true
     WindowsStoreApps:
