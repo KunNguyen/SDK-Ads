@@ -211,6 +211,7 @@ namespace JisSDKAds.Hub
             ModuleKind.Iap => new[] { "UNITY_IAP_ACTIVE" },
             ModuleKind.AppReview => new[] { "GOOGLE_REVIEW" },
             ModuleKind.AppsFlyer => new[] { "UNITY_APPSFLYER" },
+            ModuleKind.SolarEngine => new[] { "UNITY_SOLAR_ENGINE" },
             _ => System.Array.Empty<string>()
         };
 

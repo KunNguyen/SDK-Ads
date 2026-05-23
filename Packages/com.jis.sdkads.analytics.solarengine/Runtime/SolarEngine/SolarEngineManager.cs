@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using JisSDKAds.Ads;
 using JisSDKAds.Common;
 #if UNITY_SOLAR_ENGINE
-using SolarEngine;
+using SolarEngineSDK = global::SolarEngine;
 #endif
 using UnityEngine;
 
-namespace JisSDKAds.Analytics.SolarEngine
+namespace JisSDKAds.Analytics.SolarEngineIntegration
 {
     [ScriptOrder(-1000)]
     public class SolarEngineManager : MonoBehaviour
@@ -45,17 +45,17 @@ namespace JisSDKAds.Analytics.SolarEngine
             Instance = this;
             DontDestroyOnLoad(gameObject);
 
-            SolarEngine.Analytics.preInitSeSdk(appKey);
+            SolarEngineSDK.Analytics.preInitSeSdk(appKey);
         }
 
         void Start()
         {
-            SEConfig seConfig = new SEConfig
+            var seConfig = new SolarEngineSDK.SEConfig
             {
                 logEnabled = true,
                 initCompletedCallback = OnInitCallback
             };
-            SolarEngine.Analytics.initSeSdk(appKey, seConfig);
+            SolarEngineSDK.Analytics.initSeSdk(appKey, seConfig);
         }
 
         private void OnInitCallback(int code)
@@ -82,12 +82,12 @@ namespace JisSDKAds.Analytics.SolarEngine
             }
 
             var parameters = new Dictionary<string, object> { { parameterName, parameterValue } };
-            SolarEngine.Analytics.track(eventName, parameters);
+            SolarEngineSDK.Analytics.track(eventName, parameters);
         }
 
         public void TrackAdImpression(ImpressionData impressionData)
         {
-            ImpressionAttributes attributes = new ImpressionAttributes
+            var attributes = new SolarEngineSDK.ImpressionAttributes
             {
                 ad_platform = impressionData.ad_source,
                 ad_id = impressionData.ad_unit_name,
@@ -97,7 +97,7 @@ namespace JisSDKAds.Analytics.SolarEngine
                 mediation_platform = ConvertMediationPlatform(impressionData.ad_mediation),
                 is_rendered = true
             };
-            SolarEngine.Analytics.trackAdImpression(attributes);
+            SolarEngineSDK.Analytics.trackAdImpression(attributes);
         }
 
         public void TrackPurchase(string productId, double payAmount, string currency, string status)
@@ -108,15 +108,15 @@ namespace JisSDKAds.Analytics.SolarEngine
                 return;
             }
 
-            PayStatus payStatus = status switch
+            var payStatus = status switch
             {
-                "success" => PayStatus.Success,
-                "failed" => PayStatus.Fail,
-                "restored" => PayStatus.Restored,
-                _ => PayStatus.Success
+                "success" => SolarEngineSDK.PayStatus.Success,
+                "failed" => SolarEngineSDK.PayStatus.Fail,
+                "restored" => SolarEngineSDK.PayStatus.Restored,
+                _ => SolarEngineSDK.PayStatus.Success
             };
 
-            ProductsAttributes attributes = new ProductsAttributes
+            var attributes = new SolarEngineSDK.ProductsAttributes
             {
                 product_id = productId,
                 pay_amount = payAmount,
@@ -124,7 +124,7 @@ namespace JisSDKAds.Analytics.SolarEngine
                 paystatus = payStatus
             };
 
-            SolarEngine.Analytics.trackPurchase(attributes);
+            SolarEngineSDK.Analytics.trackPurchase(attributes);
         }
 
         private string ConvertMediationPlatform(AdsMediationType adsMediationType)

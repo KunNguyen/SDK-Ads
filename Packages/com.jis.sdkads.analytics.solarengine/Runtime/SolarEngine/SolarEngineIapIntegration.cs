@@ -2,7 +2,7 @@
 using JisSDKAds.Common;
 using UnityEngine;
 
-namespace JisSDKAds.Analytics.SolarEngine
+namespace JisSDKAds.Analytics.SolarEngineIntegration
 {
     static class SolarEngineIapIntegration
     {

@@ -19,7 +19,7 @@ Breaking change: legacy `SDK` and `ABIMaxSDKAds` namespaces are removed.
 | Firebase types (was `SDK`) | `JisSDKAds.Firebase` |
 | AppsFlyer facade | `JisSDKAds.Ads.Tracking` |
 | AppsFlyer implementation | `JisSDKAds.Analytics.AppsFlyer` |
-| SolarEngine | `JisSDKAds.Analytics.SolarEngine` |
+| SolarEngine | `JisSDKAds.Analytics.SolarEngineIntegration` (not `...SolarEngine` — conflicts with vendor `SolarEngine` SDK namespace) |
 | Facebook | `JisSDKAds.Analytics.Facebook` |
 | Core | `JisSDKAds.Core` (unchanged) |
 | Providers | `JisSDKAds.Providers.Max` / `.AdMob` |
