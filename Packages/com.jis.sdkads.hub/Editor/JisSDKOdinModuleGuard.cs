@@ -26,18 +26,42 @@ namespace JisSDKAds.Hub
 
         static void WarnIfCoreStillBundlesSirenix()
         {
-            var coreSirenix = Path.Combine(
-                JisSDKHubManifest.PackagesRoot,
-                "com.jis.sdkads.core",
-                "Plugins",
-                "Sirenix");
-
-            if (!Directory.Exists(coreSirenix))
+            var hits = new System.Collections.Generic.List<string>();
+            var projectRoot = Path.GetDirectoryName(Application.dataPath);
+            if (string.IsNullOrEmpty(projectRoot))
                 return;
 
+            var embeddedCore = Path.Combine(JisSDKHubManifest.PackagesRoot, "com.jis.sdkads.core", "Plugins", "Sirenix");
+            if (Directory.Exists(embeddedCore))
+                hits.Add(embeddedCore);
+
+            var assetsOverlay = Path.Combine(Application.dataPath, "Packages", "com.jis.sdkads.core", "Plugins", "Sirenix");
+            if (Directory.Exists(assetsOverlay))
+                hits.Add(assetsOverlay);
+
+            var cacheRoot = Path.Combine(projectRoot, "Library", "PackageCache");
+            if (Directory.Exists(cacheRoot))
+            {
+                foreach (var dir in Directory.GetDirectories(cacheRoot, "com.jis.sdkads.core@*"))
+                {
+                    var cached = Path.Combine(dir, "Plugins", "Sirenix");
+                    if (Directory.Exists(cached))
+                        hits.Add(cached);
+                }
+            }
+
+            if (hits.Count == 0)
+                return;
+
+            var lines = string.Join("\n", hits.ConvertAll(p => "• " + p));
             Debug.LogError(
-                "[JIS SDK] com.jis.sdkads.core must NOT contain Plugins/Sirenix (use com.jis.sdkads.odin only). " +
-                "Delete Packages/com.jis.sdkads.core/Plugins/Sirenix and Assets/Packages/com.jis.sdkads.core if present.");
+                "[JIS SDK] Old Odin layout detected inside com.jis.sdkads.core (≥ 5.0 uses com.jis.sdkads.odin only).\n" +
+                "Fix:\n" +
+                "1) Delete Assets/Packages/com.jis.sdkads.core (if present)\n" +
+                "2) Hub → Flush PackageCache → Resolve (pulls core without Sirenix)\n" +
+                "3) Ensure manifest includes com.jis.sdkads.odin (via Hub Firebase/Editor import)\n" +
+                "4) Do not keep a local copy of core under Packages/ with Plugins/Sirenix\n\n" +
+                lines);
         }
 
         static void DisableMathematicsModuleIfMisconfigured()
