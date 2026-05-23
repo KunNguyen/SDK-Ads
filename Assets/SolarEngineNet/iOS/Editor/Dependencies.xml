@@ -1,0 +1,8 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dependencies>
+  <!--  手动集成注释start-->
+  <iosPods>
+    <iosPod name="SolarEngineSDKiOSInter" version="&gt;=0" />
+  </iosPods>
+  <!--  手动集成注释end-->
+</dependencies>

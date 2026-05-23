@@ -3,7 +3,8 @@
     "rootNamespace": "",
     "references": [
         "JisSDKAds.Ads",
-        "JisSDKAds.Common"
+        "JisSDKAds.Common",
+        "SolarEngineSDK"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
@@ -11,7 +12,9 @@
     "overrideReferences": false,
     "precompiledReferences": [],
     "autoReferenced": true,
-    "defineConstraints": [],
+    "defineConstraints": [
+        "UNITY_SOLAR_ENGINE"
+    ],
     "versionDefines": [],
     "noEngineReferences": false
 }

@@ -1,0 +1,10 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dependencies>
+  <androidPackages>
+    <androidPackage spec="com.reyun.solar.engine.oversea:solar-engine-core:+">
+      <repositories>
+        <repository>https://maven-android.solar-engine.com/repository/se_sdk_for_android/</repository>
+      </repositories>
+    </androidPackage>
+  </androidPackages>
+</dependencies>

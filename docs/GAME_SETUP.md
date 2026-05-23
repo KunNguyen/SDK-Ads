@@ -10,7 +10,7 @@ Open **JIS SDK → Hub** and import:
 1. **Firebase** (required) — Hub also adds [External Dependency Manager](https://openupm.com/packages/com.google.external-dependency-manager/) from OpenUPM if missing (`com.google.external-dependency-manager` **1.2.187**)
 2. Install **Firebase** from Google (Analytics + Remote Config; add **Authentication** if using Firebase Auth — [FIREBASE_AUTH_SETUP.md](FIREBASE_AUTH_SETUP.md))
 3. **Ads** (ads runtime only), then **Enable MAX** / **Enable AdMob** in Hub as needed (installs `providers.max` / `providers.admob` — define alone is not enough). AdMob CMP/UMP: cần `com.google.ads.mobile` bản có **User Messaging Platform**; nếu thiếu UMP, SDK vẫn compile và tự bỏ qua consent → init ads trực tiếp. Lỗi `GoogleMobileAds.Ump` / `FormError` trong `providers.admob` → cập nhật **providers.admob ≥ 4.0.3** + **common ≥ 4.0.3** và **Flush PackageCache**. Lỗi `CollapsibleBannerAdManager` static / `DebugAds` / `AddEventNextFrame` → cùng nguyên nhân cache cũ hoặc thiếu `JisSDKAds.Common` trong asmdef provider (đã có sẵn trong package).
-4. Optional: IAP ([IAP_USAGE.md](IAP_USAGE.md)), **App Review** (Android + Hub adds Google Play Review UPM + `GOOGLE_REVIEW`), AppsFlyer, **SolarEngine** (Hub module + `UNITY_SOLAR_ENGINE`), …
+4. Optional: IAP ([IAP_USAGE.md](IAP_USAGE.md)), **App Review** (Android + Hub adds Google Play Review UPM + `GOOGLE_REVIEW`), AppsFlyer, **SolarEngine** (Hub module + vendor C# SDK — [SOLARENGINE_SETUP.md](SOLARENGINE_SETUP.md)), …
 
 ## 2. Create settings
 

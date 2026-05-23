@@ -57,8 +57,8 @@
       "depth": 0,
       "source": "embedded",
       "dependencies": {
-        "com.jis.sdkads.ads": "4.0.0",
-        "com.jis.sdkads.common": "4.0.2"
+        "com.jis.sdkads.ads": "5.0.0",
+        "com.jis.sdkads.common": "5.0.0"
       }
     },
     "com.jis.sdkads.appreview": {

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using JisSDKAds.Ads;
 using JisSDKAds.Common;
 #if UNITY_SOLAR_ENGINE
-using SolarEngineSDK = global::SolarEngine;
+using SolarEngine;
 #endif
 using UnityEngine;
 
@@ -45,17 +45,17 @@ namespace JisSDKAds.Analytics.SolarEngineIntegration
             Instance = this;
             DontDestroyOnLoad(gameObject);
 
-            SolarEngineSDK.Analytics.preInitSeSdk(appKey);
+            Analytics.preInitSeSdk(appKey);
         }
 
         void Start()
         {
-            var seConfig = new SolarEngineSDK.SEConfig
+            var seConfig = new SEConfig
             {
                 logEnabled = true,
                 initCompletedCallback = OnInitCallback
             };
-            SolarEngineSDK.Analytics.initSeSdk(appKey, seConfig);
+            Analytics.initSeSdk(appKey, seConfig);
         }
 
         private void OnInitCallback(int code)
@@ -82,12 +82,12 @@ namespace JisSDKAds.Analytics.SolarEngineIntegration
             }
 
             var parameters = new Dictionary<string, object> { { parameterName, parameterValue } };
-            SolarEngineSDK.Analytics.track(eventName, parameters);
+            Analytics.track(eventName, parameters);
         }
 
         public void TrackAdImpression(ImpressionData impressionData)
         {
-            var attributes = new SolarEngineSDK.ImpressionAttributes
+            var attributes = new ImpressionAttributes
             {
                 ad_platform = impressionData.ad_source,
                 ad_id = impressionData.ad_unit_name,
@@ -97,7 +97,7 @@ namespace JisSDKAds.Analytics.SolarEngineIntegration
                 mediation_platform = ConvertMediationPlatform(impressionData.ad_mediation),
                 is_rendered = true
             };
-            SolarEngineSDK.Analytics.trackAdImpression(attributes);
+            Analytics.trackAdImpression(attributes);
         }
 
         public void TrackPurchase(string productId, double payAmount, string currency, string status)
@@ -110,13 +110,13 @@ namespace JisSDKAds.Analytics.SolarEngineIntegration
 
             var payStatus = status switch
             {
-                "success" => SolarEngineSDK.PayStatus.Success,
-                "failed" => SolarEngineSDK.PayStatus.Fail,
-                "restored" => SolarEngineSDK.PayStatus.Restored,
-                _ => SolarEngineSDK.PayStatus.Success
+                "success" => PayStatus.Success,
+                "failed" => PayStatus.Fail,
+                "restored" => PayStatus.Restored,
+                _ => PayStatus.Success
             };
 
-            var attributes = new SolarEngineSDK.ProductsAttributes
+            var attributes = new ProductsAttributes
             {
                 product_id = productId,
                 pay_amount = payAmount,
@@ -124,7 +124,7 @@ namespace JisSDKAds.Analytics.SolarEngineIntegration
                 paystatus = payStatus
             };
 
-            SolarEngineSDK.Analytics.trackPurchase(attributes);
+            Analytics.trackPurchase(attributes);
         }
 
         private string ConvertMediationPlatform(AdsMediationType adsMediationType)

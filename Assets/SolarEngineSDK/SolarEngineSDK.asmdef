@@ -1,0 +1,18 @@
+{
+    "name": "SolarEngineSDK",
+    "rootNamespace": "",
+    "references": [
+        "GUID:5efd170ecd8084500bed5692932fe14e",
+        "GUID:48a12689df9ae154c9ab22f146ad1585",
+        "GUID:bb21d6197862c4c3e863390dec9859a7"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

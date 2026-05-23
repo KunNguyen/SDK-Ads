@@ -1,0 +1,9 @@
+{
+    "name": "SolarEngineSDK.Editor",
+    "references": [
+        "SolarEngineSDK",
+        "UnityEditor"
+    ],
+    "includePlatforms": ["Editor"],
+    "autoReferenced": true
+}
