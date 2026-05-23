@@ -1,6 +1,6 @@
 {
   "name": "com.jis.sdkads.analytics.solarengine",
-  "version": "5.0.1",
+  "version": "5.0.2",
   "displayName": "JIS SDK - SolarEngine",
   "description": "Optional SolarEngine analytics bridge. Requires SolarEngine Unity SDK (Assets/SolarEngineSDK) and define UNITY_SOLAR_ENGINE.",
   "unity": "2022.3",

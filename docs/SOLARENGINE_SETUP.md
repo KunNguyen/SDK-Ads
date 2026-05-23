@@ -36,4 +36,4 @@ Phải trả về `True`.
 
 ## Namespace JIS
 
-Code bridge dùng `JisSDKAds.Analytics.SolarEngineIntegration` — **không** đặt namespace `...SolarEngine` (trùng vendor SDK).
+Code bridge dùng `JisSDKAds.Analytics.SolarEngineIntegration` — gọi vendor API qua alias `SE = global::SolarEngine` (tránh `Analytics` bị hiểu nhầm thành namespace `JisSDKAds.Analytics`).
