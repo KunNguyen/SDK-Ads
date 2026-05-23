@@ -1,10 +1,12 @@
-﻿namespace JisSDKAds.Ads
+﻿using System.Collections.Generic;
+
+namespace JisSDKAds.Ads
 {
      public partial class SDKSetup
      {
           public AdsMediationType rewardedAdsMediationType;
 
-          public bool isRewardedShowingOnStart = false;
+          public bool IsLinkToRemoveAds = true;
 
           public string rewardedAdUnitID_MAX
           {
@@ -12,10 +14,10 @@
                set => maxAdsSetup.RewardedAdUnitID = value;
           }
 
-          public string rewardedAdUnitID_ADMOB
+          public List<string> rewardedAdUnitID_ADMOB
           {
-               get => admobAdsSetup.RewardedAdUnitID;
-               set => admobAdsSetup.RewardedAdUnitID = value;
+               get => admobAdsSetup.RewardedAdUnitIDList;
+               set => admobAdsSetup.RewardedAdUnitIDList = value;
           }
 
      }

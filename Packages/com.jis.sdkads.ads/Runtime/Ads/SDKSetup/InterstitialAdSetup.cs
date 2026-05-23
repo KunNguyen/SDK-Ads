@@ -1,4 +1,6 @@
-﻿namespace JisSDKAds.Ads
+﻿using System.Collections.Generic;
+
+namespace JisSDKAds.Ads
 {
      public partial class SDKSetup
      {
@@ -11,10 +13,10 @@
                set => maxAdsSetup.InterstitialAdUnitID = value;
           }
 
-          public string interstitialAdUnitID_ADMOB
+          public List<string> interstitialAdUnitID_ADMOB
           {
-               get => admobAdsSetup.InterstitialAdUnitID;
-               set => admobAdsSetup.InterstitialAdUnitID = value;
+               get => admobAdsSetup.InterstitialAdUnitIDList;
+               set => admobAdsSetup.InterstitialAdUnitIDList = value;
           }
 
      }

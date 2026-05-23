@@ -1,4 +1,5 @@
-﻿#if UNITY_AD_ADMOB
+﻿using System.Collections.Generic;
+#if UNITY_AD_ADMOB
 using GoogleMobileAds.Api;
 #endif
 
@@ -8,7 +9,9 @@ namespace JisSDKAds.Ads
      {
           public AdsMediationType mrecAdsMediationType;
 #if UNITY_AD_ADMOB
-          public AdPosition admobMrecAdsPosition;
+          public AdPosition mrecAdsPosition;
+#else
+          public int mrecAdsPositionFallback = 8; // BottomCenter when AdMob
 #endif
 
           public bool isMrecShowingOnStart = false;
@@ -19,10 +22,10 @@ namespace JisSDKAds.Ads
                set => maxAdsSetup.MrecAdUnitID = value;
           }
 
-          public string mrecAdUnitID_ADMOB
+          public List<string> mrecAdUnitID_ADMOB
           {
-               get => admobAdsSetup.MrecAdUnitID;
-               set => admobAdsSetup.MrecAdUnitID = value;
+               get => admobAdsSetup.MrecAdUnitIDList;
+               set => admobAdsSetup.MrecAdUnitIDList = value;
           }
 
      }

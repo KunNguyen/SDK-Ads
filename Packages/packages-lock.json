@@ -30,9 +30,9 @@
       "depth": 0,
       "source": "embedded",
       "dependencies": {
-        "com.jis.sdkads.core": "4.0.0",
-        "com.jis.sdkads.common": "4.0.2",
-        "com.jis.sdkads.firebase": "4.0.0"
+        "com.jis.sdkads.core": "5.0.0",
+        "com.jis.sdkads.common": "5.0.0",
+        "com.jis.sdkads.firebase": "5.0.0"
       }
     },
     "com.jis.sdkads.analytics.appsflyer": {
@@ -74,22 +74,25 @@
       "depth": 0,
       "source": "embedded",
       "dependencies": {
-        "com.jis.sdkads.core": "4.0.0"
+        "com.jis.sdkads.core": "5.0.0"
       }
     },
     "com.jis.sdkads.core": {
       "version": "file:com.jis.sdkads.core",
       "depth": 0,
       "source": "embedded",
-      "dependencies": {}
+      "dependencies": {
+        "com.jis.sdkads.odin": "5.0.0"
+      }
     },
     "com.jis.sdkads.editor": {
       "version": "file:com.jis.sdkads.editor",
       "depth": 0,
       "source": "embedded",
       "dependencies": {
-        "com.jis.sdkads.ads": "4.0.0",
-        "com.jis.sdkads.iap": "4.0.0"
+        "com.jis.sdkads.ads": "5.0.0",
+        "com.jis.sdkads.iap": "5.0.0",
+        "com.jis.sdkads.odin": "5.0.0"
       }
     },
     "com.jis.sdkads.firebase": {
@@ -97,7 +100,7 @@
       "depth": 0,
       "source": "embedded",
       "dependencies": {
-        "com.jis.sdkads.common": "4.0.2"
+        "com.jis.sdkads.common": "5.0.0"
       }
     },
     "com.jis.sdkads.hub": {
@@ -111,18 +114,24 @@
       "depth": 0,
       "source": "embedded",
       "dependencies": {
-        "com.jis.sdkads.common": "4.0.2",
+        "com.jis.sdkads.common": "5.0.0",
         "com.unity.purchasing": "5.0.4",
         "com.unity.services.core": "1.16.0"
       }
+    },
+    "com.jis.sdkads.odin": {
+      "version": "file:com.jis.sdkads.odin",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
     },
     "com.jis.sdkads.providers.admob": {
       "version": "file:com.jis.sdkads.providers.admob",
       "depth": 0,
       "source": "embedded",
       "dependencies": {
-        "com.jis.sdkads.core": "4.0.0",
-        "com.jis.sdkads.ads": "4.0.0"
+        "com.jis.sdkads.core": "5.0.0",
+        "com.jis.sdkads.ads": "5.0.0"
       }
     },
     "com.jis.sdkads.providers.max": {
@@ -130,8 +139,8 @@
       "depth": 0,
       "source": "embedded",
       "dependencies": {
-        "com.jis.sdkads.core": "4.0.0",
-        "com.jis.sdkads.ads": "4.0.0",
+        "com.jis.sdkads.core": "5.0.0",
+        "com.jis.sdkads.ads": "5.0.0",
         "com.applovin.mediation.ads": "8.6.3"
       }
     },

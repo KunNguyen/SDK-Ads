@@ -63,6 +63,8 @@ namespace JisSDKAds.Hub
 
         public static void DrawOdinHealthWarning()
         {
+            DrawCoreBundlesSirenixWarning();
+
             var odinDlls = FindOdinAttributesDllPaths();
             var hasAssetsOdin = HasLegacyAssetsOdinFolder();
             var hasOdinPkg = JisSDKHubManifest.HasDependency("com.jis.sdkads.odin") ||
@@ -167,6 +169,20 @@ namespace JisSDKAds.Hub
 
             if (removed > 0)
                 EditorApplication.delayCall += JisSDKHubOdinConflictResolver.TryResolveDuplicates;
+        }
+
+        static void DrawCoreBundlesSirenixWarning()
+        {
+            var coreSirenix = Path.Combine(JisSDKHubManifest.PackagesRoot, "com.jis.sdkads.core", "Plugins", "Sirenix");
+            var assetsCoreSirenix = Path.Combine(Application.dataPath, "Packages", "com.jis.sdkads.core", "Plugins", "Sirenix");
+
+            if (!Directory.Exists(coreSirenix) && !Directory.Exists(assetsCoreSirenix))
+                return;
+
+            EditorGUILayout.HelpBox(
+                "Sirenix found under com.jis.sdkads.core or Assets/Packages/com.jis.sdkads.core — this breaks Odin modules.\n" +
+                "Delete those Plugins/Sirenix folders; use com.jis.sdkads.odin only.",
+                MessageType.Error);
         }
 
         public static void DrawResolveOdinDuplicatesButton()
