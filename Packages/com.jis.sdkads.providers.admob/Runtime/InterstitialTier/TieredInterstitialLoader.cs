@@ -36,7 +36,7 @@ namespace JisSDKAds.Providers.AdMob.InterstitialTier
         Action _onLoadedFail;
         Action _onClosed;
         Action _onDisplayed;
-        Action _onDisplayedFail;
+        Action<AdError> _onDisplayedFail;
         Action<AdValue> _onPaid;
 
         public TieredInterstitialLoader(MonoBehaviour host, InterstitialTierConfig config)
@@ -55,7 +55,7 @@ namespace JisSDKAds.Providers.AdMob.InterstitialTier
             Action onLoadedFail,
             Action onClosed,
             Action onDisplayed,
-            Action onDisplayedFail,
+            Action<AdError> onDisplayedFail,
             Action<AdValue> onPaid)
         {
             _onLoadedSuccess = onLoadedSuccess;
@@ -107,7 +107,7 @@ namespace JisSDKAds.Providers.AdMob.InterstitialTier
                         error?.GetCode() ?? 0,
                         error?.GetMessage());
                     ClearReady();
-                    _onDisplayedFail?.Invoke();
+                    _onDisplayedFail?.Invoke(error);
                     LoadInterstitial();
                 },
                 value =>
@@ -125,6 +125,7 @@ namespace JisSDKAds.Providers.AdMob.InterstitialTier
             {
                 InterstitialTierAnalytics.LogShowFail(cache.AdUnitId, cache.Tier, 0, "not_ready");
                 ClearReady();
+                _onDisplayedFail?.Invoke(null);
                 LoadInterstitial();
                 return false;
             }

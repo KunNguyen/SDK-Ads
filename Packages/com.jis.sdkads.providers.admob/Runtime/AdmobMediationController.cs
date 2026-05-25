@@ -527,11 +527,6 @@ namespace JisSDKAds.Ads
           {
                DebugAds.Log("Interstitial ad failed to show with error: " + (e != null ? e.GetMessage() : "unknown"));
                InterstitialCallbacks.DisplayedFail?.Invoke();
-               if (UseTieredInterstitialLadder)
-               {
-                    EnsureTieredLoader();
-                    _tieredInterstitialLoader.LoadInterstitial(forceReload: true);
-               }
           }
 
           public void DestroyInterstitialAd()
