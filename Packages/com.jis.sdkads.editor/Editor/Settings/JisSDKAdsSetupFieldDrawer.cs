@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using JisSDKAds.Ads;
+using JisSDKAds.Ads.InterstitialTier;
 using JisSDKAds.Core.Tiered.Config;
 using JisSDKAds.Core.Tiered.Models;
 using UnityEditor;
@@ -32,7 +33,39 @@ namespace JisSDKAds.Editor
                     v => setup.interstitialAdUnitID_MAX = v,
                     () => setup.interstitialAdUnitID_ADMOB,
                     v => setup.interstitialAdUnitID_ADMOB = v);
+
+                if (setup.interstitialAdsMediationType == AdsMediationType.ADMOB)
+                    DrawAdMobInterstitialTierConfig(setup);
             });
+        }
+
+        static void DrawAdMobInterstitialTierConfig(SDKSetup setup)
+        {
+            var tier = setup.admobAdsSetup.InterstitialTierConfig;
+            tier.EnsureDefaultTierSlots();
+
+            EditorGUILayout.Space(4);
+            EditorGUILayout.LabelField("5-Tier Interstitial (AdMob)", EditorStyles.boldLabel);
+            tier.enableTieredInterstitial = EditorGUILayout.Toggle(
+                new GUIContent("Enable tiered interstitial", "Sequential Premium→Fill ladder."),
+                tier.enableTieredInterstitial);
+
+            tier.defaultAndroidAdUnitId = EditorGUILayout.TextField("Default Android unit", tier.defaultAndroidAdUnitId);
+            tier.defaultIosAdUnitId = EditorGUILayout.TextField("Default iOS unit", tier.defaultIosAdUnitId);
+            tier.enableTierMemoryCooldown = EditorGUILayout.Toggle("Tier memory + cooldown", tier.enableTierMemoryCooldown);
+            tier.premiumRetryCooldownMinutes = EditorGUILayout.FloatField("Premium retry cooldown (min)", tier.premiumRetryCooldownMinutes);
+
+            if (!tier.enableTieredInterstitial) return;
+
+            foreach (AdTier t in Enum.GetValues(typeof(AdTier)))
+            {
+                var entry = tier.GetEntry(t);
+                if (entry == null) continue;
+                EditorGUILayout.LabelField(entry.tier.ToString(), EditorStyles.miniBoldLabel);
+                entry.androidAdUnitId = EditorGUILayout.TextField("  Android", entry.androidAdUnitId);
+                entry.iosAdUnitId = EditorGUILayout.TextField("  iOS", entry.iosAdUnitId);
+                entry.timeoutSeconds = EditorGUILayout.FloatField("  Timeout (s, 0=none)", entry.timeoutSeconds);
+            }
         }
 
         public static void DrawRewardedSingle(SDKSetup setup, AdsMediationType primaryMediation)

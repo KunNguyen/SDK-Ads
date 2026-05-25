@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using JisSDKAds.Ads;
+using JisSDKAds.Ads.InterstitialTier;
 using JisSDKAds.Ads.Settings;
 using JisSDKAds.Ads.UnitAdManagers;
 using JisSDKAds.Common;
@@ -29,6 +30,9 @@ namespace JisSDKAds.Providers.AdMob
                 manager.MainAdsMediationType = adsMediationType;
                 admobMediationController.m_AdmobAdSetup.InterstitialAdUnitIDList =
                     setup.admobAdsSetup.InterstitialAdUnitIDList;
+                ApplyInterstitialTierConfig(
+                    setup.admobAdsSetup.InterstitialTierConfig,
+                    setup.admobAdsSetup.InterstitialAdUnitIDList);
             }
             else
             {
@@ -76,6 +80,34 @@ namespace JisSDKAds.Providers.AdMob
             DebugAds.Log("Update Admob Mediation Done");
 #endif
 #endif
+        }
+
+        static void ApplyInterstitialTierConfig(InterstitialTierConfig tierConfig, List<string> platformUnitIds)
+        {
+            if (tierConfig == null) return;
+            tierConfig.EnsureDefaultTierSlots();
+
+            if (platformUnitIds != null && platformUnitIds.Count > 0)
+            {
+                if (string.IsNullOrWhiteSpace(tierConfig.defaultAndroidAdUnitId))
+                    tierConfig.defaultAndroidAdUnitId = platformUnitIds[0];
+                if (string.IsNullOrWhiteSpace(tierConfig.defaultIosAdUnitId))
+                    tierConfig.defaultIosAdUnitId = platformUnitIds[0];
+
+                var order = new[]
+                {
+                    AdTier.Premium, AdTier.High, AdTier.Mid, AdTier.Low, AdTier.Fill
+                };
+                for (var i = 0; i < order.Length && i < platformUnitIds.Count; i++)
+                {
+                    var entry = tierConfig.GetEntry(order[i]);
+                    if (entry == null || string.IsNullOrWhiteSpace(platformUnitIds[i])) continue;
+                    if (string.IsNullOrWhiteSpace(entry.androidAdUnitId))
+                        entry.androidAdUnitId = platformUnitIds[i];
+                    if (string.IsNullOrWhiteSpace(entry.iosAdUnitId))
+                        entry.iosAdUnitId = platformUnitIds[i];
+                }
+            }
         }
     }
 }

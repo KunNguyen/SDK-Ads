@@ -60,6 +60,16 @@ namespace JisSDKAds.Ads
                return InterstitialAdManager.IsLoaded();
           }
 
+          public void LoadInterstitial()
+          {
+               if (InterstitialAdManager?.MediationController != null)
+                    InterstitialAdManager.MediationController.LoadInterstitial();
+               else
+                    InterstitialAdManager?.RequestAd();
+          }
+
+          public bool IsInterstitialReady() => IsInterstitialAdLoaded();
+
           public bool CanShowInterstitialAd()
           {
                return InterstitialAdManager.IsAdReady();

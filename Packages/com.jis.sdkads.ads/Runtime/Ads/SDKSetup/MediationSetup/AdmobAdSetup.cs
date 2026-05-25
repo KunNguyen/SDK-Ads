@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using JisSDKAds.Ads;
+using JisSDKAds.Ads.InterstitialTier;
 using UnityEngine;
 
 [System.Serializable]
@@ -15,6 +16,8 @@ public class AdmobAdSetup
 
     // NEW: Rewarded Interstitial
     [SerializeField] private AdScheduleUnitID rewardedInterstitialAdUnitID;
+
+    [SerializeField] private InterstitialTierConfig interstitialTierConfig = new InterstitialTierConfig();
 
     public AdScheduleUnitID InterstitialAdUnitID
     {
@@ -62,6 +65,17 @@ public class AdmobAdSetup
     {
         get => interstitialAdUnitID.CurrentPlatformID;
         set => interstitialAdUnitID.CurrentPlatformID = value;
+    }
+
+    public InterstitialTierConfig InterstitialTierConfig
+    {
+        get
+        {
+            interstitialTierConfig ??= new InterstitialTierConfig();
+            interstitialTierConfig.EnsureDefaultTierSlots();
+            return interstitialTierConfig;
+        }
+        set => interstitialTierConfig = value;
     }
 
     public List<string> RewardedAdUnitIDList

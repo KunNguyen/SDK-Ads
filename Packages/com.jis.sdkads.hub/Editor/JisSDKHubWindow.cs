@@ -59,6 +59,7 @@ namespace JisSDKAds.Hub
             DrawModule("AppsFlyer", "Optional", ModuleKind.AppsFlyer);
             DrawModule("SolarEngine", "Optional", ModuleKind.SolarEngine);
             DrawModule("Facebook", "Optional", ModuleKind.Facebook);
+            DrawModule("Local Notifications", "Daily reminders & gameplay timers", ModuleKind.Notifications);
             DrawModule("Editor Tools", "SDK setup & build", ModuleKind.Editor);
             EditorGUILayout.EndScrollView();
         }

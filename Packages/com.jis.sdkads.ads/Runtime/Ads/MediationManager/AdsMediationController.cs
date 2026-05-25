@@ -119,6 +119,15 @@ namespace JisSDKAds.Ads {
             return false;
         }
 
+        /// <summary>Alias for <see cref="RequestInterstitialAd"/>.</summary>
+        public virtual void LoadInterstitial() => RequestInterstitialAd();
+
+        /// <summary>Alias for <see cref="ShowInterstitialAd"/>.</summary>
+        public virtual void ShowInterstitial() => ShowInterstitialAd();
+
+        /// <summary>Alias for <see cref="IsInterstitialLoaded"/>.</summary>
+        public virtual bool IsInterstitialReady() => IsInterstitialLoaded();
+
         #endregion
 
         #region Reward Ads

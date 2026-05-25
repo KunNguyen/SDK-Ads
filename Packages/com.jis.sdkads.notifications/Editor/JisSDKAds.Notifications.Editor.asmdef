@@ -1,0 +1,18 @@
+{
+    "name": "JisSDKAds.Notifications.Editor",
+    "rootNamespace": "JisSDKAds.Notifications.Editor",
+    "references": [
+        "JisSDKAds.Notifications"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

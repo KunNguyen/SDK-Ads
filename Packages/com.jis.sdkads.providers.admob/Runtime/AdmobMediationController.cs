@@ -451,32 +451,14 @@ namespace JisSDKAds.Ads
           public override void RequestInterstitialAd()
           {
                base.RequestInterstitialAd();
-               DebugAds.Log("Request interstitial ads");
-
-               if (InterstitialAds != null)
+               if (UseTieredInterstitialLadder)
                {
-                    InterstitialAds.Destroy();
-                    InterstitialAds = null;
+                    EnsureTieredLoader();
+                    _tieredInterstitialLoader.LoadInterstitial();
+                    return;
                }
 
-               AdRequest adRequest = new AdRequest();
-               adRequest.Keywords.Add("unity-admob-sample");
-
-               string adUnitId = GetInterstitialAdUnit();
-               InterstitialAd.Load(adUnitId, adRequest, (InterstitialAd ad, LoadAdError error) =>
-               {
-                    if (error != null || ad == null)
-                    {
-                         DebugAds.LogError("interstitial ad failed to load an ad " + "with error : " + error);
-                         OnAdInterstitialFailedToLoad();
-                         return;
-                    }
-
-                    DebugAds.Log("Interstitial ad loaded with response : " + ad.GetResponseInfo());
-                    InterstitialAds = ad;
-                    RegisterInterstitialAd(ad);
-                    OnAdInterstitialSuccessToLoad();
-               });
+               RequestInterstitialLegacy();
           }
 
           private void RegisterInterstitialAd(InterstitialAd interstitialAd)
@@ -489,16 +471,28 @@ namespace JisSDKAds.Ads
 
           public override bool IsInterstitialLoaded()
           {
+               if (UseTieredInterstitialLadder)
+               {
+                    EnsureTieredLoader();
+                    return _tieredInterstitialLoader.IsReady;
+               }
+
                return InterstitialAds != null && InterstitialAds.CanShowAd();
           }
 
           public override void ShowInterstitialAd()
           {
                base.ShowInterstitialAd();
-               if (InterstitialAds.CanShowAd())
+               if (UseTieredInterstitialLadder)
                {
-                    InterstitialAds.Show();
+                    EnsureTieredLoader();
+                    if (!_tieredInterstitialLoader.ShowInterstitial())
+                         OnAdInterstitialFailToShow(null);
+                    return;
                }
+
+               if (InterstitialAds != null && InterstitialAds.CanShowAd())
+                    InterstitialAds.Show();
           }
 
           private void OnCloseInterstitialAd()
@@ -511,14 +505,16 @@ namespace JisSDKAds.Ads
           {
                DebugAds.Log("Load Interstitial success");
                InterstitialCallbacks.LoadedSuccess?.Invoke();
-               m_AdmobAdSetup.InterstitialAdUnitID.Refresh();
+               if (!UseTieredInterstitialLadder)
+                    m_AdmobAdSetup.InterstitialAdUnitID.Refresh();
           }
 
           private void OnAdInterstitialFailedToLoad()
           {
                DebugAds.Log("Load Interstitial failed Admob");
                InterstitialCallbacks.LoadedFail?.Invoke();
-               m_AdmobAdSetup.InterstitialAdUnitID.ChangeID();
+               if (!UseTieredInterstitialLadder)
+                    m_AdmobAdSetup.InterstitialAdUnitID.ChangeID();
           }
 
           private void OnAdInterstitialOpening()
@@ -529,17 +525,19 @@ namespace JisSDKAds.Ads
 
           private void OnAdInterstitialFailToShow(AdError e)
           {
-               DebugAds.Log("Interstitial ad failed to show with error: " + e.GetMessage());
+               DebugAds.Log("Interstitial ad failed to show with error: " + (e != null ? e.GetMessage() : "unknown"));
                InterstitialCallbacks.DisplayedFail?.Invoke();
-          }
-
-          private void OnAdInterstitialPaid(AdValue adValue)
-          {
-               HandleAdPaidEvent("interstitial", adValue, InterstitialAds.GetResponseInfo());
+               if (UseTieredInterstitialLadder)
+               {
+                    EnsureTieredLoader();
+                    _tieredInterstitialLoader.LoadInterstitial(forceReload: true);
+               }
           }
 
           public void DestroyInterstitialAd()
           {
+               _tieredInterstitialLoader?.Destroy();
+               _tieredInterstitialLoader = null;
                if (InterstitialAds != null)
                {
                     DebugAds.Log("Destroying interstitial ad.");
@@ -988,6 +986,7 @@ namespace JisSDKAds.Ads
 
           private void OnApplicationQuit()
           {
+               _tieredInterstitialLoader?.Destroy();
                InterstitialAds?.Destroy();
           }
 

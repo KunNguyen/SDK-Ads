@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using JisSDKAds.Ads.InterstitialTier;
 
 namespace JisSDKAds.Ads
 {
@@ -6,6 +7,12 @@ namespace JisSDKAds.Ads
      {
           public AdsMediationType interstitialAdsMediationType;
           public bool IsActiveCooldownInterstitialFromStart { get; set; } = true;
+
+          public bool enableTieredInterstitial =>
+               interstitialAdsMediationType == AdsMediationType.ADMOB &&
+               admobAdsSetup.InterstitialTierConfig.enableTieredInterstitial;
+
+          public InterstitialTierConfig InterstitialTierConfig => admobAdsSetup.InterstitialTierConfig;
 
           public string interstitialAdUnitID_MAX
           {

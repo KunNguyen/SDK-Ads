@@ -13,6 +13,7 @@ namespace JisSDKAds.Hub
         AppsFlyer,
         SolarEngine,
         Facebook,
+        Notifications,
         Editor
     }
 
@@ -40,6 +41,7 @@ namespace JisSDKAds.Hub
             ModuleKind.AppsFlyer,
             ModuleKind.SolarEngine,
             ModuleKind.Facebook,
+            ModuleKind.Notifications,
             ModuleKind.Editor
         };
 
@@ -76,6 +78,10 @@ namespace JisSDKAds.Hub
                     break;
                 case ModuleKind.Facebook:
                     yield return ("com.jis.sdkads.analytics.facebook", "com.jis.sdkads.analytics.facebook");
+                    break;
+                case ModuleKind.Notifications:
+                    yield return ("com.jis.sdkads.common", "com.jis.sdkads.common");
+                    yield return ("com.jis.sdkads.notifications", "com.jis.sdkads.notifications");
                     break;
                 case ModuleKind.Editor:
                     yield return ("com.jis.sdkads.odin", "com.jis.sdkads.odin");
@@ -193,6 +199,9 @@ namespace JisSDKAds.Hub
                         "com.google.play.review");
                     yield return ("com.google.play.review", "1.8.4");
                     break;
+                case ModuleKind.Notifications:
+                    yield return ("com.unity.mobile.notifications", "2.4.3");
+                    break;
             }
         }
 
@@ -297,6 +306,7 @@ namespace JisSDKAds.Hub
             ModuleKind.AppsFlyer => "AppsFlyer",
             ModuleKind.SolarEngine => "SolarEngine",
             ModuleKind.Facebook => "Facebook",
+            ModuleKind.Notifications => "Local Notifications",
             ModuleKind.Editor => "Editor Tools",
             _ => kind.ToString()
         };
