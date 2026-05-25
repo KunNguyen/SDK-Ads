@@ -1,11 +1,11 @@
 {
   "name": "com.jis.sdkads.editor",
-  "version": "5.0.0",
+  "version": "5.0.1",
   "displayName": "JIS SDK - Editor",
   "description": "Editor tools for ads setup, build handlers, and platform configuration.",
   "unity": "2022.3",
   "dependencies": {
-    "com.jis.sdkads.ads": "5.0.0",
+    "com.jis.sdkads.ads": "5.1.0",
     "com.jis.sdkads.iap": "5.0.0",
     "com.jis.sdkads.odin": "5.0.0"
   },

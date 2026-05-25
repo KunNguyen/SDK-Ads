@@ -116,14 +116,16 @@ namespace JisSDKAds.Editor
                 && setup.admobAdsSetup.InterstitialTierConfig.enableSequentialLadder
                 && !HasAnyTierId(setup.admobAdsSetup.InterstitialTierConfig))
             {
-                result.AddWarning($"{platformLabel}: interstitial sequential tier enabled but no tier unit IDs.");
+                result.AddWarning(
+                    $"{platformLabel}: interstitial tier enabled — set Firebase RC keys inter_premium_id … inter_fill_id (local IDs are fallback only).");
             }
 
             if (setup.rewardedAdsMediationType == AdsMediationType.ADMOB
                 && setup.admobAdsSetup.RewardedTierConfig.enableSequentialLadder
                 && !HasAnyTierId(setup.admobAdsSetup.RewardedTierConfig))
             {
-                result.AddWarning($"{platformLabel}: rewarded sequential tier enabled but no tier unit IDs.");
+                result.AddWarning(
+                    $"{platformLabel}: rewarded tier enabled — set Firebase RC keys reward_premium_id … reward_fill_id (local IDs are fallback only).");
             }
         }
 

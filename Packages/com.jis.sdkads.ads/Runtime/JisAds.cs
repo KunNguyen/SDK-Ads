@@ -136,7 +136,11 @@ namespace JisSDKAds.Ads
 
             await FirebaseManager.Instance.InitAsync();
             if (fetchRemoteConfig)
+            {
                 await FirebaseManager.Instance.FetchRemoteConfigAsync();
+                _legacy ??= FindFirstObjectByType<AdsManager>();
+                _legacy?.RefreshRemoteConfigDrivenSettings();
+            }
         }
 
         void ResolveLegacy()

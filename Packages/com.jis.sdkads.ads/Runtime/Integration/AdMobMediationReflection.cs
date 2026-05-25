@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Reflection;
+using JisSDKAds.Ads.SequentialTier;
 using JisSDKAds.Ads.Settings;
 
 namespace JisSDKAds.Ads.Integration
@@ -20,6 +22,39 @@ namespace JisSDKAds.Ads.Integration
             if (method == null) return;
 
             method.Invoke(null, new object[] { manager, setup });
+        }
+
+        public static void ApplySequentialTierRemoteConfig(AdsManager manager, SDKSetup setup)
+        {
+            if (manager == null || setup?.admobAdsSetup == null) return;
+
+            Dictionary<AdTier, string> interstitialIds = null;
+            Dictionary<AdTier, string> rewardedIds = null;
+
+            var admob = setup.admobAdsSetup;
+            if (setup.interstitialAdsMediationType == AdsMediationType.ADMOB
+                && admob.InterstitialTierConfig != null
+                && admob.InterstitialTierConfig.enableSequentialLadder)
+            {
+                SequentialTierRemoteConfigResolver.TryReadTierIds(
+                    SequentialTierAdFormat.Interstitial, out interstitialIds);
+            }
+
+            if (setup.rewardedAdsMediationType == AdsMediationType.ADMOB
+                && admob.RewardedTierConfig != null
+                && admob.RewardedTierConfig.enableSequentialLadder)
+            {
+                SequentialTierRemoteConfigResolver.TryReadTierIds(
+                    SequentialTierAdFormat.Rewarded, out rewardedIds);
+            }
+
+            if (interstitialIds == null && rewardedIds == null) return;
+
+            var bridge = Type.GetType(BridgeTypeName);
+            var method = bridge?.GetMethod(
+                "ApplyTierRemoteUnitIds",
+                BindingFlags.Public | BindingFlags.Static);
+            method?.Invoke(null, new object[] { manager, interstitialIds, rewardedIds });
         }
     }
 }

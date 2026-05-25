@@ -22,5 +22,18 @@ namespace JisSDKAds.Common {
           public static readonly string key_remote_mrec_active = "show_mrec_admob";
           public static readonly string key_remote_banner_auto_refresh = "banner_auto_refresh";
           public static readonly string key_remote_banner_auto_refresh_time = "banner_auto_refresh_time";
+
+          // Sequential tier unit IDs (Firebase Remote Config)
+          public static readonly string key_remote_inter_premium_id = "inter_premium_id";
+          public static readonly string key_remote_inter_high_id = "inter_high_id";
+          public static readonly string key_remote_inter_mid_id = "inter_mid_id";
+          public static readonly string key_remote_inter_low_id = "inter_low_id";
+          public static readonly string key_remote_inter_fill_id = "inter_fill_id";
+
+          public static readonly string key_remote_reward_premium_id = "reward_premium_id";
+          public static readonly string key_remote_reward_high_id = "reward_high_id";
+          public static readonly string key_remote_reward_mid_id = "reward_mid_id";
+          public static readonly string key_remote_reward_low_id = "reward_low_id";
+          public static readonly string key_remote_reward_fill_id = "reward_fill_id";
      } 
 }

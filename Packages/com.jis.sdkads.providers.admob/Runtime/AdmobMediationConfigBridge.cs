@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using JisSDKAds.Ads;
 using JisSDKAds.Ads.SequentialTier;
+using JisSDKAds.Common;
 using JisSDKAds.Ads.Settings;
 using JisSDKAds.Ads.UnitAdManagers;
 using JisSDKAds.Common;
@@ -95,6 +96,40 @@ namespace JisSDKAds.Providers.AdMob
                 ? BuildTargetPlatform.iOS
                 : BuildTargetPlatform.Android;
             return schedule.GetPlatformList(platform) ?? new List<string>();
+        }
+
+        public static void ApplyTierRemoteUnitIds(
+            AdsManager manager,
+            IReadOnlyDictionary<AdTier, string> interstitialIds,
+            IReadOnlyDictionary<AdTier, string> rewardedIds)
+        {
+#if UNITY_AD_ADMOB
+            if (manager == null) return;
+
+            var controller = manager.GetAdsMediationController(AdsMediationType.ADMOB) as AdmobMediationController;
+            if (controller?.m_AdmobAdSetup == null) return;
+
+            if (interstitialIds != null && interstitialIds.Count > 0)
+            {
+                SequentialTierRemoteConfigResolver.ApplyToConfig(
+                    controller.m_AdmobAdSetup.InterstitialTierConfig, interstitialIds);
+                SequentialTierRemoteConfigResolver.LogAppliedIds(
+                    SequentialTierAdFormat.Interstitial,
+                    controller.m_AdmobAdSetup.InterstitialTierConfig);
+            }
+
+            if (rewardedIds != null && rewardedIds.Count > 0)
+            {
+                SequentialTierRemoteConfigResolver.ApplyToConfig(
+                    controller.m_AdmobAdSetup.RewardedTierConfig, rewardedIds);
+                SequentialTierRemoteConfigResolver.LogAppliedIds(
+                    SequentialTierAdFormat.Rewarded,
+                    controller.m_AdmobAdSetup.RewardedTierConfig);
+            }
+
+            controller.ResetSequentialTierLoadersAfterRemoteConfig();
+            DebugAds.Log("[AdMob] Applied sequential tier unit IDs from Remote Config.");
+#endif
         }
 
         static void ApplySequentialTierConfig(SequentialTierConfig tierConfig, List<string> platformUnitIds)

@@ -78,8 +78,10 @@ namespace JisSDKAds.Editor
 
             var platformLabel = platform == BuildTargetPlatform.iOS ? "iOS" : "Android";
             EditorGUILayout.HelpBox(
-                $"Editing {platformLabel} IDs (switch Platform tab above). Mediation: AdMob.",
-                MessageType.None);
+                $"Tiered mode: ad unit IDs are read from Firebase Remote Config at runtime " +
+                $"(inter_* / reward_* keys — see docs/TIERED_INTERSTITIAL.md). " +
+                $"Fields below are fallback only. Platform: {platformLabel}. Mediation: AdMob.",
+                MessageType.Info);
 
             if (platform == BuildTargetPlatform.iOS)
                 tier.defaultIosAdUnitId = EditorGUILayout.TextField("Fallback unit ID", tier.defaultIosAdUnitId);

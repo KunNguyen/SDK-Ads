@@ -17,6 +17,18 @@ namespace JisSDKAds.Ads
         bool UseSequentialInterstitial =>
             InterstitialTierConfig != null && InterstitialTierConfig.enableSequentialLadder;
 
+        internal void ResetInterstitialTierLoader()
+        {
+            _interstitialTierLoader?.Destroy();
+            _interstitialTierLoader = null;
+        }
+
+        public void ResetSequentialTierLoadersAfterRemoteConfig()
+        {
+            ResetInterstitialTierLoader();
+            ResetRewardedTierLoader();
+        }
+
         void EnsureInterstitialTierLoader()
         {
             if (_interstitialTierLoader != null || InterstitialTierConfig == null) return;

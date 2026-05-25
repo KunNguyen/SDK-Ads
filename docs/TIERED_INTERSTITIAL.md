@@ -8,13 +8,16 @@ Per platform (Android / iOS), for **Interstitial** and **Rewarded**:
 
 | Mode | Behaviour |
 |------|-----------|
-| **Single unit** | One default Ad Unit ID (legacy rotation via `AdScheduleUnitID` on fail). |
-| **Tiered** | Sequential 5-tier ladder (AdMob only). |
+| **Single unit** | One default Ad Unit ID from SDK Settings (legacy rotation via `AdScheduleUnitID` on fail). No tier Remote Config keys. |
+| **Tiered** | Sequential 5-tier ladder (AdMob only). Unit IDs are loaded from **Firebase Remote Config** before the first ad request. |
 
 When **Tiered** is selected:
 
 - Set mediation for that format to **ADMOB** in the same section.
-- Fill **Fallback Android/iOS unit** and each tier (Premium … Fill).
+- Configure Firebase Remote Config keys (platform-specific ID string per key):
+  - Interstitial: `inter_premium_id`, `inter_high_id`, `inter_mid_id`, `inter_low_id`, `inter_fill_id`
+  - Rewarded: `reward_premium_id`, `reward_high_id`, `reward_mid_id`, `reward_low_id`, `reward_fill_id`
+- Optional local tier IDs in settings act as **fallback** if Remote Config is empty or fetch fails.
 - Optional: **Tier memory + cooldown**, **Premium retry cooldown (min)**, **Failures before downgrade**.
 
 `Inventory mode` toolbar syncs `enableSequentialLadder` on `AdmobAdSetup.InterstitialTierConfig` / `RewardedTierConfig`.

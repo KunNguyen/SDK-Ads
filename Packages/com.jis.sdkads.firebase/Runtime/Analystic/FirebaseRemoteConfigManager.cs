@@ -30,6 +30,16 @@ namespace JisSDKAds.Firebase
                         { Keys.key_remote_free_ads, 1 },
                         { Keys.key_remote_banner_auto_refresh, false},
                         { Keys.key_remote_banner_auto_refresh_time, 15},
+                        { Keys.key_remote_inter_premium_id, "" },
+                        { Keys.key_remote_inter_high_id, "" },
+                        { Keys.key_remote_inter_mid_id, "" },
+                        { Keys.key_remote_inter_low_id, "" },
+                        { Keys.key_remote_inter_fill_id, "" },
+                        { Keys.key_remote_reward_premium_id, "" },
+                        { Keys.key_remote_reward_high_id, "" },
+                        { Keys.key_remote_reward_mid_id, "" },
+                        { Keys.key_remote_reward_low_id, "" },
+                        { Keys.key_remote_reward_fill_id, "" },
                     };
 
             var remoteConfig = FirebaseRemoteConfig.DefaultInstance;

@@ -1,6 +1,8 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using JisSDKAds.Ads.Integration;
+using JisSDKAds.Ads.SequentialTier;
 using JisSDKAds.Ads.Settings;
 using JisSDKAds.Ads.Tracking;
 using JisSDKAds.Ads.UnitAdManagers;
@@ -238,6 +240,7 @@ namespace JisSDKAds.Ads
             if (fetchRemoteConfig)
             {
                 await FirebaseManager.Instance.FetchRemoteConfigAsync();
+                RefreshRemoteConfigDrivenSettings();
             }
         }
 
@@ -276,7 +279,16 @@ namespace JisSDKAds.Ads
                 yield return new WaitForEndOfFrame();
             }
 
+            if (SequentialTierRemoteConfigResolver.RequiresFetchBeforeAds(CurrentSDKSetup))
+            {
+                var fetchTask = FirebaseManager.Instance.FetchRemoteConfigAsync();
+                while (!fetchTask.IsCompleted)
+                    yield return null;
+            }
+
+            ApplySequentialTierRemoteConfigIfNeeded();
             InitializeAdsFlow();
+            NotifyRemoteConfigUpdated();
         }
 
         private void InitConfig()
@@ -492,6 +504,7 @@ namespace JisSDKAds.Ads
 
         private void UpdateAllAdManagerConfigs()
         {
+            ApplySequentialTierRemoteConfigIfNeeded();
             BannerAdManager.UpdateRemoteConfig();
             InterstitialAdManager.UpdateRemoteConfig();
             CollapsibleBannerAdManager.UpdateRemoteConfig();
@@ -510,6 +523,30 @@ namespace JisSDKAds.Ads
                 yield return null;
             }
         }
+
+        public void RefreshRemoteConfigDrivenSettings()
+        {
+            ApplySequentialTierRemoteConfigIfNeeded();
+            NotifyRemoteConfigUpdated();
+        }
+
+        void ApplySequentialTierRemoteConfigIfNeeded()
+        {
+            var setup = CurrentSDKSetup;
+            if (setup == null || !SequentialTierRemoteConfigResolver.RequiresFetchBeforeAds(setup))
+                return;
+
+            if (FirebaseManager.Instance == null || !FirebaseManager.Instance.IsRemoteConfigReady)
+            {
+                DebugAds.LogWarning(
+                    "[AdsManager] Sequential tier enabled but Remote Config is not ready; using local tier IDs as fallback.");
+                return;
+            }
+
+            AdMobMediationReflection.ApplySequentialTierRemoteConfig(this, setup);
+        }
+
+        static void NotifyRemoteConfigUpdated() => EventManager.Trigger("UpdateRemoteConfigs");
 
         #endregion
 

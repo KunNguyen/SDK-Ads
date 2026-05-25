@@ -17,6 +17,12 @@ namespace JisSDKAds.Ads
         bool UseSequentialRewarded =>
             RewardedTierConfig != null && RewardedTierConfig.enableSequentialLadder;
 
+        internal void ResetRewardedTierLoader()
+        {
+            _rewardedTierLoader?.Destroy();
+            _rewardedTierLoader = null;
+        }
+
         void EnsureRewardedTierLoader()
         {
             if (_rewardedTierLoader != null || RewardedTierConfig == null) return;
