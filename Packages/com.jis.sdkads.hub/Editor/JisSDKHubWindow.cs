@@ -11,8 +11,8 @@ namespace JisSDKAds.Hub
     {
         private const string PrefsGitBaseUrl = "JisSDKAds.Hub.GitBaseUrl";
         private const string PrefsGitRevision = "JisSDKAds.Hub.GitRevision";
-        private const string DefaultGitBaseUrl = "https://github.com/KunNguyen/SDK-Ads.git";
-        private const string DefaultGitRevision = "main";
+        public const string DefaultGitBaseUrl = "https://github.com/KunNguyen/SDK-Ads.git";
+        public const string DefaultGitRevision = "main";
 
         private string _gitBaseUrl;
         private string _gitRevision;
@@ -50,6 +50,12 @@ namespace JisSDKAds.Hub
 
             if (!_useEmbeddedPackages)
                 DrawGitSettings();
+            else
+                EditorGUILayout.HelpBox(
+                    "Embedded mode: installed versions come from Packages/. Version check still compares to Git remote using saved URL/revision below.",
+                    MessageType.None);
+
+            DrawVersionCheck();
 
             EditorGUILayout.Space(6);
             DrawModule("Firebase (required)", "core + common + firebase + hub + EDM (OpenUPM)", ModuleKind.Firebase);
@@ -62,6 +68,92 @@ namespace JisSDKAds.Hub
             DrawModule("Local Notifications", "Daily reminders & gameplay timers", ModuleKind.Notifications);
             DrawModule("Editor Tools", "SDK setup & build", ModuleKind.Editor);
             EditorGUILayout.EndScrollView();
+        }
+
+        private void DrawVersionCheck()
+        {
+            EditorGUILayout.Space(6);
+            EditorGUILayout.LabelField("Package version check", EditorStyles.boldLabel);
+
+            if (_useEmbeddedPackages)
+            {
+                _gitBaseUrl = EditorGUILayout.TextField("Git URL (remote compare)", _gitBaseUrl);
+                _gitRevision = EditorGUILayout.TextField("Git revision", _gitRevision);
+                if (GUILayout.Button("Save Git URL & revision"))
+                {
+                    EditorPrefs.SetString(PrefsGitBaseUrl, _gitBaseUrl);
+                    EditorPrefs.SetString(PrefsGitRevision, _gitRevision);
+                }
+            }
+            EditorGUILayout.HelpBox(
+                "Compares installed com.jis.sdkads.* versions with package.json on the Git revision above. " +
+                "If updates are found, use “Fix revisions” then Resolve in Package Manager.",
+                MessageType.None);
+
+            EditorGUILayout.BeginHorizontal();
+            if (GUILayout.Button("Check for updates", GUILayout.Height(22)))
+            {
+                JisSDKHubVersionCheck.RunCheck(_gitBaseUrl, _gitRevision);
+                Repaint();
+            }
+
+            var last = JisSDKHubVersionCheck.LastCheckUtc;
+            if (last.HasValue)
+                EditorGUILayout.LabelField($"Last check: {last.Value.ToLocalTime():g}", EditorStyles.miniLabel);
+            EditorGUILayout.EndHorizontal();
+
+            var results = JisSDKHubVersionCheck.LastResults;
+            if (results == null || results.Count == 0)
+                return;
+
+            var updates = JisSDKHubVersionCheck.UpdateAvailableCount;
+            var revisionDrift = results.Count(r => r.Status == JisPackageUpdateStatus.RevisionMismatch);
+            if (updates > 0)
+            {
+                EditorGUILayout.HelpBox(
+                    $"{updates} package(s) have a newer version on #{_gitRevision.Trim().TrimStart('#')}.",
+                    MessageType.Warning);
+            }
+            else if (revisionDrift > 0)
+            {
+                EditorGUILayout.HelpBox(
+                    $"{revisionDrift} package(s) use a different Git revision in manifest.json.",
+                    MessageType.Info);
+            }
+            else if (results.All(r => r.Status == JisPackageUpdateStatus.UpToDate))
+            {
+                EditorGUILayout.HelpBox("All checked packages match the remote revision.", MessageType.Info);
+            }
+
+            foreach (var row in results.OrderBy(r => r.PackageId))
+                DrawVersionRow(row);
+        }
+
+        private static void DrawVersionRow(JisPackageVersionRow row)
+        {
+            var shortId = row.PackageId.Replace("com.jis.sdkads.", "");
+            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.LabelField(shortId, GUILayout.Width(120));
+
+            var prev = GUI.contentColor;
+            GUI.contentColor = row.Status switch
+            {
+                JisPackageUpdateStatus.UpdateAvailable => new Color(1f, 0.75f, 0.35f),
+                JisPackageUpdateStatus.RevisionMismatch => new Color(0.55f, 0.85f, 1f),
+                JisPackageUpdateStatus.UpToDate => new Color(0.55f, 0.95f, 0.6f),
+                JisPackageUpdateStatus.FetchFailed => new Color(1f, 0.5f, 0.5f),
+                _ => Color.gray
+            };
+
+            var installed = string.IsNullOrEmpty(row.InstalledVersion) ? "—" : row.InstalledVersion;
+            var remote = string.IsNullOrEmpty(row.RemoteVersion) ? "—" : row.RemoteVersion;
+            EditorGUILayout.LabelField($"{installed} → {remote}", GUILayout.Width(110));
+            EditorGUILayout.LabelField(row.Status.ToString(), EditorStyles.miniLabel, GUILayout.Width(100));
+            GUI.contentColor = prev;
+
+            if (!string.IsNullOrEmpty(row.Note))
+                EditorGUILayout.LabelField(new GUIContent(row.Note, row.ManifestSource), EditorStyles.miniLabel);
+            EditorGUILayout.EndHorizontal();
         }
 
         private void DrawGitSettings()
