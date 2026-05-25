@@ -157,6 +157,32 @@ namespace JisSDKAds.Hub
             return count;
         }
 
+        /// <summary>Updates #revision on one com.jis.sdkads.* Git UPM entry.</summary>
+        public static bool UpdateJisSdkGitRevisionForPackage(string packageId, string revision)
+        {
+            if (string.IsNullOrWhiteSpace(packageId) || !File.Exists(ManifestPath))
+                return false;
+
+            revision = (revision ?? "main").Trim().TrimStart('#');
+            if (string.IsNullOrEmpty(revision)) revision = "main";
+
+            var json = File.ReadAllText(ManifestPath);
+            var pattern = new Regex(
+                $"\"({Regex.Escape(packageId)})\"\\s*:\\s*\"(https?://[^\"]+\\?path=Packages/[^\"]+)#([^\"]*)\"",
+                RegexOptions.Multiline);
+            var replaced = false;
+            json = pattern.Replace(json, m =>
+            {
+                if (m.Groups[3].Value == revision) return m.Value;
+                replaced = true;
+                return $"\"{m.Groups[1].Value}\": \"{m.Groups[2].Value}#{revision}\"";
+            });
+
+            if (!replaced) return false;
+            File.WriteAllText(ManifestPath, json);
+            return true;
+        }
+
         /// <summary>
         /// Replaces file:com.jis.sdkads.* with Git URLs when the local package folder is missing (game projects).
         /// </summary>

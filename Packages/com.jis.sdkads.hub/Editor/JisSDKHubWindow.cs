@@ -87,7 +87,7 @@ namespace JisSDKAds.Hub
             }
             EditorGUILayout.HelpBox(
                 "Compares installed com.jis.sdkads.* versions with package.json on the Git revision above. " +
-                "If updates are found, use “Fix revisions” then Resolve in Package Manager.",
+                "Use Update / Update all to fix manifest revision, clear PackageCache, and Resolve.",
                 MessageType.None);
 
             EditorGUILayout.BeginHorizontal();
@@ -105,6 +105,13 @@ namespace JisSDKAds.Hub
             var results = JisSDKHubVersionCheck.LastResults;
             if (results == null || results.Count == 0)
                 return;
+
+            var updatable = JisSDKHubVersionCheck.UpdatableCount;
+            if (updatable > 0 && !_useEmbeddedPackages)
+            {
+                if (GUILayout.Button($"Update all ({updatable})", GUILayout.Height(24)))
+                    PerformUpdateAllPackages();
+            }
 
             var updates = JisSDKHubVersionCheck.UpdateAvailableCount;
             var revisionDrift = results.Count(r => r.Status == JisPackageUpdateStatus.RevisionMismatch);
@@ -129,11 +136,11 @@ namespace JisSDKAds.Hub
                 DrawVersionRow(row);
         }
 
-        private static void DrawVersionRow(JisPackageVersionRow row)
+        private void DrawVersionRow(JisPackageVersionRow row)
         {
             var shortId = row.PackageId.Replace("com.jis.sdkads.", "");
             EditorGUILayout.BeginHorizontal();
-            EditorGUILayout.LabelField(shortId, GUILayout.Width(120));
+            EditorGUILayout.LabelField(shortId, GUILayout.Width(108));
 
             var prev = GUI.contentColor;
             GUI.contentColor = row.Status switch
@@ -147,13 +154,53 @@ namespace JisSDKAds.Hub
 
             var installed = string.IsNullOrEmpty(row.InstalledVersion) ? "—" : row.InstalledVersion;
             var remote = string.IsNullOrEmpty(row.RemoteVersion) ? "—" : row.RemoteVersion;
-            EditorGUILayout.LabelField($"{installed} → {remote}", GUILayout.Width(110));
-            EditorGUILayout.LabelField(row.Status.ToString(), EditorStyles.miniLabel, GUILayout.Width(100));
+            EditorGUILayout.LabelField($"{installed} → {remote}", GUILayout.Width(100));
+            EditorGUILayout.LabelField(row.Status.ToString(), EditorStyles.miniLabel, GUILayout.Width(92));
             GUI.contentColor = prev;
 
-            if (!string.IsNullOrEmpty(row.Note))
-                EditorGUILayout.LabelField(new GUIContent(row.Note, row.ManifestSource), EditorStyles.miniLabel);
+            if (JisSDKHubVersionCheck.CanUpdate(row) && !_useEmbeddedPackages)
+            {
+                if (GUILayout.Button("Update", GUILayout.Width(56), GUILayout.Height(18)))
+                    PerformUpdatePackage(row.PackageId);
+            }
+
             EditorGUILayout.EndHorizontal();
+
+            if (!string.IsNullOrEmpty(row.Note))
+            {
+                EditorGUI.indentLevel++;
+                EditorGUILayout.LabelField(new GUIContent(row.Note, row.ManifestSource), EditorStyles.miniLabel);
+                EditorGUI.indentLevel--;
+            }
+        }
+
+        void PerformUpdatePackage(string packageId)
+        {
+            if (JisSDKHubVersionCheck.TryApplyPackageUpdate(packageId, _gitRevision, out var message))
+            {
+                RefreshPackages();
+                JisSDKHubVersionCheck.RunCheck(_gitBaseUrl, _gitRevision);
+                Repaint();
+                EditorUtility.DisplayDialog("JIS SDK Hub", message, "OK");
+            }
+            else
+            {
+                EditorUtility.DisplayDialog("JIS SDK Hub", message, "OK");
+            }
+        }
+
+        void PerformUpdateAllPackages()
+        {
+            if (!JisSDKHubVersionCheck.TryApplyAllUpdates(_gitRevision, out var message))
+            {
+                EditorUtility.DisplayDialog("JIS SDK Hub", message, "OK");
+                return;
+            }
+
+            RefreshPackages();
+            JisSDKHubVersionCheck.RunCheck(_gitBaseUrl, _gitRevision);
+            Repaint();
+            EditorUtility.DisplayDialog("JIS SDK Hub", message, "OK");
         }
 
         private void DrawGitSettings()

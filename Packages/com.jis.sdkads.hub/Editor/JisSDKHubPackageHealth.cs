@@ -137,6 +137,30 @@ namespace JisSDKAds.Hub
                 FlushJisPackageCache();
         }
 
+        public static int FlushPackageCacheEntry(string packageId)
+        {
+            if (string.IsNullOrWhiteSpace(packageId)) return 0;
+
+            var cacheRoot = Path.Combine(Path.GetDirectoryName(Application.dataPath), "Library", "PackageCache");
+            if (!Directory.Exists(cacheRoot)) return 0;
+
+            var removed = 0;
+            foreach (var dir in Directory.GetDirectories(cacheRoot, packageId + "@*"))
+            {
+                try
+                {
+                    Directory.Delete(dir, true);
+                    removed++;
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning($"[JIS SDK Hub] Could not delete {dir}: {ex.Message}");
+                }
+            }
+
+            return removed;
+        }
+
         public static void FlushJisPackageCache()
         {
             var library = Path.GetDirectoryName(Application.dataPath);

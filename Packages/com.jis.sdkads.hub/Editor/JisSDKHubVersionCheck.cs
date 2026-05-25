@@ -67,6 +67,84 @@ namespace JisSDKAds.Hub
         public static int UpdateAvailableCount =>
             LastResults.Count(r => r.Status == JisPackageUpdateStatus.UpdateAvailable);
 
+        public static int UpdatableCount => LastResults.Count(CanUpdate);
+
+        public static bool CanUpdate(JisPackageVersionRow row)
+        {
+            if (row == null) return false;
+            if (row.Status != JisPackageUpdateStatus.UpdateAvailable
+                && row.Status != JisPackageUpdateStatus.RevisionMismatch)
+                return false;
+            if (row.ManifestSource.StartsWith("file:", StringComparison.OrdinalIgnoreCase))
+                return false;
+            return IsGitUpmSource(row.ManifestSource);
+        }
+
+        public static bool TryApplyPackageUpdate(string packageId, string targetRevision, out string message)
+        {
+            message = "";
+            packageId = packageId?.Trim();
+            targetRevision = NormalizeRevision(targetRevision);
+
+            if (string.IsNullOrEmpty(packageId))
+            {
+                message = "Invalid package id.";
+                return false;
+            }
+
+            var dep = GetJisManifestDependencies().FirstOrDefault(d => d.id == packageId);
+            if (string.IsNullOrEmpty(dep.id))
+            {
+                message = $"{packageId} is not in manifest.json.";
+                return false;
+            }
+
+            if (dep.source.StartsWith("file:", StringComparison.OrdinalIgnoreCase))
+            {
+                message = $"{packageId} uses file: — update the SDK repo or switch to Git UPM.";
+                return false;
+            }
+
+            if (!IsGitUpmSource(dep.source))
+            {
+                message = $"{packageId} is not a Git UPM dependency.";
+                return false;
+            }
+
+            var revisionChanged = JisSDKHubManifest.UpdateJisSdkGitRevisionForPackage(packageId, targetRevision);
+            var flushed = JisSDKHubPackageHealth.FlushPackageCacheEntry(packageId);
+            message = revisionChanged
+                ? $"Set {packageId} to #{targetRevision} and cleared {flushed} cache folder(s)."
+                : $"Cleared {flushed} cache folder(s) for {packageId} (#{targetRevision}).";
+            return true;
+        }
+
+        public static bool TryApplyAllUpdates(string targetRevision, out string message)
+        {
+            targetRevision = NormalizeRevision(targetRevision);
+            var packageIds = LastResults.Where(CanUpdate).Select(r => r.PackageId).Distinct().ToList();
+            if (packageIds.Count == 0)
+            {
+                message = "No packages can be updated.";
+                return false;
+            }
+
+            var revisionUpdates = JisSDKHubManifest.UpdateJisSdkGitRevisions(targetRevision);
+            var flushed = 0;
+            foreach (var id in packageIds)
+                flushed += JisSDKHubPackageHealth.FlushPackageCacheEntry(id);
+
+            message =
+                $"Prepared {packageIds.Count} package(s): manifest revision → #{targetRevision} " +
+                $"({revisionUpdates} Git entries), cleared {flushed} cache folder(s).";
+            return true;
+        }
+
+        static bool IsGitUpmSource(string source) =>
+            !string.IsNullOrEmpty(source)
+            && source.IndexOf("github.com", StringComparison.OrdinalIgnoreCase) >= 0
+            && source.IndexOf("?path=Packages/", StringComparison.OrdinalIgnoreCase) >= 0;
+
         public static void RunCheck(string gitBaseUrl, string targetRevision, bool includeNotInManifest = false)
         {
             gitBaseUrl = NormalizeGitBaseUrl(gitBaseUrl);
