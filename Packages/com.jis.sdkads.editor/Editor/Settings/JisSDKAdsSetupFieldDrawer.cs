@@ -78,15 +78,16 @@ namespace JisSDKAds.Editor
 
             var platformLabel = platform == BuildTargetPlatform.iOS ? "iOS" : "Android";
             EditorGUILayout.HelpBox(
-                $"Tiered mode: ad unit IDs are read from Firebase Remote Config at runtime " +
-                $"(inter_* / reward_* keys — see docs/TIERED_INTERSTITIAL.md). " +
-                $"Fields below are fallback only. Platform: {platformLabel}. Mediation: AdMob.",
+                $"Tiered mode ({platformLabel}, AdMob): Premium → Fill unit IDs come from Firebase Remote Config before the first ad request.\n\n" +
+                "Interstitial keys: inter_premium_id, inter_high_id, inter_mid_id, inter_low_id, inter_fill_id\n" +
+                "Rewarded keys: reward_premium_id, reward_high_id, reward_mid_id, reward_low_id, reward_fill_id\n\n" +
+                "Use Firebase conditions for Android / iOS per key. Optional fallback below if RC is empty. See docs/TIERED_INTERSTITIAL.md.",
                 MessageType.Info);
 
             if (platform == BuildTargetPlatform.iOS)
-                tier.defaultIosAdUnitId = EditorGUILayout.TextField("Fallback unit ID", tier.defaultIosAdUnitId);
+                tier.defaultIosAdUnitId = EditorGUILayout.TextField("Fallback unit ID (optional)", tier.defaultIosAdUnitId);
             else
-                tier.defaultAndroidAdUnitId = EditorGUILayout.TextField("Fallback unit ID", tier.defaultAndroidAdUnitId);
+                tier.defaultAndroidAdUnitId = EditorGUILayout.TextField("Fallback unit ID (optional)", tier.defaultAndroidAdUnitId);
 
             tier.enableTierMemoryCooldown = EditorGUILayout.Toggle("Tier memory + cooldown", tier.enableTierMemoryCooldown);
             tier.premiumRetryCooldownMinutes = EditorGUILayout.FloatField(
@@ -95,17 +96,12 @@ namespace JisSDKAds.Editor
                 "Failures before downgrade", tier.consecutiveFailuresBeforeDowngrade);
 
             EditorGUILayout.Space(4);
-            EditorGUILayout.LabelField("Tier units (Premium → Fill)", EditorStyles.miniBoldLabel);
+            EditorGUILayout.LabelField("Per-tier load timeout (Premium → Fill)", EditorStyles.miniBoldLabel);
             foreach (SequentialAdTier t in Enum.GetValues(typeof(SequentialAdTier)))
             {
                 var entry = tier.GetEntry(t);
                 if (entry == null) continue;
-                EditorGUILayout.LabelField(entry.tier.ToString(), EditorStyles.miniBoldLabel);
-                if (platform == BuildTargetPlatform.iOS)
-                    entry.iosAdUnitId = EditorGUILayout.TextField("  Ad unit ID", entry.iosAdUnitId);
-                else
-                    entry.androidAdUnitId = EditorGUILayout.TextField("  Ad unit ID", entry.androidAdUnitId);
-                entry.timeoutSeconds = EditorGUILayout.FloatField("  Timeout (s, 0=none)", entry.timeoutSeconds);
+                entry.timeoutSeconds = EditorGUILayout.FloatField($"  {entry.tier} timeout (s, 0=none)", entry.timeoutSeconds);
             }
         }
 

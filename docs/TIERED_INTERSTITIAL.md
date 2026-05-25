@@ -17,7 +17,7 @@ When **Tiered** is selected:
 - Configure Firebase Remote Config keys (platform-specific ID string per key):
   - Interstitial: `inter_premium_id`, `inter_high_id`, `inter_mid_id`, `inter_low_id`, `inter_fill_id`
   - Rewarded: `reward_premium_id`, `reward_high_id`, `reward_mid_id`, `reward_low_id`, `reward_fill_id`
-- Optional local tier IDs in settings act as **fallback** if Remote Config is empty or fetch fails.
+- **JIS SDK Ads Settings (Tiered tab)** does not edit per-tier unit IDs — configure them in Firebase. Only optional **fallback unit ID**, tier timeouts, and memory/cooldown are stored locally.
 - Optional: **Tier memory + cooldown**, **Premium retry cooldown (min)**, **Failures before downgrade**.
 
 `Inventory mode` toolbar syncs `enableSequentialLadder` on `AdmobAdSetup.InterstitialTierConfig` / `RewardedTierConfig`.

@@ -117,7 +117,7 @@ namespace JisSDKAds.Editor
                 && !HasAnyTierId(setup.admobAdsSetup.InterstitialTierConfig))
             {
                 result.AddWarning(
-                    $"{platformLabel}: interstitial tier enabled — set Firebase RC keys inter_premium_id … inter_fill_id (local IDs are fallback only).");
+                    $"{platformLabel}: interstitial tier enabled — set Firebase RC keys inter_premium_id … inter_fill_id.");
             }
 
             if (setup.rewardedAdsMediationType == AdsMediationType.ADMOB
@@ -125,7 +125,7 @@ namespace JisSDKAds.Editor
                 && !HasAnyTierId(setup.admobAdsSetup.RewardedTierConfig))
             {
                 result.AddWarning(
-                    $"{platformLabel}: rewarded tier enabled — set Firebase RC keys reward_premium_id … reward_fill_id (local IDs are fallback only).");
+                    $"{platformLabel}: rewarded tier enabled — set Firebase RC keys reward_premium_id … reward_fill_id.");
             }
         }
 

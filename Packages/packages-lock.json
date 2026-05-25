@@ -31,8 +31,8 @@
       "source": "embedded",
       "dependencies": {
         "com.jis.sdkads.core": "5.0.0",
-        "com.jis.sdkads.common": "5.0.0",
-        "com.jis.sdkads.firebase": "5.0.0"
+        "com.jis.sdkads.common": "5.0.1",
+        "com.jis.sdkads.firebase": "5.0.1"
       }
     },
     "com.jis.sdkads.analytics.appsflyer": {
@@ -90,7 +90,7 @@
       "depth": 0,
       "source": "embedded",
       "dependencies": {
-        "com.jis.sdkads.ads": "5.0.0",
+        "com.jis.sdkads.ads": "5.1.0",
         "com.jis.sdkads.iap": "5.0.0",
         "com.jis.sdkads.odin": "5.0.0"
       }
@@ -100,7 +100,7 @@
       "depth": 0,
       "source": "embedded",
       "dependencies": {
-        "com.jis.sdkads.common": "5.0.0"
+        "com.jis.sdkads.common": "5.0.1"
       }
     },
     "com.jis.sdkads.hub": {
@@ -140,7 +140,7 @@
       "source": "embedded",
       "dependencies": {
         "com.jis.sdkads.core": "5.0.0",
-        "com.jis.sdkads.ads": "5.0.0"
+        "com.jis.sdkads.ads": "5.1.0"
       }
     },
     "com.jis.sdkads.providers.max": {
