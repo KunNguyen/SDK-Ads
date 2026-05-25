@@ -4,6 +4,7 @@ using JisSDKAds.Ads.InterstitialTier;
 using JisSDKAds.Ads.Settings;
 using JisSDKAds.Ads.UnitAdManagers;
 using JisSDKAds.Common;
+using UnityEngine;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
