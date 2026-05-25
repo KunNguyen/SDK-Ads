@@ -3,8 +3,8 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using JisSDKAds.Ads;
-using JisSDKAds.Ads.InterstitialTier;
 using JisSDKAds.Core.Tiered.Config;
+using InterstitialAdTier = JisSDKAds.Ads.InterstitialTier.AdTier;
 using JisSDKAds.Core.Tiered.Models;
 using UnityEditor;
 using UnityEngine;
@@ -57,7 +57,7 @@ namespace JisSDKAds.Editor
 
             if (!tier.enableTieredInterstitial) return;
 
-            foreach (AdTier t in Enum.GetValues(typeof(AdTier)))
+            foreach (InterstitialAdTier t in Enum.GetValues(typeof(InterstitialAdTier)))
             {
                 var entry = tier.GetEntry(t);
                 if (entry == null) continue;

@@ -119,6 +119,15 @@
         "com.unity.services.core": "1.16.0"
       }
     },
+    "com.jis.sdkads.notifications": {
+      "version": "file:com.jis.sdkads.notifications",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {
+        "com.jis.sdkads.common": "5.0.0",
+        "com.unity.mobile.notifications": "2.4.3"
+      }
+    },
     "com.jis.sdkads.odin": {
       "version": "file:com.jis.sdkads.odin",
       "depth": 0,
