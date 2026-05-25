@@ -16,14 +16,32 @@ namespace JisSDKAds.Hub
     {
         const string PreferredPackageId = "com.jis.sdkads.odin";
         const string AttributesDll = "Sirenix.OdinInspector.Attributes.dll";
+        const string DisabledPathsPrefsKey = "JisSDK.Hub.OdinDisabledDllPaths";
+
+        static bool _resolveScheduled;
 
         static JisSDKHubOdinConflictResolver()
         {
-            EditorApplication.delayCall += TryResolveDuplicates;
+            EditorApplication.delayCall += ScheduleResolveDuplicates;
+        }
+
+        static void ScheduleResolveDuplicates()
+        {
+            if (_resolveScheduled || EditorApplication.isCompiling || EditorApplication.isUpdating)
+                return;
+            _resolveScheduled = true;
+            EditorApplication.delayCall += () =>
+            {
+                _resolveScheduled = false;
+                TryResolveDuplicates();
+            };
         }
 
         public static void TryResolveDuplicates()
         {
+            if (EditorApplication.isCompiling || EditorApplication.isUpdating)
+                return;
+
             var paths = JisSDKHubPackageHealth.FindOdinAttributesDllPaths();
             if (paths.Count <= 1)
                 return;
@@ -32,10 +50,18 @@ namespace JisSDKAds.Hub
             if (string.IsNullOrEmpty(preferred))
                 preferred = paths[0];
 
+            var alreadyDisabled = new HashSet<string>(
+                (EditorPrefs.GetString(DisabledPathsPrefsKey, "") ?? "").Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries),
+                StringComparer.OrdinalIgnoreCase);
+
             var disabled = 0;
             foreach (var dllPath in paths)
             {
                 if (string.Equals(Path.GetFullPath(dllPath), Path.GetFullPath(preferred), StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                var full = Path.GetFullPath(dllPath);
+                if (alreadyDisabled.Contains(full))
                     continue;
 
                 var meta = dllPath + ".meta";
@@ -47,17 +73,24 @@ namespace JisSDKAds.Hub
                     continue;
 
                 if (!importer.GetCompatibleWithAnyPlatform())
+                {
+                    alreadyDisabled.Add(full);
                     continue;
+                }
 
                 importer.SetCompatibleWithAnyPlatform(false);
                 importer.SaveAndReimport();
+                alreadyDisabled.Add(full);
                 disabled++;
             }
 
             if (disabled > 0)
+            {
+                EditorPrefs.SetString(DisabledPathsPrefsKey, string.Join("|", alreadyDisabled));
                 Debug.LogWarning(
                     $"[JIS SDK Hub] Disabled {disabled} duplicate Odin DLL import(s). Kept: {preferred}\n" +
                     "See docs/ODIN_CONFLICT.md.");
+            }
         }
 
         static bool IsPreferredPath(string fullPath)

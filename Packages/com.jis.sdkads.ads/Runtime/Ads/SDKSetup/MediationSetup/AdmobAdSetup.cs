@@ -17,7 +17,7 @@ public class AdmobAdSetup
     // NEW: Rewarded Interstitial
     [SerializeField] private AdScheduleUnitID rewardedInterstitialAdUnitID;
 
-    [SerializeField] private InterstitialTierConfig interstitialTierConfig = new InterstitialTierConfig();
+    [SerializeField] private InterstitialTierConfig interstitialTierConfig;
 
     public AdScheduleUnitID InterstitialAdUnitID
     {

@@ -76,7 +76,8 @@ namespace JisSDKAds.Providers.AdMob
                     : new List<string>();
 
 #if UNITY_EDITOR
-            EditorUtility.SetDirty(admobMediationController);
+            if (!Application.isPlaying)
+                EditorUtility.SetDirty(admobMediationController);
             DebugAds.Log("Update Admob Mediation Done");
 #endif
 #endif

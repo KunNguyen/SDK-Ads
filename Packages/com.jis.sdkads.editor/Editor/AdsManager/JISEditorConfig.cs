@@ -1,64 +1,91 @@
-﻿using System.Collections;
+﻿using System;
 using System.Collections.Generic;
-using UnityEngine;
-using UnityEditor;
-using System;
 using JisSDKAds.Ads;
 using JisSDKAds.Common;
+using UnityEditor;
+using UnityEditor.Compilation;
+using UnityEngine;
 
 namespace JisSDKAds.Editor
 {
+    /// <summary>
+    /// Applies <see cref="ScriptOrder"/> once after compile. Avoids InitializeOnLoad loops from SetExecutionOrder.
+    /// </summary>
     [InitializeOnLoad]
-
-    public class JISEditorConfig
+    public static class JISEditorConfig
     {
+        static bool _scheduled;
+
         static JISEditorConfig()
         {
-            foreach (MonoScript monoScript in MonoImporter.GetAllRuntimeMonoScripts())
+            CompilationPipeline.compilationFinished += OnCompilationFinished;
+            ScheduleApplyScriptOrders();
+        }
+
+        static void OnCompilationFinished(object _) => ScheduleApplyScriptOrders();
+
+        static void ScheduleApplyScriptOrders()
+        {
+            if (_scheduled || EditorApplication.isCompiling || EditorApplication.isUpdating)
+                return;
+
+            _scheduled = true;
+            EditorApplication.delayCall += () =>
             {
-                if (monoScript.GetClass() != null)
-                {
-                    foreach (var a in Attribute.GetCustomAttributes(monoScript.GetClass(), typeof(ScriptOrder)))
-                    {
-                        var currentOrder = MonoImporter.GetExecutionOrder(monoScript);
-                        var newOrder = ((ScriptOrder)a).order;
-                        if (currentOrder != newOrder)
-                            MonoImporter.SetExecutionOrder(monoScript, newOrder);
-                    }
-                }
+                _scheduled = false;
+                if (EditorApplication.isCompiling || EditorApplication.isUpdating)
+                    return;
+                ApplyScriptOrders();
+            };
+        }
+
+        static void ApplyScriptOrders()
+        {
+            foreach (var monoScript in MonoImporter.GetAllRuntimeMonoScripts())
+            {
+                var type = monoScript.GetClass();
+                if (type == null)
+                    continue;
+
+                var orderAttr = (ScriptOrder)Attribute.GetCustomAttribute(type, typeof(ScriptOrder));
+                if (orderAttr == null)
+                    continue;
+
+                var currentOrder = MonoImporter.GetExecutionOrder(monoScript);
+                var newOrder = orderAttr.order;
+                if (currentOrder == newOrder)
+                    continue;
+
+                MonoImporter.SetExecutionOrder(monoScript, newOrder);
             }
         }
     }
 
     public static class SDKSetupConfig
     {
-        //[MenuItem(JisSDKMenuPaths.AdsCreateSettings)] — use JisSDKAdsSettingsMenu instead
         public static void OpenMaxAdConfig()
         {
             AddDefineSymbol("UNITY_AD_ADMOB");
             var directory = CreateConfigFolder();
             var assetName = "SDKAdsSetup.asset";
-            //Check Android or IOS to set assetName
             if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.Android)
-            {
                 assetName = "AndroidSDKAdsSetup.asset";
-            }else if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.iOS)
-            {
+            else if (EditorUserBuildSettings.activeBuildTarget == BuildTarget.iOS)
                 assetName = "IOSSDKAdsSetup.asset";
-            }
-            
+
             var assetPath = $"{directory}{assetName}";
-            SDKSetup selectedScriptableObject = AssetDatabase.LoadAssetAtPath<SDKSetup>(assetPath);
+            var selectedScriptableObject = AssetDatabase.LoadAssetAtPath<SDKSetup>(assetPath);
             if (selectedScriptableObject == null)
             {
                 selectedScriptableObject = ScriptableObject.CreateInstance<SDKSetup>();
                 AssetDatabase.CreateAsset(selectedScriptableObject, assetPath);
                 AssetDatabase.SaveAssets();
             }
+
             Selection.activeObject = selectedScriptableObject;
             EditorGUIUtility.PingObject(selectedScriptableObject);
         }
-        
+
         [MenuItem(JisSDKMenuPaths.AdsCreateRewardPlacements, false, 105)]
         public static void OpenRewardAdsPlacementConfig()
         {
@@ -72,29 +99,21 @@ namespace JisSDKAds.Editor
                 AssetDatabase.CreateAsset(selectedScriptableObject, assetPath);
                 AssetDatabase.SaveAssets();
             }
+
             Selection.activeObject = selectedScriptableObject;
             EditorGUIUtility.PingObject(selectedScriptableObject);
         }
-        private static void AddDefineSymbol(string defineSymbol)
+
+        static void AddDefineSymbol(string defineSymbol)
         {
-            var currentDefineSymbols =
-                PlayerSettings.GetScriptingDefineSymbolsForGroup(EditorUserBuildSettings.selectedBuildTargetGroup);
-            var defineSymbols = currentDefineSymbols.Split(';');
-            var defineSymbolList = new List<string>(defineSymbols);
-            currentDefineSymbols = string.Join(";", defineSymbolList.ToArray());
-            if (currentDefineSymbols.Contains(defineSymbol)) return;
-            currentDefineSymbols += ";" + defineSymbol;
-            PlayerSettings.SetScriptingDefineSymbolsForGroup(EditorUserBuildSettings.selectedBuildTargetGroup,
-                currentDefineSymbols);
+            SymbolHelper.AddDefineSymbol(defineSymbol);
         }
 
         public static string CreateConfigFolder()
         {
             var directory = "Assets/JisSDKConfigs/";
             if (!AssetDatabase.IsValidFolder(directory))
-            {
                 AssetDatabase.CreateFolder("Assets", "JisSDKConfigs");
-            }
             return directory;
         }
     }

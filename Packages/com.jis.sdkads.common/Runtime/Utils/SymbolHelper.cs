@@ -21,38 +21,40 @@ namespace JisSDKAds.Common
 
          public static void AddDefineSymbols(List<string> defineSymbols)
          {
-             string currentDefineSymbols =
-                 PlayerSettings.GetScriptingDefineSymbolsForGroup(EditorUserBuildSettings.selectedBuildTargetGroup);
-             string[] currentDefineSymbolList = currentDefineSymbols.Split(';');
-             List<string> defineSymbolList = new List<string>(currentDefineSymbolList);
+             if (defineSymbols == null || defineSymbols.Count == 0)
+                 return;
+
+             var group = EditorUserBuildSettings.selectedBuildTargetGroup;
+             var currentDefineSymbols = PlayerSettings.GetScriptingDefineSymbolsForGroup(group);
+             var defineSymbolList = new List<string>(currentDefineSymbols.Split(';'));
+             var changed = false;
              foreach (var defineSymbol in defineSymbols)
              {
-                 if (!defineSymbolList.Contains(defineSymbol))
-                 {
-                     defineSymbolList.Add(defineSymbol);
-                 }
+                 if (string.IsNullOrEmpty(defineSymbol) || defineSymbolList.Contains(defineSymbol))
+                     continue;
+                 defineSymbolList.Add(defineSymbol);
+                 changed = true;
              }
 
-             currentDefineSymbols = string.Join(";", defineSymbolList.ToArray());
-             PlayerSettings.SetScriptingDefineSymbolsForGroup(EditorUserBuildSettings.selectedBuildTargetGroup,
-                 currentDefineSymbols);
+             if (!changed)
+                 return;
 
+             PlayerSettings.SetScriptingDefineSymbolsForGroup(group, string.Join(";", defineSymbolList));
          }
 
          public static void RemoveDefineSymbol(string defineSymbol)
          {
-             string currentDefineSymbols =
-                 PlayerSettings.GetScriptingDefineSymbolsForGroup(EditorUserBuildSettings.selectedBuildTargetGroup);
-             string[] defineSymbols = currentDefineSymbols.Split(';');
-             List<string> defineSymbolList = new List<string>(defineSymbols);
-             if (defineSymbolList.Contains(defineSymbol))
-             {
-                 defineSymbolList.Remove(defineSymbol);
-             }
+             if (string.IsNullOrEmpty(defineSymbol))
+                 return;
 
-             currentDefineSymbols = string.Join(";", defineSymbolList.ToArray());
-             PlayerSettings.SetScriptingDefineSymbolsForGroup(EditorUserBuildSettings.selectedBuildTargetGroup,
-                 currentDefineSymbols);
+             var group = EditorUserBuildSettings.selectedBuildTargetGroup;
+             var currentDefineSymbols = PlayerSettings.GetScriptingDefineSymbolsForGroup(group);
+             var defineSymbolList = new List<string>(currentDefineSymbols.Split(';'));
+             if (!defineSymbolList.Contains(defineSymbol))
+                 return;
+
+             defineSymbolList.Remove(defineSymbol);
+             PlayerSettings.SetScriptingDefineSymbolsForGroup(group, string.Join(";", defineSymbolList));
          } 
 #endif
      }
