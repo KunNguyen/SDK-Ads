@@ -1,36 +1,36 @@
-# 5-Tier Interstitial (AdMob)
+# Sequential 5-Tier Ads (AdMob) — Interstitial & Rewarded
 
-Sequential ladder: **Premium → High → Mid → Low → Fill** (one load at a time).
+One load at a time: **Premium → High → Mid → Low → Fill**.
 
-## Inspector
+## JIS SDK Ads Settings
 
-1. Open your **AdsManager** scene object → **Admob Mediation Controller** component.
-2. Expand **m_Admob Ad Setup → Interstitial Tier Config**.
-3. **Enable Tiered Interstitial** — turn on 5-tier ladder; off = legacy single unit.
-4. **Default Android / iOS Ad Unit Id** — fallback when tier system is off or a tier entry is empty.
-5. **Tiers** array (5 slots): per tier set `Android Ad Unit Id`, `Ios Ad Unit Id`, optional `Timeout Seconds`.
-6. **Enable Tier Memory Cooldown** / **Premium Retry Cooldown Minutes** (default 45) / **Consecutive Failures Before Downgrade**.
+Per platform (Android / iOS), for **Interstitial** and **Rewarded**:
 
-You can also map up to 5 IDs from **Interstitial Ad Unit ID List** (SDK Setup) into tiers automatically when applying settings (index 0 = Premium … 4 = Fill).
+| Mode | Behaviour |
+|------|-----------|
+| **Single unit** | One default Ad Unit ID (legacy rotation via `AdScheduleUnitID` on fail). |
+| **Tiered** | Sequential 5-tier ladder (AdMob only). |
 
-## Public API (unchanged names)
+When **Tiered** is selected:
 
-| Method | Behavior |
-|--------|----------|
-| `LoadInterstitial()` | Alias → `RequestInterstitialAd()` |
-| `ShowInterstitial()` | Alias → `ShowInterstitialAd()` |
-| `IsInterstitialReady()` | Alias → `IsInterstitialLoaded()` |
+- Set mediation for that format to **ADMOB** in the same section.
+- Fill **Fallback Android/iOS unit** and each tier (Premium … Fill).
+- Optional: **Tier memory + cooldown**, **Premium retry cooldown (min)**, **Failures before downgrade**.
 
-Game code via `InterstitialAdManager` / `AdsManager` / `JisAds` continues to use existing show/load paths.
+`Inventory mode` toolbar syncs `enableSequentialLadder` on `AdmobAdSetup.InterstitialTierConfig` / `RewardedTierConfig`.
 
-## Flow
+Up to 5 IDs in the single-unit list can auto-fill empty tier slots when you **Apply to Scene**.
 
-**Load:** Start tier from memory (last success within cooldown, else Premium) → load one unit → on fail or timeout → next tier → Fill last. No parallel loads.
+## Runtime (legacy AdsManager / AdmobMediationController)
 
-**Show:** Show cached ready ad → on close/fail → clear cache → preload again.
+- `RequestInterstitialAd` / `RequestRewardVideoAd` → ladder preload
+- `IsInterstitialLoaded` / `IsRewardVideoLoaded` → cached ready ad
+- `ShowInterstitialAd` / `ShowRewardVideoAd` → show cache, then preload again
 
-**Off (`enableTieredInterstitial = false`):** Uses `default*AdUnitId` or legacy `InterstitialAdUnitID` schedule.
+Logs: `interstitial_*` / `rewarded_*` (`load_start`, `load_success`, `load_fail`, `load_timeout`, `show_*`, `paid_event`).
 
-## Logs (DebugAds)
+## Platform tab
 
-`interstitial_load_start`, `_success`, `_fail`, `_timeout`, `interstitial_show_*`, `interstitial_paid_event` with `adUnitId`, `tier`, `loadDurationMs`, errors, revenue fields.
+Use **Android / iOS** at the top of JIS SDK Ads Settings. Only IDs for the selected platform are shown and saved (`AndroidID` / `IosID` per `SDKSetup` asset).
+
+Choosing **Tiered** sets format mediation to **AdMob** and enables the 5-tier ladder (no legacy 3-tier UI).

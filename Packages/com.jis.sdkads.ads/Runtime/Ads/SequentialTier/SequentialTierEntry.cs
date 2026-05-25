@@ -1,20 +1,20 @@
 using System;
 using UnityEngine;
 
-namespace JisSDKAds.Ads.InterstitialTier
+namespace JisSDKAds.Ads.SequentialTier
 {
     [Serializable]
-    public class InterstitialTierEntry
+    public class SequentialTierEntry
     {
         public AdTier tier = AdTier.Premium;
 
-        [Tooltip("Android AdMob interstitial unit id for this tier.")]
+        [Tooltip("Android AdMob unit id for this tier.")]
         public string androidAdUnitId;
 
-        [Tooltip("iOS AdMob interstitial unit id for this tier.")]
+        [Tooltip("iOS AdMob unit id for this tier.")]
         public string iosAdUnitId;
 
-        [Tooltip("Load timeout in seconds. Use -1 for package default; FILL uses 0 = no timeout.")]
+        [Tooltip("Load timeout in seconds. -1 = package default; 0 on Fill = no timeout.")]
         public float timeoutSeconds = -1f;
 
         public bool HasUnitId =>

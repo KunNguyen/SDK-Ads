@@ -3,8 +3,9 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using JisSDKAds.Ads;
+using JisSDKAds.Ads.Settings;
 using JisSDKAds.Core.Tiered.Config;
-using InterstitialAdTier = JisSDKAds.Ads.InterstitialTier.AdTier;
+using SequentialAdTier = JisSDKAds.Ads.SequentialTier.AdTier;
 using JisSDKAds.Core.Tiered.Models;
 using UnityEditor;
 using UnityEngine;
@@ -13,7 +14,10 @@ namespace JisSDKAds.Editor
 {
     static class JisSDKAdsSetupFieldDrawer
     {
-        public static void DrawInterstitialSingle(SDKSetup setup, AdsMediationType primaryMediation)
+        public static void DrawInterstitialSingleUnit(
+            SDKSetup setup,
+            AdsMediationType primaryMediation,
+            BuildTargetPlatform platform)
         {
             DrawSetupFields(setup, () =>
             {
@@ -28,47 +32,18 @@ namespace JisSDKAds.Editor
 
                 DrawUnitIds(
                     setup.interstitialAdsMediationType,
-                    "Interstitial ad unit ID",
+                    platform,
+                    "Default ad unit ID (single)",
                     () => setup.interstitialAdUnitID_MAX,
                     v => setup.interstitialAdUnitID_MAX = v,
-                    () => setup.interstitialAdUnitID_ADMOB,
-                    v => setup.interstitialAdUnitID_ADMOB = v);
-
-                if (setup.interstitialAdsMediationType == AdsMediationType.ADMOB)
-                    DrawAdMobInterstitialTierConfig(setup);
+                    setup.admobAdsSetup.InterstitialAdUnitID);
             });
         }
 
-        static void DrawAdMobInterstitialTierConfig(SDKSetup setup)
-        {
-            var tier = setup.admobAdsSetup.InterstitialTierConfig;
-            tier.EnsureDefaultTierSlots();
-
-            EditorGUILayout.Space(4);
-            EditorGUILayout.LabelField("5-Tier Interstitial (AdMob)", EditorStyles.boldLabel);
-            tier.enableTieredInterstitial = EditorGUILayout.Toggle(
-                new GUIContent("Enable tiered interstitial", "Sequential Premium→Fill ladder."),
-                tier.enableTieredInterstitial);
-
-            tier.defaultAndroidAdUnitId = EditorGUILayout.TextField("Default Android unit", tier.defaultAndroidAdUnitId);
-            tier.defaultIosAdUnitId = EditorGUILayout.TextField("Default iOS unit", tier.defaultIosAdUnitId);
-            tier.enableTierMemoryCooldown = EditorGUILayout.Toggle("Tier memory + cooldown", tier.enableTierMemoryCooldown);
-            tier.premiumRetryCooldownMinutes = EditorGUILayout.FloatField("Premium retry cooldown (min)", tier.premiumRetryCooldownMinutes);
-
-            if (!tier.enableTieredInterstitial) return;
-
-            foreach (InterstitialAdTier t in Enum.GetValues(typeof(InterstitialAdTier)))
-            {
-                var entry = tier.GetEntry(t);
-                if (entry == null) continue;
-                EditorGUILayout.LabelField(entry.tier.ToString(), EditorStyles.miniBoldLabel);
-                entry.androidAdUnitId = EditorGUILayout.TextField("  Android", entry.androidAdUnitId);
-                entry.iosAdUnitId = EditorGUILayout.TextField("  iOS", entry.iosAdUnitId);
-                entry.timeoutSeconds = EditorGUILayout.FloatField("  Timeout (s, 0=none)", entry.timeoutSeconds);
-            }
-        }
-
-        public static void DrawRewardedSingle(SDKSetup setup, AdsMediationType primaryMediation)
+        public static void DrawRewardedSingleUnit(
+            SDKSetup setup,
+            AdsMediationType primaryMediation,
+            BuildTargetPlatform platform)
         {
             DrawSetupFields(setup, () =>
             {
@@ -86,15 +61,53 @@ namespace JisSDKAds.Editor
 
                 DrawUnitIds(
                     setup.rewardedAdsMediationType,
-                    "Rewarded ad unit ID",
+                    platform,
+                    "Default ad unit ID (single)",
                     () => setup.rewardedAdUnitID_MAX,
                     v => setup.rewardedAdUnitID_MAX = v,
-                    () => setup.rewardedAdUnitID_ADMOB,
-                    v => setup.rewardedAdUnitID_ADMOB = v);
+                    setup.admobAdsSetup.RewardedAdUnitID);
             });
         }
 
-        public static void DrawBannerSingle(SDKSetup setup, AdsMediationType primaryMediation)
+        public static void DrawSequentialTierConfig(
+            JisSDKAds.Ads.SequentialTier.SequentialTierConfig tier,
+            BuildTargetPlatform platform)
+        {
+            if (tier == null) return;
+            tier.EnsureDefaultTierSlots();
+
+            var platformLabel = platform == BuildTargetPlatform.iOS ? "iOS" : "Android";
+            EditorGUILayout.HelpBox(
+                $"Editing {platformLabel} IDs (switch Platform tab above). Mediation: AdMob.",
+                MessageType.None);
+
+            if (platform == BuildTargetPlatform.iOS)
+                tier.defaultIosAdUnitId = EditorGUILayout.TextField("Fallback unit ID", tier.defaultIosAdUnitId);
+            else
+                tier.defaultAndroidAdUnitId = EditorGUILayout.TextField("Fallback unit ID", tier.defaultAndroidAdUnitId);
+
+            tier.enableTierMemoryCooldown = EditorGUILayout.Toggle("Tier memory + cooldown", tier.enableTierMemoryCooldown);
+            tier.premiumRetryCooldownMinutes = EditorGUILayout.FloatField(
+                "Premium retry cooldown (min)", tier.premiumRetryCooldownMinutes);
+            tier.consecutiveFailuresBeforeDowngrade = EditorGUILayout.IntField(
+                "Failures before downgrade", tier.consecutiveFailuresBeforeDowngrade);
+
+            EditorGUILayout.Space(4);
+            EditorGUILayout.LabelField("Tier units (Premium → Fill)", EditorStyles.miniBoldLabel);
+            foreach (SequentialAdTier t in Enum.GetValues(typeof(SequentialAdTier)))
+            {
+                var entry = tier.GetEntry(t);
+                if (entry == null) continue;
+                EditorGUILayout.LabelField(entry.tier.ToString(), EditorStyles.miniBoldLabel);
+                if (platform == BuildTargetPlatform.iOS)
+                    entry.iosAdUnitId = EditorGUILayout.TextField("  Ad unit ID", entry.iosAdUnitId);
+                else
+                    entry.androidAdUnitId = EditorGUILayout.TextField("  Ad unit ID", entry.androidAdUnitId);
+                entry.timeoutSeconds = EditorGUILayout.FloatField("  Timeout (s, 0=none)", entry.timeoutSeconds);
+            }
+        }
+
+        public static void DrawBannerSingle(SDKSetup setup, AdsMediationType primaryMediation, BuildTargetPlatform platform)
         {
             DrawSetupFields(setup, () =>
             {
@@ -120,15 +133,15 @@ namespace JisSDKAds.Editor
 
                 DrawUnitIds(
                     setup.bannerAdsMediationType,
+                    platform,
                     "Banner ad unit ID",
                     () => setup.bannerAdUnitID_MAX,
                     v => setup.bannerAdUnitID_MAX = v,
-                    () => setup.bannerAdUnitID_ADMOB,
-                    v => setup.bannerAdUnitID_ADMOB = v);
+                    setup.admobAdsSetup.BannerAdUnitID);
             });
         }
 
-        public static void DrawAppOpenSingle(SDKSetup setup, AdsMediationType primaryMediation)
+        public static void DrawAppOpenSingle(SDKSetup setup, AdsMediationType primaryMediation, BuildTargetPlatform platform)
         {
             DrawSetupFields(setup, () =>
             {
@@ -139,15 +152,15 @@ namespace JisSDKAds.Editor
 
                 DrawUnitIds(
                     setup.appOpenAdsMediationType,
+                    platform,
                     "App Open ad unit ID",
                     () => setup.appOpenAdUnitID_MAX,
                     v => setup.appOpenAdUnitID_MAX = v,
-                    () => setup.appOpenAdUnitID_ADMOB,
-                    v => setup.appOpenAdUnitID_ADMOB = v);
+                    setup.admobAdsSetup.AppOpenAdUnitID);
             });
         }
 
-        public static void DrawMrecSingle(SDKSetup setup, AdsMediationType primaryMediation)
+        public static void DrawMrecSingle(SDKSetup setup, AdsMediationType primaryMediation, BuildTargetPlatform platform)
         {
             DrawSetupFields(setup, () =>
             {
@@ -167,15 +180,15 @@ namespace JisSDKAds.Editor
 
                 DrawUnitIds(
                     setup.mrecAdsMediationType,
+                    platform,
                     "MREC ad unit ID",
                     () => setup.mrecAdUnitID_MAX,
                     v => setup.mrecAdUnitID_MAX = v,
-                    () => setup.mrecAdUnitID_ADMOB,
-                    v => setup.mrecAdUnitID_ADMOB = v);
+                    setup.admobAdsSetup.MrecAdUnitID);
             });
         }
 
-        public static void DrawCollapsibleBannerSingle(SDKSetup setup, AdsMediationType primaryMediation)
+        public static void DrawCollapsibleBannerSingle(SDKSetup setup, AdsMediationType primaryMediation, BuildTargetPlatform platform)
         {
             DrawSetupFields(setup, () =>
             {
@@ -227,11 +240,11 @@ namespace JisSDKAds.Editor
 
                 DrawUnitIds(
                     setup.collapsibleBannerAdsMediationType,
+                    platform,
                     "Collapsible banner ad unit ID",
                     () => setup.collapsibleBannerAdUnitID_MAX,
                     v => setup.collapsibleBannerAdUnitID_MAX = v,
-                    () => setup.collapsibleBannerAdUnitID_ADMOB,
-                    v => setup.collapsibleBannerAdUnitID_ADMOB = v);
+                    setup.admobAdsSetup.CollapsibleBannerAdUnitID);
             });
         }
 
@@ -329,11 +342,11 @@ namespace JisSDKAds.Editor
 
         static void DrawUnitIds(
             AdsMediationType mediation,
+            BuildTargetPlatform platform,
             string maxLabel,
             Func<string> getMaxId,
             Action<string> setMaxId,
-            Func<List<string>> getAdMobIds,
-            Action<List<string>> setAdMobIds)
+            AdScheduleUnitID adMobSchedule)
         {
             switch (mediation)
             {
@@ -342,7 +355,7 @@ namespace JisSDKAds.Editor
                     break;
 
                 case AdsMediationType.ADMOB:
-                    DrawAdMobUnitIdList("AdMob unit IDs", getAdMobIds, setAdMobIds);
+                    DrawAdMobUnitIdList(platform, adMobSchedule);
                     break;
 
                 case AdsMediationType.NONE:
@@ -350,14 +363,14 @@ namespace JisSDKAds.Editor
             }
         }
 
-        static void DrawAdMobUnitIdList(
-            string label,
-            Func<List<string>> getIds,
-            Action<List<string>> setIds)
+        static void DrawAdMobUnitIdList(BuildTargetPlatform platform, AdScheduleUnitID schedule)
         {
-            var ids = getIds() ?? new List<string>();
+            if (schedule == null) return;
 
-            EditorGUILayout.LabelField(label, EditorStyles.boldLabel);
+            var ids = schedule.GetPlatformList(platform) ?? new List<string>();
+            var platformLabel = platform == BuildTargetPlatform.iOS ? "iOS" : "Android";
+
+            EditorGUILayout.LabelField($"AdMob unit IDs ({platformLabel})", EditorStyles.boldLabel);
             var count = Mathf.Max(0, EditorGUILayout.IntField("Count", ids.Count));
 
             if (count != ids.Count)
@@ -371,7 +384,7 @@ namespace JisSDKAds.Editor
             for (var i = 0; i < ids.Count; i++)
                 ids[i] = EditorGUILayout.TextField($"  Unit [{i}]", ids[i] ?? string.Empty);
 
-            setIds(ids);
+            schedule.SetPlatformList(platform, ids);
         }
 
         static void DrawProperty(SerializedObject so, string propertyName)

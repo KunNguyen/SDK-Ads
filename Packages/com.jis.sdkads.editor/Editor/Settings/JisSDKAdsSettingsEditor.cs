@@ -2,7 +2,6 @@
 using System;
 using JisSDKAds.Ads;
 using JisSDKAds.Ads.Settings;
-using JisSDKAds.Core.Tiered.Config;
 using UnityEditor;
 using UnityEngine;
 
@@ -74,7 +73,6 @@ namespace JisSDKAds.Editor
             if (setup != null)
                 JisSDKAdsInventorySetupUtility.TryInitializeSetupDefaults(setup);
 
-            var tiered = profile?.tieredAdsConfig;
             var primaryMediation = profile?.mediation ?? AdsMediationType.NONE;
 
             using (new EditorGUILayout.VerticalScope("box"))
@@ -107,62 +105,42 @@ namespace JisSDKAds.Editor
 
                 EditorGUILayout.Space(6);
                 DrawFormatInventorySection(
-                    settings,
-                    _selectedPlatform,
                     "Interstitial",
-                    primaryMediation,
                     JisSDKAdsInventorySetupUtility.GetInterstitialMode(profile),
                     mode => JisSDKAdsInventorySetupUtility.SetInterstitialMode(settings, _selectedPlatform, mode),
                     setup,
-                    ref tiered,
-                    () => JisSDKAdsSetupFieldDrawer.DrawInterstitialSingle(setup, primaryMediation),
-                    () => JisSDKAdsSetupFieldDrawer.DrawTierUnit(tiered.Interstitial, tiered, "Interstitial tiers"));
+                    primaryMediation,
+                    () => JisSDKAdsSetupFieldDrawer.DrawInterstitialSingleUnit(setup, primaryMediation, _selectedPlatform),
+                    () => JisSDKAdsSetupFieldDrawer.DrawSequentialTierConfig(
+                        setup.admobAdsSetup.InterstitialTierConfig, _selectedPlatform));
 
                 EditorGUILayout.Space(6);
                 DrawFormatInventorySection(
-                    settings,
-                    _selectedPlatform,
                     "Rewarded",
-                    primaryMediation,
                     JisSDKAdsInventorySetupUtility.GetRewardedMode(profile),
                     mode => JisSDKAdsInventorySetupUtility.SetRewardedMode(settings, _selectedPlatform, mode),
                     setup,
-                    ref tiered,
-                    () => JisSDKAdsSetupFieldDrawer.DrawRewardedSingle(setup, primaryMediation),
-                    () => JisSDKAdsSetupFieldDrawer.DrawTierUnit(tiered.Rewarded, tiered, "Rewarded tiers"));
-
-                if (tiered != null && UsesAnyTieredInventory(profile))
-                {
-                    EditorGUILayout.Space(6);
-                    using (new EditorGUILayout.VerticalScope("helpbox"))
-                    {
-                        EditorGUILayout.LabelField("Tiered scheduler (shared)", EditorStyles.boldLabel);
-                        JisSDKAdsSetupFieldDrawer.DrawTierScheduler(tiered);
-                    }
-                }
+                    primaryMediation,
+                    () => JisSDKAdsSetupFieldDrawer.DrawRewardedSingleUnit(setup, primaryMediation, _selectedPlatform),
+                    () => JisSDKAdsSetupFieldDrawer.DrawSequentialTierConfig(
+                        setup.admobAdsSetup.RewardedTierConfig, _selectedPlatform));
 
                 EditorGUILayout.Space(6);
                 DrawSingleFormatSection("Banner", () =>
-                    JisSDKAdsSetupFieldDrawer.DrawBannerSingle(setup, primaryMediation));
+                    JisSDKAdsSetupFieldDrawer.DrawBannerSingle(setup, primaryMediation, _selectedPlatform));
 
                 EditorGUILayout.Space(6);
                 DrawSingleFormatSection("App Open", () =>
-                    JisSDKAdsSetupFieldDrawer.DrawAppOpenSingle(setup, primaryMediation));
+                    JisSDKAdsSetupFieldDrawer.DrawAppOpenSingle(setup, primaryMediation, _selectedPlatform));
 
                 EditorGUILayout.Space(6);
                 DrawSingleFormatSection("MREC", () =>
-                    JisSDKAdsSetupFieldDrawer.DrawMrecSingle(setup, primaryMediation));
+                    JisSDKAdsSetupFieldDrawer.DrawMrecSingle(setup, primaryMediation, _selectedPlatform));
 
                 EditorGUILayout.Space(6);
                 DrawSingleFormatSection("Collapsible Banner", () =>
-                    JisSDKAdsSetupFieldDrawer.DrawCollapsibleBannerSingle(setup, primaryMediation));
+                    JisSDKAdsSetupFieldDrawer.DrawCollapsibleBannerSingle(setup, primaryMediation, _selectedPlatform));
             }
-        }
-
-        static bool UsesAnyTieredInventory(PlatformAdsProfile profile)
-        {
-            return JisSDKAdsInventorySetupUtility.GetInterstitialMode(profile) == AdInventorySetupMode.Tiered
-                   || JisSDKAdsInventorySetupUtility.GetRewardedMode(profile) == AdInventorySetupMode.Tiered;
         }
 
         static void DrawSingleFormatSection(string title, Action drawContent)
@@ -170,20 +148,16 @@ namespace JisSDKAds.Editor
             using (new EditorGUILayout.VerticalScope("box"))
             {
                 EditorGUILayout.LabelField(title, EditorStyles.boldLabel);
-                EditorGUILayout.LabelField("Single unit setup", EditorStyles.miniBoldLabel);
                 drawContent();
             }
         }
 
         void DrawFormatInventorySection(
-            JisSDKAdsSettings settings,
-            BuildTargetPlatform platform,
             string title,
-            AdsMediationType primaryMediation,
             AdInventorySetupMode currentMode,
             Action<AdInventorySetupMode> setMode,
             SDKSetup setup,
-            ref TieredAdsConfig tiered,
+            AdsMediationType primaryMediation,
             Action drawSingle,
             Action drawTiered)
         {
@@ -202,13 +176,13 @@ namespace JisSDKAds.Editor
 
                 if (newMode == AdInventorySetupMode.SingleUnit)
                 {
-                    EditorGUILayout.LabelField("Single unit setup", EditorStyles.miniBoldLabel);
                     drawSingle();
                 }
                 else
                 {
-                    tiered ??= JisSDKAdsInventorySetupUtility.EnsureTieredConfig(settings, platform);
-                    EditorGUILayout.LabelField("Tier unit IDs (High → Mid → Low)", EditorStyles.miniBoldLabel);
+                    EditorGUILayout.HelpBox(
+                        "Sequential ladder: Premium → High → Mid → Low → Fill (one load at a time).",
+                        MessageType.Info);
                     drawTiered();
                 }
             }

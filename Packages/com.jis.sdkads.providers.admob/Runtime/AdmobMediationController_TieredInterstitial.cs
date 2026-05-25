@@ -1,34 +1,56 @@
 #if UNITY_AD_ADMOB
 using GoogleMobileAds.Api;
-using JisSDKAds.Ads.InterstitialTier;
+using JisSDKAds.Ads.SequentialTier;
 using JisSDKAds.Common;
-using JisSDKAds.Providers.AdMob.InterstitialTier;
+using JisSDKAds.Providers.AdMob.SequentialTier;
 using UnityEngine;
 
 namespace JisSDKAds.Ads
 {
     public partial class AdmobMediationController
     {
-        TieredInterstitialLoader _tieredInterstitialLoader;
+        SequentialTierLoader _interstitialTierLoader;
 
-        InterstitialTierConfig TierConfig =>
-            m_AdmobAdSetup != null ? m_AdmobAdSetup.InterstitialTierConfig : null;
+        SequentialTierConfig InterstitialTierConfig =>
+            m_AdmobAdSetup?.InterstitialTierConfig;
 
-        bool UseTieredInterstitialLadder =>
-            TierConfig != null && TierConfig.enableTieredInterstitial;
+        bool UseSequentialInterstitial =>
+            InterstitialTierConfig != null && InterstitialTierConfig.enableSequentialLadder;
 
-        void EnsureTieredLoader()
+        void EnsureInterstitialTierLoader()
         {
-            if (_tieredInterstitialLoader != null || TierConfig == null) return;
+            if (_interstitialTierLoader != null || InterstitialTierConfig == null) return;
 
-            _tieredInterstitialLoader = new TieredInterstitialLoader(this, TierConfig);
-            _tieredInterstitialLoader.SetCallbacks(
+            _interstitialTierLoader = new SequentialTierLoader(
+                this,
+                "int",
+                "interstitial",
+                InterstitialTierConfig,
+                () => new AdMobInterstitialAdapter());
+
+            _interstitialTierLoader.SetCallbacks(
                 OnAdInterstitialSuccessToLoad,
                 OnAdInterstitialFailedToLoad,
-                OnCloseInterstitialAd,
-                OnAdInterstitialOpening,
-                OnAdInterstitialFailToShow,
-                OnAdInterstitialPaid);
+                new SequentialTierShowHooks
+                {
+                    onClosed = () =>
+                    {
+                        OnCloseInterstitialAd();
+                        _interstitialTierLoader?.Load();
+                    },
+                    onOpened = () =>
+                    {
+                        if (_interstitialTierLoader?.ReadyCache != null)
+                        {
+                            var c = _interstitialTierLoader.ReadyCache;
+                            SequentialTierAnalytics.LogShowSuccess("interstitial", c.AdUnitId, c.Tier);
+                        }
+
+                        OnAdInterstitialOpening();
+                    },
+                    onFailed = OnAdInterstitialFailToShow,
+                    onPaid = OnAdInterstitialPaid
+                });
         }
 
         void RequestInterstitialLegacy()
@@ -60,7 +82,6 @@ namespace JisSDKAds.Ads
                     return;
                 }
 
-                DebugAds.Log("Interstitial ad loaded: " + ad.GetResponseInfo());
                 InterstitialAds = ad;
                 RegisterInterstitialAd(ad);
                 OnAdInterstitialSuccessToLoad();
@@ -69,7 +90,7 @@ namespace JisSDKAds.Ads
 
         string GetLegacyInterstitialAdUnit()
         {
-            var fromTier = TierConfig?.ResolveDefaultAdUnitId();
+            var fromTier = InterstitialTierConfig?.ResolveDefaultAdUnitId();
             if (!string.IsNullOrEmpty(fromTier))
                 return fromTier;
             return GetInterstitialAdUnit();
@@ -77,11 +98,24 @@ namespace JisSDKAds.Ads
 
         void OnAdInterstitialPaid(AdValue adValue)
         {
-            var ad = UseTieredInterstitialLadder
-                ? _tieredInterstitialLoader?.ReadyCache?.Adapter?.Ad
-                : InterstitialAds;
-            if (ad == null) return;
-            HandleAdPaidEvent("interstitial", adValue, ad.GetResponseInfo());
+            if (UseSequentialInterstitial)
+            {
+                var cache = _interstitialTierLoader?.ReadyCache;
+                var adapter = cache?.Adapter as AdMobInterstitialAdapter;
+                if (adapter?.AdObject == null) return;
+                SequentialTierAnalytics.LogPaid(
+                    "interstitial",
+                    cache.AdUnitId,
+                    cache.Tier,
+                    adValue.Value / 1_000_000d,
+                    adValue.CurrencyCode,
+                    (int)adValue.Precision);
+                HandleAdPaidEvent("interstitial", adValue, adapter.AdObject.GetResponseInfo());
+                return;
+            }
+
+            if (InterstitialAds == null) return;
+            HandleAdPaidEvent("interstitial", adValue, InterstitialAds.GetResponseInfo());
         }
     }
 }

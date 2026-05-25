@@ -5,7 +5,7 @@ namespace JisSDKAds.Ads
      public partial class SDKSetup
      {
           [field: SerializeField]
-          public bool IsActiveAppsflyer { get; set; }= true;
+          public bool IsActiveAppsflyer { get; set; }
 
           [field: SerializeField]
           public bool IsActiveFirebaseAuth { get; set; } = false;

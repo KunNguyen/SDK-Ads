@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using JisSDKAds.Ads;
 using JisSDKAds.Ads.Settings;
+using JisSDKAds.Ads.SequentialTier;
 using JisSDKAds.Core.Tiered.Config;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -103,18 +104,39 @@ namespace JisSDKAds.Editor
             if (AdsSetupUtility.CountActiveFormats(profile.sdkSetup) == 0)
                 result.AddWarning($"{label}: no ad formats enabled (all mediation = NONE).");
 
-            ValidateTiered(profile.tieredAdsConfig, label, result);
+            ValidateSequentialTier(profile, label, result);
         }
 
-        static void ValidateTiered(TieredAdsConfig tiered, string platformLabel, ValidationResult result)
+        static void ValidateSequentialTier(PlatformAdsProfile profile, string platformLabel, ValidationResult result)
         {
-            if (tiered == null || !tiered.EnableTieredInventory) return;
+            var setup = profile?.sdkSetup;
+            if (setup?.admobAdsSetup == null) return;
 
-            if (tiered.EnableTieredInventoryForInterstitial && !tiered.Interstitial.HasAnyUnitId())
-                result.AddWarning($"{platformLabel}: tiered interstitial enabled but no unit IDs.");
+            if (setup.interstitialAdsMediationType == AdsMediationType.ADMOB
+                && setup.admobAdsSetup.InterstitialTierConfig.enableSequentialLadder
+                && !HasAnyTierId(setup.admobAdsSetup.InterstitialTierConfig))
+            {
+                result.AddWarning($"{platformLabel}: interstitial sequential tier enabled but no tier unit IDs.");
+            }
 
-            if (tiered.EnableTieredInventoryForRewarded && !tiered.Rewarded.HasAnyUnitId())
-                result.AddWarning($"{platformLabel}: tiered rewarded enabled but no unit IDs.");
+            if (setup.rewardedAdsMediationType == AdsMediationType.ADMOB
+                && setup.admobAdsSetup.RewardedTierConfig.enableSequentialLadder
+                && !HasAnyTierId(setup.admobAdsSetup.RewardedTierConfig))
+            {
+                result.AddWarning($"{platformLabel}: rewarded sequential tier enabled but no tier unit IDs.");
+            }
+        }
+
+        static bool HasAnyTierId(SequentialTierConfig config)
+        {
+            if (config == null) return false;
+            if (!string.IsNullOrWhiteSpace(config.ResolveDefaultAdUnitId())) return true;
+            foreach (var entry in config.Tiers)
+            {
+                if (entry != null && entry.HasUnitId) return true;
+            }
+
+            return false;
         }
 
         public class ValidationResult

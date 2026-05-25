@@ -2,30 +2,29 @@
 using System;
 using System.Collections;
 using GoogleMobileAds.Api;
-using JisSDKAds.Ads.InterstitialTier;
+using JisSDKAds.Ads.SequentialTier;
 using UnityEngine;
 
-namespace JisSDKAds.Providers.AdMob.InterstitialTier
+namespace JisSDKAds.Providers.AdMob.SequentialTier
 {
-    internal sealed class ReadyInterstitialCache
+    internal sealed class ReadySequentialTierCache
     {
         public string AdUnitId;
         public AdTier Tier;
-        public DateTime LoadTimeUtc;
-        public AdMobInterstitialAdapter Adapter;
+        public ISequentialTierAdAdapter Adapter;
     }
 
-    /// <summary>
-    /// Sequential PREMIUM→FILL ladder with per-tier timeout, tier memory, and single in-flight load.
-    /// </summary>
-    internal sealed class TieredInterstitialLoader
+    /// <summary>Sequential Premium→Fill ladder; one tier load at a time.</summary>
+    internal sealed class SequentialTierLoader
     {
         readonly MonoBehaviour _host;
-        readonly InterstitialTierConfig _config;
-        readonly InterstitialTierMemory _memory = new InterstitialTierMemory();
-        AdMobInterstitialAdapter _loadAdapter = new AdMobInterstitialAdapter();
+        readonly string _format;
+        readonly SequentialTierConfig _config;
+        readonly SequentialTierMemory _memory;
+        readonly Func<ISequentialTierAdAdapter> _createAdapter;
 
-        ReadyInterstitialCache _ready;
+        ISequentialTierAdAdapter _loadAdapter;
+        ReadySequentialTierCache _ready;
         bool _isLoading;
         int _loadGeneration;
         AdTier _currentTier;
@@ -34,40 +33,36 @@ namespace JisSDKAds.Providers.AdMob.InterstitialTier
 
         Action _onLoadedSuccess;
         Action _onLoadedFail;
-        Action _onClosed;
-        Action _onDisplayed;
-        Action<AdError> _onDisplayedFail;
-        Action<AdValue> _onPaid;
+        SequentialTierShowHooks _showHooks;
 
-        public TieredInterstitialLoader(MonoBehaviour host, InterstitialTierConfig config)
+        public SequentialTierLoader(
+            MonoBehaviour host,
+            string formatKey,
+            string analyticsFormat,
+            SequentialTierConfig config,
+            Func<ISequentialTierAdAdapter> createAdapter)
         {
             _host = host;
+            _format = analyticsFormat;
             _config = config;
+            _memory = new SequentialTierMemory(formatKey);
+            _createAdapter = createAdapter;
+            _loadAdapter = createAdapter();
             _memory.Load();
         }
 
         public bool IsLoading => _isLoading;
         public bool IsReady => _ready?.Adapter != null && _ready.Adapter.IsReady;
-        public ReadyInterstitialCache ReadyCache => _ready;
+        public ReadySequentialTierCache ReadyCache => _ready;
 
-        public void SetCallbacks(
-            Action onLoadedSuccess,
-            Action onLoadedFail,
-            Action onClosed,
-            Action onDisplayed,
-            Action<AdError> onDisplayedFail,
-            Action<AdValue> onPaid)
+        public void SetCallbacks(Action onLoadedSuccess, Action onLoadedFail, SequentialTierShowHooks showHooks)
         {
             _onLoadedSuccess = onLoadedSuccess;
             _onLoadedFail = onLoadedFail;
-            _onClosed = onClosed;
-            _onDisplayed = onDisplayed;
-            _onDisplayedFail = onDisplayedFail;
-            _onPaid = onPaid;
+            _showHooks = showHooks;
         }
 
-        /// <summary>Preload next interstitial. No parallel loads; skips if already loading or ready.</summary>
-        public void LoadInterstitial(bool forceReload = false)
+        public void Load(bool forceReload = false)
         {
             if (_isLoading) return;
             if (IsReady && !forceReload) return;
@@ -77,56 +72,42 @@ namespace JisSDKAds.Providers.AdMob.InterstitialTier
 
             _isLoading = true;
             _loadGeneration++;
-            var startTier = _memory.ResolveStartTier(_config);
-            TryLoadTier(startTier);
+            TryLoadTier(_memory.ResolveStartTier(_config));
         }
 
-        public bool ShowInterstitial()
+        public bool Show()
         {
             if (!IsReady)
             {
-                LoadInterstitial();
+                Load();
                 return false;
             }
 
             var cache = _ready;
-            InterstitialTierAnalytics.LogShowStart(cache.AdUnitId, cache.Tier);
-
-            cache.Adapter.RegisterShowCallbacks(
-                OnShowClosed,
-                () =>
+            SequentialTierAnalytics.LogShowStart(_format, cache.AdUnitId, cache.Tier);
+            var hooks = _showHooks;
+            cache.Adapter.RegisterShowCallbacks(new SequentialTierShowHooks
+            {
+                onClosed = hooks.onClosed,
+                onOpened = hooks.onOpened,
+                onRewardGranted = hooks.onRewardGranted,
+                onPaid = hooks.onPaid,
+                onFailed = error =>
                 {
-                    InterstitialTierAnalytics.LogShowSuccess(cache.AdUnitId, cache.Tier);
-                    _onDisplayed?.Invoke();
-                },
-                error =>
-                {
-                    InterstitialTierAnalytics.LogShowFail(
-                        cache.AdUnitId,
-                        cache.Tier,
-                        error?.GetCode() ?? 0,
-                        error?.GetMessage());
+                    SequentialTierAnalytics.LogShowFail(
+                        _format, cache.AdUnitId, cache.Tier, error?.GetCode() ?? 0, error?.GetMessage());
                     ClearReady();
-                    _onDisplayedFail?.Invoke(error);
-                    LoadInterstitial();
-                },
-                value =>
-                {
-                    InterstitialTierAnalytics.LogPaid(
-                        cache.AdUnitId,
-                        cache.Tier,
-                        value.Value / 1_000_000d,
-                        value.CurrencyCode,
-                        (int)value.Precision);
-                    _onPaid?.Invoke(value);
-                });
+                    hooks.onFailed?.Invoke(error);
+                    Load();
+                }
+            });
 
             if (!cache.Adapter.TryShow())
             {
-                InterstitialTierAnalytics.LogShowFail(cache.AdUnitId, cache.Tier, 0, "not_ready");
+                SequentialTierAnalytics.LogShowFail(_format, cache.AdUnitId, cache.Tier, 0, "not_ready");
                 ClearReady();
-                _onDisplayedFail?.Invoke(null);
-                LoadInterstitial();
+                _showHooks.onFailed?.Invoke(null);
+                Load();
                 return false;
             }
 
@@ -136,7 +117,7 @@ namespace JisSDKAds.Providers.AdMob.InterstitialTier
         public void Destroy()
         {
             StopTimeout();
-            _loadAdapter.Destroy();
+            _loadAdapter?.Destroy();
             ClearReady();
             _isLoading = false;
         }
@@ -164,17 +145,17 @@ namespace JisSDKAds.Providers.AdMob.InterstitialTier
             _loadStartedUtc = DateTime.UtcNow;
             var generation = _loadGeneration;
 
-            InterstitialTierAnalytics.LogLoadStart(adUnitId, tier);
+            SequentialTierAnalytics.LogLoadStart(_format, adUnitId, tier);
             ScheduleTimeout(tier, adUnitId, generation);
 
-            _loadAdapter.Load(adUnitId, generation, generation, _ =>
+            _loadAdapter.Load(adUnitId, generation, generation, () =>
             {
                 if (generation != _loadGeneration) return;
-                OnTierLoadSuccess(adUnitId, tier, generation);
+                OnTierLoadSuccess(adUnitId, tier);
             }, error =>
             {
                 if (generation != _loadGeneration) return;
-                OnTierLoadFail(adUnitId, tier, error, generation);
+                OnTierLoadFail(adUnitId, tier, error);
             });
         }
 
@@ -183,11 +164,9 @@ namespace JisSDKAds.Providers.AdMob.InterstitialTier
             StopTimeout();
             var timeout = _config.GetTimeoutSeconds(tier);
             if (timeout <= 0f) return;
-
             _timeoutRoutine = _host.StartCoroutine(TimeoutCoroutine(tier, adUnitId, generation, timeout));
         }
 
-        // Timeout: cancel in-flight load and advance ladder; bump generation to ignore late callbacks.
         IEnumerator TimeoutCoroutine(AdTier tier, string adUnitId, int generation, float timeoutSeconds)
         {
             yield return new WaitForSeconds(timeoutSeconds);
@@ -195,48 +174,43 @@ namespace JisSDKAds.Providers.AdMob.InterstitialTier
                 yield break;
 
             var elapsedMs = (long)(DateTime.UtcNow - _loadStartedUtc).TotalMilliseconds;
-            InterstitialTierAnalytics.LogLoadTimeout(adUnitId, tier, elapsedMs);
+            SequentialTierAnalytics.LogLoadTimeout(_format, adUnitId, tier, elapsedMs);
 
             _loadGeneration++;
             _loadAdapter.Destroy();
-            _loadAdapter = new AdMobInterstitialAdapter();
+            _loadAdapter = _createAdapter();
             StopTimeout();
             AdvanceAfterTierFailure(tier);
         }
 
-        void OnTierLoadSuccess(string adUnitId, AdTier tier, int generation)
+        void OnTierLoadSuccess(string adUnitId, AdTier tier)
         {
             StopTimeout();
             var elapsedMs = (long)(DateTime.UtcNow - _loadStartedUtc).TotalMilliseconds;
-            InterstitialTierAnalytics.LogLoadSuccess(adUnitId, tier, elapsedMs);
+            SequentialTierAnalytics.LogLoadSuccess(_format, adUnitId, tier, elapsedMs);
 
             ClearReady();
-            _ready = new ReadyInterstitialCache
+            _ready = new ReadySequentialTierCache
             {
                 AdUnitId = adUnitId,
                 Tier = tier,
-                LoadTimeUtc = DateTime.UtcNow,
                 Adapter = _loadAdapter
             };
-            _loadAdapter = new AdMobInterstitialAdapter();
+            _loadAdapter = _createAdapter();
 
             _memory.RecordSuccess(tier);
             _isLoading = false;
             _onLoadedSuccess?.Invoke();
         }
 
-        void OnTierLoadFail(string adUnitId, AdTier tier, LoadAdError error, int generation)
+        void OnTierLoadFail(string adUnitId, AdTier tier, LoadAdError error)
         {
             StopTimeout();
             var elapsedMs = (long)(DateTime.UtcNow - _loadStartedUtc).TotalMilliseconds;
-            InterstitialTierAnalytics.LogLoadFail(
-                adUnitId,
-                tier,
-                error?.GetCode() ?? 0,
-                error?.GetMessage(),
-                elapsedMs);
+            SequentialTierAnalytics.LogLoadFail(
+                _format, adUnitId, tier, error?.GetCode() ?? 0, error?.GetMessage(), elapsedMs);
             _loadAdapter.Destroy();
-            _loadAdapter = new AdMobInterstitialAdapter();
+            _loadAdapter = _createAdapter();
             AdvanceAfterTierFailure(tier);
         }
 
@@ -255,17 +229,8 @@ namespace JisSDKAds.Providers.AdMob.InterstitialTier
         {
             _memory.RecordLadderFailure();
             _isLoading = false;
-            InterstitialTierAnalytics.LogLoadFail("", AdTier.Fill, 0, reason, 0);
+            SequentialTierAnalytics.LogLoadFail(_format, "", AdTier.Fill, 0, reason, 0);
             _onLoadedFail?.Invoke();
-        }
-
-        void OnShowClosed()
-        {
-            var tier = _ready?.Tier ?? AdTier.Fill;
-            var unit = _ready?.AdUnitId ?? "";
-            ClearReady();
-            _onClosed?.Invoke();
-            LoadInterstitial();
         }
 
         void ClearReady()

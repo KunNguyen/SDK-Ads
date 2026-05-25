@@ -1,0 +1,81 @@
+#if UNITY_AD_ADMOB
+using System;
+using GoogleMobileAds.Api;
+
+namespace JisSDKAds.Providers.AdMob.SequentialTier
+{
+    internal sealed class AdMobInterstitialAdapter : ISequentialTierAdAdapter
+    {
+        InterstitialAd _ad;
+        SequentialTierShowHooks _hooks;
+
+        public bool IsReady => _ad != null && _ad.CanShowAd();
+        public InterstitialAd AdObject => _ad;
+
+        public void Destroy()
+        {
+            if (_ad == null) return;
+            UnregisterEvents(_ad);
+            _ad.Destroy();
+            _ad = null;
+        }
+
+        public void Load(string adUnitId, int loadGeneration, int expectedGeneration,
+            Action onSuccess, Action<LoadAdError> onFail)
+        {
+            Destroy();
+            var request = new AdRequest();
+            request.Keywords.Add("unity-admob-sample");
+
+            InterstitialAd.Load(adUnitId, request, (ad, error) =>
+            {
+                if (loadGeneration != expectedGeneration)
+                {
+                    ad?.Destroy();
+                    return;
+                }
+
+                if (error != null || ad == null)
+                {
+                    onFail?.Invoke(error);
+                    return;
+                }
+
+                _ad = ad;
+                onSuccess?.Invoke();
+            });
+        }
+
+        public void RegisterShowCallbacks(SequentialTierShowHooks hooks)
+        {
+            if (_ad == null) return;
+            UnregisterEvents(_ad);
+            _hooks = hooks;
+            _ad.OnAdFullScreenContentClosed += HandleClosed;
+            _ad.OnAdFullScreenContentOpened += HandleOpened;
+            _ad.OnAdFullScreenContentFailed += HandleFailed;
+            _ad.OnAdPaid += HandlePaid;
+        }
+
+        public bool TryShow()
+        {
+            if (!IsReady) return false;
+            _ad.Show();
+            return true;
+        }
+
+        void HandleClosed() => _hooks.onClosed?.Invoke();
+        void HandleOpened() => _hooks.onOpened?.Invoke();
+        void HandleFailed(AdError e) => _hooks.onFailed?.Invoke(e);
+        void HandlePaid(AdValue v) => _hooks.onPaid?.Invoke(v);
+
+        void UnregisterEvents(InterstitialAd ad)
+        {
+            ad.OnAdFullScreenContentClosed -= HandleClosed;
+            ad.OnAdFullScreenContentOpened -= HandleOpened;
+            ad.OnAdFullScreenContentFailed -= HandleFailed;
+            ad.OnAdPaid -= HandlePaid;
+        }
+    }
+}
+#endif

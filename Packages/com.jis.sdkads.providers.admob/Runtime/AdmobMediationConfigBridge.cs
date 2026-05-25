@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using JisSDKAds.Ads;
-using JisSDKAds.Ads.InterstitialTier;
+using JisSDKAds.Ads.SequentialTier;
 using JisSDKAds.Ads.Settings;
 using JisSDKAds.Ads.UnitAdManagers;
 using JisSDKAds.Common;
@@ -11,9 +11,6 @@ using UnityEditor;
 
 namespace JisSDKAds.Providers.AdMob
 {
-    /// <summary>
-    /// Applies <see cref="SDKSetup"/> to <see cref="AdmobMediationController"/> (kept in provider assembly).
-    /// </summary>
     public static class AdmobMediationConfigBridge
     {
         public static void ApplyFromSdkSetup(AdsManager manager, SDKSetup setup)
@@ -31,9 +28,9 @@ namespace JisSDKAds.Providers.AdMob
                 manager.MainAdsMediationType = adsMediationType;
                 admobMediationController.m_AdmobAdSetup.InterstitialAdUnitIDList =
                     setup.admobAdsSetup.InterstitialAdUnitIDList;
-                ApplyInterstitialTierConfig(
-                    setup.admobAdsSetup.InterstitialTierConfig,
-                    setup.admobAdsSetup.InterstitialAdUnitIDList);
+                ApplySequentialTierConfig(
+                    admobMediationController.m_AdmobAdSetup.InterstitialTierConfig,
+                    ResolvePlatformUnitIds(manager, setup, setup.admobAdsSetup.InterstitialAdUnitID));
             }
             else
             {
@@ -44,6 +41,13 @@ namespace JisSDKAds.Providers.AdMob
                 setup.rewardedAdsMediationType == adsMediationType
                     ? setup.admobAdsSetup.RewardedAdUnitIDList
                     : new List<string>();
+
+            if (setup.rewardedAdsMediationType == adsMediationType)
+            {
+                ApplySequentialTierConfig(
+                    admobMediationController.m_AdmobAdSetup.RewardedTierConfig,
+                    ResolvePlatformUnitIds(manager, setup, setup.admobAdsSetup.RewardedAdUnitID));
+            }
 
             admobMediationController.m_AdmobAdSetup.BannerAdUnitIDList =
                 setup.bannerAdsMediationType == adsMediationType
@@ -84,31 +88,39 @@ namespace JisSDKAds.Providers.AdMob
 #endif
         }
 
-        static void ApplyInterstitialTierConfig(InterstitialTierConfig tierConfig, List<string> platformUnitIds)
+        static List<string> ResolvePlatformUnitIds(AdsManager manager, SDKSetup setup, AdScheduleUnitID schedule)
+        {
+            if (schedule == null) return new List<string>();
+            var platform = manager != null && setup == manager.IOSSdkSetup
+                ? BuildTargetPlatform.iOS
+                : BuildTargetPlatform.Android;
+            return schedule.GetPlatformList(platform) ?? new List<string>();
+        }
+
+        static void ApplySequentialTierConfig(SequentialTierConfig tierConfig, List<string> platformUnitIds)
         {
             if (tierConfig == null) return;
             tierConfig.EnsureDefaultTierSlots();
 
-            if (platformUnitIds != null && platformUnitIds.Count > 0)
-            {
-                if (string.IsNullOrWhiteSpace(tierConfig.defaultAndroidAdUnitId))
-                    tierConfig.defaultAndroidAdUnitId = platformUnitIds[0];
-                if (string.IsNullOrWhiteSpace(tierConfig.defaultIosAdUnitId))
-                    tierConfig.defaultIosAdUnitId = platformUnitIds[0];
+            if (platformUnitIds == null || platformUnitIds.Count == 0) return;
 
-                var order = new[]
-                {
-                    AdTier.Premium, AdTier.High, AdTier.Mid, AdTier.Low, AdTier.Fill
-                };
-                for (var i = 0; i < order.Length && i < platformUnitIds.Count; i++)
-                {
-                    var entry = tierConfig.GetEntry(order[i]);
-                    if (entry == null || string.IsNullOrWhiteSpace(platformUnitIds[i])) continue;
-                    if (string.IsNullOrWhiteSpace(entry.androidAdUnitId))
-                        entry.androidAdUnitId = platformUnitIds[i];
-                    if (string.IsNullOrWhiteSpace(entry.iosAdUnitId))
-                        entry.iosAdUnitId = platformUnitIds[i];
-                }
+            if (string.IsNullOrWhiteSpace(tierConfig.defaultAndroidAdUnitId))
+                tierConfig.defaultAndroidAdUnitId = platformUnitIds[0];
+            if (string.IsNullOrWhiteSpace(tierConfig.defaultIosAdUnitId))
+                tierConfig.defaultIosAdUnitId = platformUnitIds[0];
+
+            var order = new[]
+            {
+                AdTier.Premium, AdTier.High, AdTier.Mid, AdTier.Low, AdTier.Fill
+            };
+            for (var i = 0; i < order.Length && i < platformUnitIds.Count; i++)
+            {
+                var entry = tierConfig.GetEntry(order[i]);
+                if (entry == null || string.IsNullOrWhiteSpace(platformUnitIds[i])) continue;
+                if (string.IsNullOrWhiteSpace(entry.androidAdUnitId))
+                    entry.androidAdUnitId = platformUnitIds[i];
+                if (string.IsNullOrWhiteSpace(entry.iosAdUnitId))
+                    entry.iosAdUnitId = platformUnitIds[i];
             }
         }
     }

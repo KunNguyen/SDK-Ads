@@ -451,10 +451,10 @@ namespace JisSDKAds.Ads
           public override void RequestInterstitialAd()
           {
                base.RequestInterstitialAd();
-               if (UseTieredInterstitialLadder)
+               if (UseSequentialInterstitial)
                {
-                    EnsureTieredLoader();
-                    _tieredInterstitialLoader.LoadInterstitial();
+                    EnsureInterstitialTierLoader();
+                    _interstitialTierLoader.Load();
                     return;
                }
 
@@ -471,10 +471,10 @@ namespace JisSDKAds.Ads
 
           public override bool IsInterstitialLoaded()
           {
-               if (UseTieredInterstitialLadder)
+               if (UseSequentialInterstitial)
                {
-                    EnsureTieredLoader();
-                    return _tieredInterstitialLoader.IsReady;
+                    EnsureInterstitialTierLoader();
+                    return _interstitialTierLoader.IsReady;
                }
 
                return InterstitialAds != null && InterstitialAds.CanShowAd();
@@ -483,10 +483,10 @@ namespace JisSDKAds.Ads
           public override void ShowInterstitialAd()
           {
                base.ShowInterstitialAd();
-               if (UseTieredInterstitialLadder)
+               if (UseSequentialInterstitial)
                {
-                    EnsureTieredLoader();
-                    if (!_tieredInterstitialLoader.ShowInterstitial())
+                    EnsureInterstitialTierLoader();
+                    if (!_interstitialTierLoader.Show())
                          OnAdInterstitialFailToShow(null);
                     return;
                }
@@ -505,7 +505,7 @@ namespace JisSDKAds.Ads
           {
                DebugAds.Log("Load Interstitial success");
                InterstitialCallbacks.LoadedSuccess?.Invoke();
-               if (!UseTieredInterstitialLadder)
+               if (!UseSequentialInterstitial)
                     m_AdmobAdSetup.InterstitialAdUnitID.Refresh();
           }
 
@@ -513,7 +513,7 @@ namespace JisSDKAds.Ads
           {
                DebugAds.Log("Load Interstitial failed Admob");
                InterstitialCallbacks.LoadedFail?.Invoke();
-               if (!UseTieredInterstitialLadder)
+               if (!UseSequentialInterstitial)
                     m_AdmobAdSetup.InterstitialAdUnitID.ChangeID();
           }
 
@@ -531,8 +531,10 @@ namespace JisSDKAds.Ads
 
           public void DestroyInterstitialAd()
           {
-               _tieredInterstitialLoader?.Destroy();
-               _tieredInterstitialLoader = null;
+               _interstitialTierLoader?.Destroy();
+               _interstitialTierLoader = null;
+               _rewardedTierLoader?.Destroy();
+               _rewardedTierLoader = null;
                if (InterstitialAds != null)
                {
                     DebugAds.Log("Destroying interstitial ad.");
@@ -560,35 +562,14 @@ namespace JisSDKAds.Ads
           public override void RequestRewardVideoAd()
           {
                base.RequestRewardVideoAd();
-               if (RewardVideoAds != null)
+               if (UseSequentialRewarded)
                {
-                    DestroyRewardedAd();
+                    EnsureRewardedTierLoader();
+                    _rewardedTierLoader.Load();
+                    return;
                }
 
-               string adUnitId = GetRewardedAdID();
-               DebugAds.Log("RewardedVideoAd ADMOB Reload ID " + adUnitId);
-               if (string.IsNullOrEmpty(adUnitId))
-               {
-                    RewardedVideoCallbacks.LoadedSuccess?.Invoke();
-                    m_AdmobAdSetup.RewardedAdUnitID.ChangeID();
-               }
-
-               if (RewardVideoAds != null && RewardVideoAds.CanShowAd()) return;
-               var adRequest = new AdRequest();
-
-               RewardedAd.Load(adUnitId, adRequest, (RewardedAd ad, LoadAdError error) =>
-               {
-                    if (error != null || ad == null)
-                    {
-                         DebugAds.LogError("Rewarded ad failed to load an ad with error : " + error);
-                         OnRewardBasedVideoFailedToLoad();
-                         return;
-                    }
-
-                    RewardVideoAds = ad;
-                    RegisterRewardAdEvent(ad);
-                    OnRewardBasedVideoLoaded();
-               });
+               RequestRewardVideoLegacy();
           }
 
           private void RegisterRewardAdEvent(RewardedAd rewardedAd)
@@ -602,6 +583,15 @@ namespace JisSDKAds.Ads
           public override void ShowRewardVideoAd()
           {
                base.ShowRewardVideoAd();
+               if (UseSequentialRewarded)
+               {
+                    EnsureRewardedTierLoader();
+                    IsWatchSuccess = false;
+                    if (!_rewardedTierLoader.Show())
+                         OnRewardedAdFailedToShow(null);
+                    return;
+               }
+
                if (IsRewardVideoLoaded())
                {
                     DebugAds.Log("RewardedVideoAd ADMOB Show");
@@ -615,12 +605,13 @@ namespace JisSDKAds.Ads
 #if UNITY_EDITOR
                return false;
 #endif
-               if (RewardVideoAds != null)
+               if (UseSequentialRewarded)
                {
-                    return RewardVideoAds.CanShowAd();
+                    EnsureRewardedTierLoader();
+                    return _rewardedTierLoader.IsReady;
                }
 
-               return false;
+               return RewardVideoAds != null && RewardVideoAds.CanShowAd();
           }
 
           private void OnRewardBasedVideoClosed()
@@ -660,14 +651,16 @@ namespace JisSDKAds.Ads
           {
                DebugAds.Log("RewardedVideoAd ADMOB Load Success");
                RewardedVideoCallbacks.LoadedSuccess?.Invoke();
-               m_AdmobAdSetup.RewardedAdUnitID.Refresh();
+               if (!UseSequentialRewarded)
+                    m_AdmobAdSetup.RewardedAdUnitID.Refresh();
           }
 
           private void OnRewardBasedVideoFailedToLoad()
           {
                DebugAds.Log("RewardedVideoAd ADMOB Load Fail");
                RewardedVideoCallbacks.LoadedFail?.Invoke();
-               m_AdmobAdSetup.RewardedAdUnitID.ChangeID();
+               if (!UseSequentialRewarded)
+                    m_AdmobAdSetup.RewardedAdUnitID.ChangeID();
           }
 
           public void OnRewardedAdFailedToShow(AdError args)
@@ -691,10 +684,6 @@ namespace JisSDKAds.Ads
                }
           }
 
-          private void OnAdRewardedAdPaid(AdValue adValue)
-          {
-               HandleAdPaidEvent("rewarded", adValue, RewardVideoAds.GetResponseInfo());
-          }
 
           public string GetRewardedAdID()
           {
@@ -981,7 +970,8 @@ namespace JisSDKAds.Ads
 
           private void OnApplicationQuit()
           {
-               _tieredInterstitialLoader?.Destroy();
+               _interstitialTierLoader?.Destroy();
+               _rewardedTierLoader?.Destroy();
                InterstitialAds?.Destroy();
           }
 

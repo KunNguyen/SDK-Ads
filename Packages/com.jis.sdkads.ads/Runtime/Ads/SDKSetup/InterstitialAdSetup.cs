@@ -1,5 +1,5 @@
 ﻿using System.Collections.Generic;
-using JisSDKAds.Ads.InterstitialTier;
+using JisSDKAds.Ads.SequentialTier;
 
 namespace JisSDKAds.Ads
 {
@@ -10,9 +10,14 @@ namespace JisSDKAds.Ads
 
           public bool enableTieredInterstitial =>
                interstitialAdsMediationType == AdsMediationType.ADMOB &&
-               admobAdsSetup.InterstitialTierConfig.enableTieredInterstitial;
+               admobAdsSetup.InterstitialTierConfig.enableSequentialLadder;
 
-          public InterstitialTierConfig InterstitialTierConfig => admobAdsSetup.InterstitialTierConfig;
+          public bool enableTieredRewarded =>
+               rewardedAdsMediationType == AdsMediationType.ADMOB &&
+               admobAdsSetup.RewardedTierConfig.enableSequentialLadder;
+
+          public SequentialTierConfig InterstitialTierConfig => admobAdsSetup.InterstitialTierConfig;
+          public SequentialTierConfig RewardedTierConfig => admobAdsSetup.RewardedTierConfig;
 
           public string interstitialAdUnitID_MAX
           {

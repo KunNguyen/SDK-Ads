@@ -1,7 +1,6 @@
 #if UNITY_EDITOR
 using JisSDKAds.Ads;
 using JisSDKAds.Ads.Settings;
-using JisSDKAds.Core.Tiered.Config;
 using UnityEditor;
 using UnityEngine;
 
@@ -19,42 +18,33 @@ namespace JisSDKAds.Editor
 
         public static AdInventorySetupMode GetInterstitialMode(PlatformAdsProfile profile)
         {
-            return GetFormatMode(profile, isInterstitial: true);
+            var setup = profile?.sdkSetup;
+            if (setup?.admobAdsSetup == null) return AdInventorySetupMode.SingleUnit;
+            return setup.admobAdsSetup.InterstitialTierConfig.enableSequentialLadder
+                ? AdInventorySetupMode.Tiered
+                : AdInventorySetupMode.SingleUnit;
         }
 
         public static AdInventorySetupMode GetRewardedMode(PlatformAdsProfile profile)
         {
-            return GetFormatMode(profile, isInterstitial: false);
-        }
-
-        static AdInventorySetupMode GetFormatMode(PlatformAdsProfile profile, bool isInterstitial)
-        {
-            var tiered = profile?.tieredAdsConfig;
-            if (tiered == null || !tiered.EnableTieredInventory)
-                return AdInventorySetupMode.SingleUnit;
-
-            var tieredForFormat = isInterstitial
-                ? tiered.EnableTieredInventoryForInterstitial
-                : tiered.EnableTieredInventoryForRewarded;
-
-            return tieredForFormat ? AdInventorySetupMode.Tiered : AdInventorySetupMode.SingleUnit;
+            var setup = profile?.sdkSetup;
+            if (setup?.admobAdsSetup == null) return AdInventorySetupMode.SingleUnit;
+            return setup.admobAdsSetup.RewardedTierConfig.enableSequentialLadder
+                ? AdInventorySetupMode.Tiered
+                : AdInventorySetupMode.SingleUnit;
         }
 
         public static void SetInterstitialMode(
             JisSDKAdsSettings settings,
             BuildTargetPlatform platform,
-            AdInventorySetupMode mode)
-        {
+            AdInventorySetupMode mode) =>
             SetFormatMode(settings, platform, isInterstitial: true, mode);
-        }
 
         public static void SetRewardedMode(
             JisSDKAdsSettings settings,
             BuildTargetPlatform platform,
-            AdInventorySetupMode mode)
-        {
+            AdInventorySetupMode mode) =>
             SetFormatMode(settings, platform, isInterstitial: false, mode);
-        }
 
         static void SetFormatMode(
             JisSDKAdsSettings settings,
@@ -64,28 +54,46 @@ namespace JisSDKAds.Editor
         {
             if (settings == null) return;
 
-            var profile = settings.GetProfile(platform);
-            if (profile == null) return;
+            var setup = settings.GetProfile(platform)?.sdkSetup;
+            if (setup?.admobAdsSetup == null) return;
 
-            var tiered = EnsureTieredConfig(settings, platform);
-            if (tiered == null) return;
+            var tierConfig = isInterstitial
+                ? setup.admobAdsSetup.InterstitialTierConfig
+                : setup.admobAdsSetup.RewardedTierConfig;
 
-            Undo.RecordObject(tiered, "Change ad inventory mode");
-            if (isInterstitial)
-                tiered.EnableTieredInventoryForInterstitial = mode == AdInventorySetupMode.Tiered;
+            if (mode == AdInventorySetupMode.Tiered)
+            {
+                if (isInterstitial)
+                    setup.interstitialAdsMediationType = AdsMediationType.ADMOB;
+                else
+                    setup.rewardedAdsMediationType = AdsMediationType.ADMOB;
+
+                tierConfig.enableSequentialLadder = true;
+            }
             else
-                tiered.EnableTieredInventoryForRewarded = mode == AdInventorySetupMode.Tiered;
+            {
+                tierConfig.enableSequentialLadder = false;
+            }
 
-            SyncMasterTieredFlag(tiered);
-            EditorUtility.SetDirty(tiered);
-            EditorUtility.SetDirty(settings);
+            ClearLegacyCoreTieredFlags(settings.GetProfile(platform), isInterstitial);
+            EditorUtility.SetDirty(setup);
         }
 
-        static void SyncMasterTieredFlag(TieredAdsConfig tiered)
+        static void ClearLegacyCoreTieredFlags(PlatformAdsProfile profile, bool isInterstitial)
         {
+            var tiered = profile?.tieredAdsConfig;
+            if (tiered == null) return;
+
+            if (isInterstitial)
+                tiered.EnableTieredInventoryForInterstitial = false;
+            else
+                tiered.EnableTieredInventoryForRewarded = false;
+
             tiered.EnableTieredInventory =
                 tiered.EnableTieredInventoryForInterstitial
                 || tiered.EnableTieredInventoryForRewarded;
+
+            EditorUtility.SetDirty(tiered);
         }
 
         public static SDKSetup EnsureSdkSetup(JisSDKAdsSettings settings, BuildTargetPlatform platform)
@@ -125,35 +133,6 @@ namespace JisSDKAds.Editor
 
             AssetDatabase.SaveAssets();
             return setup;
-        }
-
-        public static TieredAdsConfig EnsureTieredConfig(JisSDKAdsSettings settings, BuildTargetPlatform platform)
-        {
-            if (settings == null) return null;
-
-            var profile = settings.GetProfile(platform);
-            if (profile == null) return null;
-
-            if (profile.tieredAdsConfig != null)
-                return profile.tieredAdsConfig;
-
-            EnsureSettingsFolder();
-            var path = platform == BuildTargetPlatform.Android
-                ? $"{SettingsFolder}/AndroidTieredAdsConfig.asset"
-                : $"{SettingsFolder}/IOSTieredAdsConfig.asset";
-
-            var tiered = AssetDatabase.LoadAssetAtPath<TieredAdsConfig>(path);
-            if (tiered == null)
-            {
-                tiered = ScriptableObject.CreateInstance<TieredAdsConfig>();
-                AssetDatabase.CreateAsset(tiered, path);
-            }
-
-            Undo.RecordObject(settings, $"Assign {platform} TieredAdsConfig");
-            profile.tieredAdsConfig = tiered;
-            EditorUtility.SetDirty(settings);
-            AssetDatabase.SaveAssets();
-            return tiered;
         }
 
         public static void TryInitializeSetupDefaults(SDKSetup setup)

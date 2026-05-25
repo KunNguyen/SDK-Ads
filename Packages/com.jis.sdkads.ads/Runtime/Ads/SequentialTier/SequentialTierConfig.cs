@@ -2,39 +2,43 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace JisSDKAds.Ads.InterstitialTier
+namespace JisSDKAds.Ads.SequentialTier
 {
     [Serializable]
-    public class InterstitialTierConfig
+    public class SequentialTierConfig
     {
-        [Tooltip("When false, uses defaultInterstitialAdUnitId only (legacy single-unit flow).")]
-        public bool enableTieredInterstitial;
+        [Tooltip("When true: sequential Premium→Fill ladder. When false: single default unit only.")]
+        public bool enableSequentialLadder;
 
-        [Tooltip("Fallback unit when tier system is off or tier entry has no id.")]
+        [Tooltip("Fallback unit when ladder is off or a tier entry has no id.")]
         public string defaultAndroidAdUnitId;
 
         public string defaultIosAdUnitId;
 
-        [Tooltip("Remember last successful tier and respect cooldown before trying Premium again.")]
+        [Tooltip("Remember last successful tier; retry Premium after cooldown.")]
         public bool enableTierMemoryCooldown = true;
 
-        [Tooltip("Minutes after last success before ladder restarts at Premium.")]
         [Min(1f)] public float premiumRetryCooldownMinutes = 45f;
-
-        [Tooltip("Consecutive full-ladder failures before lowering the remembered start tier.")]
         [Min(1)] public int consecutiveFailuresBeforeDowngrade = 2;
 
-        [SerializeField] private InterstitialTierEntry[] tiers = CreateDefaultTiers();
+        [SerializeField] private SequentialTierEntry[] tiers = CreateDefaultTiers();
 
-        public IReadOnlyList<InterstitialTierEntry> Tiers => tiers ?? Array.Empty<InterstitialTierEntry>();
-
-        public static InterstitialTierEntry[] CreateDefaultTiers() => new[]
+        /// <summary>Backward-compatible alias used by earlier interstitial-only builds.</summary>
+        public bool enableTieredInterstitial
         {
-            new InterstitialTierEntry { tier = AdTier.Premium, timeoutSeconds = 8f },
-            new InterstitialTierEntry { tier = AdTier.High, timeoutSeconds = 6f },
-            new InterstitialTierEntry { tier = AdTier.Mid, timeoutSeconds = 4f },
-            new InterstitialTierEntry { tier = AdTier.Low, timeoutSeconds = 3f },
-            new InterstitialTierEntry { tier = AdTier.Fill, timeoutSeconds = 0f }
+            get => enableSequentialLadder;
+            set => enableSequentialLadder = value;
+        }
+
+        public IReadOnlyList<SequentialTierEntry> Tiers => tiers ?? Array.Empty<SequentialTierEntry>();
+
+        public static SequentialTierEntry[] CreateDefaultTiers() => new[]
+        {
+            new SequentialTierEntry { tier = AdTier.Premium, timeoutSeconds = 8f },
+            new SequentialTierEntry { tier = AdTier.High, timeoutSeconds = 6f },
+            new SequentialTierEntry { tier = AdTier.Mid, timeoutSeconds = 4f },
+            new SequentialTierEntry { tier = AdTier.Low, timeoutSeconds = 3f },
+            new SequentialTierEntry { tier = AdTier.Fill, timeoutSeconds = 0f }
         };
 
         public string ResolveDefaultAdUnitId()
@@ -48,7 +52,7 @@ namespace JisSDKAds.Ads.InterstitialTier
 #endif
         }
 
-        public InterstitialTierEntry GetEntry(AdTier tier)
+        public SequentialTierEntry GetEntry(AdTier tier)
         {
             if (tiers == null) return null;
             foreach (var e in tiers)
@@ -60,7 +64,6 @@ namespace JisSDKAds.Ads.InterstitialTier
             return null;
         }
 
-        /// <summary>Default per-tier timeout (seconds). FILL returns 0 = no timeout.</summary>
         public float GetDefaultTimeoutSeconds(AdTier tier) => tier switch
         {
             AdTier.Premium => 8f,
@@ -77,12 +80,6 @@ namespace JisSDKAds.Ads.InterstitialTier
             if (entry != null && entry.timeoutSeconds >= 0f)
                 return entry.timeoutSeconds;
             return GetDefaultTimeoutSeconds(tier);
-        }
-
-        public IEnumerable<AdTier> GetLadderFrom(AdTier start)
-        {
-            for (var t = start; t <= AdTier.Fill; t++)
-                yield return t;
         }
 
         public void EnsureDefaultTierSlots()

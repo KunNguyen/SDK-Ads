@@ -1,7 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using JisSDKAds.Ads;
-using JisSDKAds.Ads.InterstitialTier;
+using JisSDKAds.Ads.SequentialTier;
 using UnityEngine;
 
 [System.Serializable]
@@ -13,11 +13,10 @@ public class AdmobAdSetup
     [SerializeField]private AdScheduleUnitID collapsibleBannerAdUnitID;
     [SerializeField]private AdScheduleUnitID mrecAdUnitID;
     [SerializeField]private AdScheduleUnitID appOpenAdUnitID;
-
-    // NEW: Rewarded Interstitial
     [SerializeField] private AdScheduleUnitID rewardedInterstitialAdUnitID;
 
-    [SerializeField] private InterstitialTierConfig interstitialTierConfig;
+    [SerializeField] private SequentialTierConfig interstitialTierConfig;
+    [SerializeField] private SequentialTierConfig rewardedTierConfig;
 
     public AdScheduleUnitID InterstitialAdUnitID
     {
@@ -67,15 +66,26 @@ public class AdmobAdSetup
         set => interstitialAdUnitID.CurrentPlatformID = value;
     }
 
-    public InterstitialTierConfig InterstitialTierConfig
+    public SequentialTierConfig InterstitialTierConfig
     {
         get
         {
-            interstitialTierConfig ??= new InterstitialTierConfig();
+            interstitialTierConfig ??= new SequentialTierConfig();
             interstitialTierConfig.EnsureDefaultTierSlots();
             return interstitialTierConfig;
         }
         set => interstitialTierConfig = value;
+    }
+
+    public SequentialTierConfig RewardedTierConfig
+    {
+        get
+        {
+            rewardedTierConfig ??= new SequentialTierConfig();
+            rewardedTierConfig.EnsureDefaultTierSlots();
+            return rewardedTierConfig;
+        }
+        set => rewardedTierConfig = value;
     }
 
     public List<string> RewardedAdUnitIDList
@@ -104,7 +114,6 @@ public class AdmobAdSetup
         set => appOpenAdUnitID.CurrentPlatformID = value;
     }
 
-    // NEW
     public List<string> RewardedInterstitialAdUnitIDList
     {
         get => rewardedInterstitialAdUnitID.CurrentPlatformID;

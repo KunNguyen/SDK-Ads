@@ -1,76 +1,84 @@
 ﻿using System;
 using System.Collections.Generic;
+using JisSDKAds.Ads.Settings;
 
 namespace JisSDKAds.Ads
 {
      [Serializable]
      public class AdScheduleUnitID
      {
-#if UNITY_ANDROID
           public List<string> AndroidID = new List<string>();
-#elif UNITY_IOS
-        public List<string> IosID = new List<string>();
-#endif
+          public List<string> IosID = new List<string>();
 
-          private int CurrentID { get; set; } = 0;
+          private int CurrentID { get; set; }
 
           public void ChangeID()
           {
                CurrentID++;
-               if (CurrentID >= CurrentPlatformID.Count)
+               var list = CurrentPlatformID;
+               if (list == null || list.Count == 0)
                {
                     CurrentID = 0;
+                    return;
                }
+
+               if (CurrentID >= list.Count)
+                    CurrentID = 0;
           }
 
-          public void Refresh()
-          {
-               CurrentID = 0;
-          }
+          public void Refresh() => CurrentID = 0;
 
           public string ID
           {
                get
                {
-                    if (CurrentPlatformID == null || CurrentPlatformID.Count == 0)
-                    {
+                    var list = CurrentPlatformID;
+                    if (list == null || list.Count == 0)
                          return string.Empty;
-                    }
 
-                    if (CurrentID < 0 || CurrentID >= CurrentPlatformID.Count)
-                    {
+                    if (CurrentID < 0 || CurrentID >= list.Count)
                          CurrentID = 0;
-                    }
 
-                    return CurrentPlatformID[CurrentID];
+                    return list[CurrentID];
                }
           }
 
+          /// <summary>Runtime active platform list (build target).</summary>
           public List<string> CurrentPlatformID
           {
                get
                {
-#if UNITY_ANDROID
-                    return AndroidID;
-#elif UNITY_IOS
-                return IosID;
+#if UNITY_IOS
+                    return IosID;
 #else
-                return null;
+                    return AndroidID;
 #endif
                }
                set
                {
-#if UNITY_ANDROID
-                    AndroidID = value;
-#elif UNITY_IOS
-                IosID = value;
+#if UNITY_IOS
+                    IosID = value ?? new List<string>();
+#else
+                    AndroidID = value ?? new List<string>();
 #endif
                }
           }
 
+          public List<string> GetPlatformList(BuildTargetPlatform platform) =>
+               platform == BuildTargetPlatform.iOS ? IosID : AndroidID;
+
+          public void SetPlatformList(BuildTargetPlatform platform, List<string> ids)
+          {
+               if (platform == BuildTargetPlatform.iOS)
+                    IosID = ids ?? new List<string>();
+               else
+                    AndroidID = ids ?? new List<string>();
+          }
+
           public bool IsActive()
           {
-               return CurrentPlatformID.Count > 0;
+               var list = CurrentPlatformID;
+               return list != null && list.Count > 0;
           }
      }
 }
