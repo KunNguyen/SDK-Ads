@@ -638,7 +638,8 @@ namespace JisSDKAds.Ads
         public AdsMediationController GetAdsMediationController(AdsMediationType adsMediationType)
         {
             if (AdsMediationControllers == null) return null;
-            return AdsMediationControllers.Find(x => x != null && x.AdsMediationType == adsMediationType);
+            return AdsMediationControllers.Find(x =>
+                x != null && x.GetAdsMediationType() == adsMediationType);
         }
 
         public bool IsShowingAds()

@@ -72,8 +72,37 @@ namespace JisSDKAds.Ads
                     RewardAdManager.IsLinkRewardWithRemoveAds = CurrentSDKSetup.IsLinkToRemoveAds;
                if (InterstitialAdManager != null)
                     InterstitialAdManager.IsActiveCooldownFromStart = CurrentSDKSetup.IsActiveCooldownInterstitialFromStart;
+               SyncMediationControllersToSetup();
                UpdateMaxMediation();
                UpdateAdmobMediation();
+          }
+
+          void SyncMediationControllersToSetup()
+          {
+               EnsureEditorSubManagersWired();
+               if (CurrentSDKSetup == null || AdsMediationControllers == null)
+                    return;
+
+               foreach (var controller in AdsMediationControllers)
+               {
+                    if (controller == null) continue;
+
+                    var mediationType = controller.GetAdsMediationType();
+                    controller.AdsMediationType = mediationType;
+
+                    var usedByAnyFormat = false;
+                    foreach (AdsType adsType in System.Enum.GetValues(typeof(AdsType)))
+                    {
+                         if (CurrentSDKSetup.GetAdsMediationType(adsType) == mediationType)
+                         {
+                              usedByAnyFormat = true;
+                              break;
+                         }
+                    }
+
+                    controller.IsActive = usedByAnyFormat;
+                    EditorUtility.SetDirty(controller);
+               }
           }
 
 #if UNITY_EDITOR
@@ -107,16 +136,12 @@ namespace JisSDKAds.Ads
 
           private void UpdateMaxMediation()
           {
-#if UNITY_AD_MAX
                MaxMediationReflection.ApplySdkSetup(this, CurrentSDKSetup);
-#endif
           }
 
           private void UpdateAdmobMediation()
           {
-#if UNITY_AD_ADMOB
                AdMobMediationReflection.ApplySdkSetup(this, CurrentSDKSetup);
-#endif
           }
 
           AdsMediationType ResolvePrimaryMediationType(SDKSetup sdkSetup)

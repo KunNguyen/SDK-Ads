@@ -16,8 +16,17 @@ namespace JisSDKAds.Providers.Max
 
             const AdsMediationType adsMediationType = AdsMediationType.MAX;
             var maxMediationController =
-                manager.GetAdsMediationController(adsMediationType) as MaxMediationController;
-            if (maxMediationController == null) return;
+                manager.GetAdsMediationController(adsMediationType) as MaxMediationController
+                ?? manager.GetComponentInChildren<MaxMediationController>(true);
+            if (maxMediationController == null)
+            {
+#if UNITY_EDITOR
+                Debug.LogWarning("[JIS SDK] MaxMediationController not found under AdsManager.");
+#endif
+                return;
+            }
+
+            maxMediationController.AdsMediationType = adsMediationType;
 
             if (setup.adsMediationType == adsMediationType)
                 maxMediationController.m_MaxAdConfig.SDKKey = setup.maxAdsSetup.SDKKey;

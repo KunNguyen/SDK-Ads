@@ -20,8 +20,17 @@ namespace JisSDKAds.Providers.AdMob
 
             const AdsMediationType adsMediationType = AdsMediationType.ADMOB;
             var admobMediationController =
-                manager.GetAdsMediationController(adsMediationType) as AdmobMediationController;
-            if (admobMediationController == null) return;
+                manager.GetAdsMediationController(adsMediationType) as AdmobMediationController
+                ?? manager.GetComponentInChildren<AdmobMediationController>(true);
+            if (admobMediationController == null)
+            {
+#if UNITY_EDITOR
+                Debug.LogWarning("[JIS SDK] AdmobMediationController not found under AdsManager.");
+#endif
+                return;
+            }
+
+            admobMediationController.AdsMediationType = adsMediationType;
 
             if (setup.interstitialAdsMediationType == adsMediationType)
             {

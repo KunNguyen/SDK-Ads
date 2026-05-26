@@ -19,7 +19,15 @@ namespace JisSDKAds.Ads.Integration
 
             var bridge = Type.GetType(BridgeTypeName);
             var method = bridge?.GetMethod("ApplyFromSdkSetup", BindingFlags.Public | BindingFlags.Static);
-            if (method == null) return;
+            if (method == null)
+            {
+#if UNITY_EDITOR
+                UnityEngine.Debug.LogWarning(
+                    "[JIS SDK] AdMob provider bridge not available (UNITY_AD_ADMOB undefined or recompile pending). " +
+                    "Click Apply again after Unity finishes recompiling.");
+#endif
+                return;
+            }
 
             method.Invoke(null, new object[] { manager, setup });
         }

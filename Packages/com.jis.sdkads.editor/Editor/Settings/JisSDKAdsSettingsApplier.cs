@@ -48,6 +48,13 @@ namespace JisSDKAds.Editor
                 return false;
             }
 
+            settings.SyncAllProfileMediationToSdkSetups();
+            activeSetup.SetupSymbol();
+            if (settings.android?.sdkSetup != null && settings.android.sdkSetup != activeSetup)
+                settings.android.sdkSetup.SetupSymbol();
+            if (settings.ios?.sdkSetup != null && settings.ios.sdkSetup != activeSetup)
+                settings.ios.sdkSetup.SetupSymbol();
+
             var adsManager = Object.FindFirstObjectByType<AdsManager>();
             if (adsManager != null)
             {
@@ -61,7 +68,6 @@ namespace JisSDKAds.Editor
             }
 
             SyncJisAdsInScene(settings);
-            activeSetup.SetupSymbol();
 
             Debug.Log(
                 $"[JIS SDK] {reason}: Applied '{settings.name}' for {activeTarget} " +
