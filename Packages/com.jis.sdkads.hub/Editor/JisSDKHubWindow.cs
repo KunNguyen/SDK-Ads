@@ -91,27 +91,27 @@ namespace JisSDKAds.Hub
                 MessageType.None);
 
             EditorGUILayout.BeginHorizontal();
-            if (GUILayout.Button("Check for updates", GUILayout.Height(22)))
+            if (GUILayout.Button("Check for updates", GUILayout.Height(24), GUILayout.Width(140)))
             {
                 JisSDKHubVersionCheck.RunCheck(_gitBaseUrl, _gitRevision);
                 Repaint();
             }
 
+            var results = JisSDKHubVersionCheck.LastResults;
+            var updatable = results?.Count > 0 == true ? JisSDKHubVersionCheck.UpdatableCount : 0;
+            GUI.enabled = updatable > 0 && !_useEmbeddedPackages;
+            if (GUILayout.Button($"Update all ({updatable})", GUILayout.Height(24), GUILayout.Width(140)))
+                PerformUpdateAllPackages();
+            GUI.enabled = true;
+
+            GUILayout.FlexibleSpace();
             var last = JisSDKHubVersionCheck.LastCheckUtc;
             if (last.HasValue)
-                EditorGUILayout.LabelField($"Last check: {last.Value.ToLocalTime():g}", EditorStyles.miniLabel);
+                EditorGUILayout.LabelField($"Last: {last.Value.ToLocalTime():g}", EditorStyles.miniLabel);
             EditorGUILayout.EndHorizontal();
 
-            var results = JisSDKHubVersionCheck.LastResults;
             if (results == null || results.Count == 0)
                 return;
-
-            var updatable = JisSDKHubVersionCheck.UpdatableCount;
-            if (updatable > 0 && !_useEmbeddedPackages)
-            {
-                if (GUILayout.Button($"Update all ({updatable})", GUILayout.Height(24)))
-                    PerformUpdateAllPackages();
-            }
 
             var updates = JisSDKHubVersionCheck.UpdateAvailableCount;
             var revisionDrift = results.Count(r => r.Status == JisPackageUpdateStatus.RevisionMismatch);
@@ -139,8 +139,16 @@ namespace JisSDKAds.Hub
         private void DrawVersionRow(JisPackageVersionRow row)
         {
             var shortId = row.PackageId.Replace("com.jis.sdkads.", "");
+            var canUpdate = JisSDKHubVersionCheck.CanUpdate(row) && !_useEmbeddedPackages;
+
+            EditorGUILayout.BeginVertical("box");
             EditorGUILayout.BeginHorizontal();
-            EditorGUILayout.LabelField(shortId, GUILayout.Width(108));
+
+            EditorGUILayout.LabelField(shortId, EditorStyles.boldLabel, GUILayout.Width(88));
+
+            var installed = string.IsNullOrEmpty(row.InstalledVersion) ? "—" : row.InstalledVersion;
+            var remote = string.IsNullOrEmpty(row.RemoteVersion) ? "—" : row.RemoteVersion;
+            EditorGUILayout.LabelField($"{installed} → {remote}", GUILayout.MinWidth(72));
 
             var prev = GUI.contentColor;
             GUI.contentColor = row.Status switch
@@ -151,27 +159,26 @@ namespace JisSDKAds.Hub
                 JisPackageUpdateStatus.FetchFailed => new Color(1f, 0.5f, 0.5f),
                 _ => Color.gray
             };
-
-            var installed = string.IsNullOrEmpty(row.InstalledVersion) ? "—" : row.InstalledVersion;
-            var remote = string.IsNullOrEmpty(row.RemoteVersion) ? "—" : row.RemoteVersion;
-            EditorGUILayout.LabelField($"{installed} → {remote}", GUILayout.Width(100));
-            EditorGUILayout.LabelField(row.Status.ToString(), EditorStyles.miniLabel, GUILayout.Width(92));
+            EditorGUILayout.LabelField(row.Status.ToString(), EditorStyles.miniBoldLabel, GUILayout.Width(108));
             GUI.contentColor = prev;
 
-            if (JisSDKHubVersionCheck.CanUpdate(row) && !_useEmbeddedPackages)
-            {
-                if (GUILayout.Button("Update", GUILayout.Width(56), GUILayout.Height(18)))
-                    PerformUpdatePackage(row.PackageId);
-            }
+            GUILayout.FlexibleSpace();
+
+            GUI.enabled = canUpdate;
+            if (GUILayout.Button("Update", GUILayout.Width(72), GUILayout.Height(22)))
+                PerformUpdatePackage(row.PackageId);
+            GUI.enabled = true;
 
             EditorGUILayout.EndHorizontal();
 
             if (!string.IsNullOrEmpty(row.Note))
             {
-                EditorGUI.indentLevel++;
-                EditorGUILayout.LabelField(new GUIContent(row.Note, row.ManifestSource), EditorStyles.miniLabel);
-                EditorGUI.indentLevel--;
+                EditorGUILayout.LabelField(
+                    new GUIContent(row.Note, row.ManifestSource),
+                    EditorStyles.miniLabel);
             }
+
+            EditorGUILayout.EndVertical();
         }
 
         void PerformUpdatePackage(string packageId)

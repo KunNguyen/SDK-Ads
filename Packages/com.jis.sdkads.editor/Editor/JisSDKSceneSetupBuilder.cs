@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using JisSDKAds.Ads;
 using JisSDKAds.Ads.Settings;
 using JisSDKAds.Ads.UnitAdManagers;
+using JisSDKAds.Ads.UnitAdManagers.Interface;
 using JisSDKAds.Firebase;
 using UnityEditor;
 using UnityEditor.SceneManagement;

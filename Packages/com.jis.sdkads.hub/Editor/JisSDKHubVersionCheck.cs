@@ -75,9 +75,18 @@ namespace JisSDKAds.Hub
             if (row.Status != JisPackageUpdateStatus.UpdateAvailable
                 && row.Status != JisPackageUpdateStatus.RevisionMismatch)
                 return false;
-            if (row.ManifestSource.StartsWith("file:", StringComparison.OrdinalIgnoreCase))
+
+            if (!string.IsNullOrEmpty(row.ManifestSource)
+                && row.ManifestSource.StartsWith("file:", StringComparison.OrdinalIgnoreCase))
                 return false;
-            return IsGitUpmSource(row.ManifestSource);
+
+            if (IsGitUpmSource(row.ManifestSource))
+                return true;
+
+            var dep = GetJisManifestDependencies().FirstOrDefault(d => d.id == row.PackageId);
+            return !string.IsNullOrEmpty(dep.id)
+                   && dep.source.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+                   && dep.source.IndexOf("path=Packages/", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         public static bool TryApplyPackageUpdate(string packageId, string targetRevision, out string message)
