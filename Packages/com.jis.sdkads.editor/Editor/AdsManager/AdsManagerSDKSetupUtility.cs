@@ -38,7 +38,7 @@ namespace JisSDKAds.Editor
         [MenuItem(JisSDKMenuPaths.AdsSceneAddManager, false, 200)]
         public static void AddManagerPrefabToCurrentScene()
         {
-            JisSDKScenePrefabUtility.AddPrefabToActiveScene("Manager");
+            JisSDKScenePrefabUtility.AddPrefabToActiveScene(JisSDKSceneSetupBuilder.PrefabAssetName);
         }
 
         [MenuItem(JisSDKMenuPaths.AdsSceneReorganizeManager, false, 201)]

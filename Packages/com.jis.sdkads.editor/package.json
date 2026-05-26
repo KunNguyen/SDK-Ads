@@ -1,6 +1,6 @@
 {
   "name": "com.jis.sdkads.editor",
-  "version": "5.0.3",
+  "version": "5.0.4",
   "displayName": "JIS SDK - Editor",
   "description": "Editor tools for ads setup, build handlers, and platform configuration.",
   "unity": "2022.3",

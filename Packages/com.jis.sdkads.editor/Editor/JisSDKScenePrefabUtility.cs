@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using System;
 using JisSDKAds.Ads;
+using JisSDKAds.Common;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -27,29 +28,56 @@ namespace JisSDKAds.Editor
                 return;
             }
 
-            if (IsManagerPrefabName(prefabName) && TryFocusExistingManager(out _))
-                return;
-
-            var prefab = ResolvePrefab(prefabName);
-            if (prefab != null)
-            {
-                InstantiateManagerPrefab(prefab, activeScene, prefabName);
-                return;
-            }
-
             if (IsManagerPrefabName(prefabName))
             {
+                if (TryFocusExistingManager(out _))
+                    return;
+
+                var managerPrefab = ResolveManagerPrefab();
+                if (managerPrefab != null)
+                {
+                    InstantiateManagerPrefab(managerPrefab, activeScene, prefabName);
+                    return;
+                }
+
                 JisSDKSceneSetupBuilder.CreateManagerInScene();
                 return;
             }
 
 #if UNITY_IAP_ACTIVE
-            if (prefabName == "InAppPurchaser")
+            if (IsIapPrefabName(prefabName))
             {
+                if (TryFocusExistingInAppPurchaser(out _))
+                    return;
+
+                var iapPrefab = ResolveIapPrefab();
+                if (iapPrefab != null)
+                {
+                    InstantiateIapPrefab(iapPrefab, activeScene, prefabName);
+                    return;
+                }
+
                 JisSDKSceneSetupBuilder.CreateInAppPurchaserInScene();
                 return;
             }
 #endif
+
+            var prefab = TryLoadPrefab(prefabName);
+            if (prefab != null)
+            {
+                var instance = PrefabUtility.InstantiatePrefab(prefab, activeScene) as GameObject;
+                if (instance == null)
+                {
+                    Debug.LogError($"[JIS SDK] Failed to instantiate prefab '{prefabName}'.");
+                    return;
+                }
+
+                Undo.RegisterCreatedObjectUndo(instance, $"Add {prefabName} Prefab");
+                EditorSceneManager.MarkSceneDirty(activeScene);
+                Selection.activeObject = instance;
+                EditorGUIUtility.PingObject(instance);
+                return;
+            }
 
             Debug.LogError(
                 $"[JIS SDK] Cannot find prefab '{prefabName}'. " +
@@ -65,15 +93,46 @@ namespace JisSDKAds.Editor
                 return false;
 
             root = existingAds.transform.root.gameObject;
-            Debug.LogWarning("[JIS SDK] Manager already exists in scene — selecting existing root.");
+            Debug.LogWarning("[JIS SDK] JisSDK_Manager already exists — selecting existing root.");
             Selection.activeObject = root;
             EditorGUIUtility.PingObject(root);
             return true;
         }
 
+#if UNITY_IAP_ACTIVE
+        public static bool TryFocusExistingInAppPurchaser(out GameObject root)
+        {
+            root = null;
+            var existing = UnityEngine.Object.FindFirstObjectByType<JisSDKAds.IAP.InAppPurchaser>(
+                FindObjectsInactive.Include);
+            if (existing == null)
+                return false;
+
+            root = existing.gameObject;
+            if (root.name != JisSDKSceneSetupBuilder.IapRootName)
+            {
+                Undo.RecordObject(root, "Rename JIS SDK IAP root");
+                root.name = JisSDKSceneSetupBuilder.IapRootName;
+            }
+
+            Debug.LogWarning("[JIS SDK] JisSDK_InAppPurchaser already exists — selecting existing object.");
+            Selection.activeObject = root;
+            EditorGUIUtility.PingObject(root);
+            return true;
+        }
+#endif
+
         static bool IsManagerPrefabName(string prefabName) =>
             prefabName.Equals("Manager", StringComparison.OrdinalIgnoreCase)
-            || prefabName.Equals(JisSDKSceneSetupBuilder.PrefabAssetName, StringComparison.OrdinalIgnoreCase);
+            || prefabName.Equals(JisSDKSceneSetupBuilder.PrefabAssetName, StringComparison.OrdinalIgnoreCase)
+            || prefabName.Equals(JisSDKSceneSetupBuilder.RootName, StringComparison.OrdinalIgnoreCase);
+
+#if UNITY_IAP_ACTIVE
+        static bool IsIapPrefabName(string prefabName) =>
+            prefabName.Equals("InAppPurchaser", StringComparison.OrdinalIgnoreCase)
+            || prefabName.Equals(JisSDKSceneSetupBuilder.IapPrefabAssetName, StringComparison.OrdinalIgnoreCase)
+            || prefabName.Equals(JisSDKSceneSetupBuilder.IapRootName, StringComparison.OrdinalIgnoreCase);
+#endif
 
         static void InstantiateManagerPrefab(GameObject prefab, Scene scene, string prefabName)
         {
@@ -99,7 +158,8 @@ namespace JisSDKAds.Editor
             EditorGUIUtility.PingObject(root);
         }
 
-        static void InstantiatePrefab(GameObject prefab, Scene scene, string prefabName)
+#if UNITY_IAP_ACTIVE
+        static void InstantiateIapPrefab(GameObject prefab, Scene scene, string prefabName)
         {
             var instance = PrefabUtility.InstantiatePrefab(prefab, scene) as GameObject;
             if (instance == null)
@@ -108,24 +168,37 @@ namespace JisSDKAds.Editor
                 return;
             }
 
-            Undo.RegisterCreatedObjectUndo(instance, $"Add {prefabName} Prefab");
-            EditorSceneManager.MarkSceneDirty(scene);
-            Selection.activeObject = instance;
-            EditorGUIUtility.PingObject(instance);
-        }
-
-        static GameObject ResolvePrefab(string prefabName)
-        {
-            if (IsManagerPrefabName(prefabName))
+            var root = instance.transform.root.gameObject;
+            if (root.name != JisSDKSceneSetupBuilder.IapRootName)
             {
-                var structured = TryLoadPrefab(JisSDKSceneSetupBuilder.PrefabAssetName);
-                if (structured != null) return structured;
-
-                return TryLoadPrefab("Manager");
+                Undo.RecordObject(root, "Rename JIS SDK IAP root");
+                root.name = JisSDKSceneSetupBuilder.IapRootName;
             }
 
-            return TryLoadPrefab(prefabName);
+            Undo.RegisterCreatedObjectUndo(instance, $"Add {prefabName} Prefab");
+            EditorSceneManager.MarkSceneDirty(scene);
+            Selection.activeObject = root;
+            EditorGUIUtility.PingObject(root);
         }
+#endif
+
+        static GameObject ResolveManagerPrefab()
+        {
+            var structured = TryLoadPrefab(JisSDKSceneSetupBuilder.PrefabAssetName);
+            if (structured != null) return structured;
+
+            return TryLoadPrefab("Manager");
+        }
+
+#if UNITY_IAP_ACTIVE
+        static GameObject ResolveIapPrefab()
+        {
+            var structured = TryLoadPrefab(JisSDKSceneSetupBuilder.IapPrefabAssetName);
+            if (structured != null) return structured;
+
+            return TryLoadPrefab("InAppPurchaser");
+        }
+#endif
 
         static GameObject TryLoadPrefab(string prefabName)
         {

@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using JisSDKAds.Ads;
 using JisSDKAds.Ads.Settings;
+using JisSDKAds.Common;
 using JisSDKAds.Ads.UnitAdManagers;
 using JisSDKAds.Ads.UnitAdManagers.Interface;
 using JisSDKAds.Firebase;
@@ -21,6 +22,9 @@ namespace JisSDKAds.Editor
         const string PrefabFolder = "Assets/JisSDKAds/Prefabs";
         public const string RootName = "JisSDK_Manager";
         public const string PrefabAssetName = "JisSDK_Manager";
+
+        public const string IapRootName = "JisSDK_InAppPurchaser";
+        public const string IapPrefabAssetName = "JisSDK_InAppPurchaser";
         const string FirebaseChildName = "Firebase";
         const string JisAdsChildName = "JisAds";
         const string AdsRuntimeChildName = "Ads_Runtime";
@@ -231,16 +235,11 @@ namespace JisSDKAds.Editor
 #if UNITY_IAP_ACTIVE
         public static GameObject CreateInAppPurchaserInScene()
         {
-            var existing = UnityEngine.Object.FindFirstObjectByType<JisSDKAds.IAP.InAppPurchaser>();
-            if (existing != null)
-            {
-                Debug.LogWarning("[JIS SDK] InAppPurchaser already exists — selecting existing object.");
-                Selection.activeObject = existing.gameObject;
-                return existing.gameObject;
-            }
+            if (JisSDKScenePrefabUtility.TryFocusExistingInAppPurchaser(out var existingGo))
+                return existingGo;
 
-            var root = new GameObject("InAppPurchaser");
-            Undo.RegisterCreatedObjectUndo(root, "Create InApp Purchaser");
+            var root = new GameObject(IapRootName);
+            Undo.RegisterCreatedObjectUndo(root, "Create JisSDK InApp Purchaser");
             var purchaser = root.AddComponent<JisSDKAds.IAP.InAppPurchaser>();
 
             var config = AssetDatabase.LoadAssetAtPath<JisSDKAds.IAP.IAPPackageConfigs>(
@@ -258,8 +257,8 @@ namespace JisSDKAds.Editor
 
             EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
             Selection.activeObject = root;
-            TrySavePrefabAsset(root, "InAppPurchaser");
-            Debug.Log("[JIS SDK] Created InAppPurchaser in scene.");
+            TrySavePrefabAsset(root, IapPrefabAssetName);
+            Debug.Log($"[JIS SDK] Created {IapRootName} in scene.");
             return root;
         }
 #endif
@@ -380,8 +379,16 @@ namespace JisSDKAds.Editor
         public static void EnsurePersistentRootComponent(GameObject root)
         {
             if (root == null) return;
-            if (root.GetComponent<Manager>() == null)
-                Undo.AddComponent<Manager>(root);
+            if (root.GetComponent<JisSDKPersistentRoot>() != null
+                || root.GetComponent<Manager>() != null)
+                return;
+
+#if UNITY_IAP_ACTIVE
+            if (root.GetComponent<JisSDKAds.IAP.InAppPurchaser>() != null)
+                return;
+#endif
+
+            Undo.AddComponent<JisSDKPersistentRoot>(root);
         }
 
         static void TrySavePrefabAsset(GameObject root, string prefabName)
