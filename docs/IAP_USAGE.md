@@ -130,6 +130,14 @@ void OnBuySuccess(IapPurchaseNotification n)
 // Legacy không tham số
 EventManager.StartListening(IapEvents.BuySuccess, () => { });
 EventManager.StartListening(IapEvents.BuyFail, () => { });
+
+// Buy fail có payload (khuyến nghị)
+EventManager.StartListening<IapPurchaseFailure>(IapEvents.BuyFail, f =>
+    Debug.Log($"{f.ProductId}: {f.Reason}"));
+
+// iOS Ask to Buy / deferred
+EventManager.StartListening<string>(IapEvents.PurchaseDeferred, productId => { });
+IapIntegration.PurchaseDeferred += productId => { };
 ```
 
 ### Grant thưởng tùy game (`Init` callback)
@@ -153,12 +161,15 @@ InAppPurchaser.Instance.Init(productId =>
 // Restore giao dịch (iOS thường cần nút Restore)
 InAppPurchaser.Instance.RestorePurchases();
 
-// Đã mua (local persistence SDK)
+// Đã mua entitlement (non-consumable / remove-ads / subscription)
 bool owned = InAppPurchaser.Instance.HasPurchased("remove_ads");
+// Consumable (coin pack) luôn trả false — dùng game state / Init callback
 ```
 
 - **Transaction đã xử lý** lưu riêng → tránh cộng coin / analytics trùng khi fetch purchase cũ.
-- **Restore** vẫn apply Remove Ads nhưng **không** gửi lại Firebase `iap_purchase` (`IsRestore = true`).
+- **Restore** vẫn apply Remove Ads nhưng **không** gửi lại Firebase / AppsFlyer / SolarEngine (`IsRestore = true`).
+- **`IsStoreReady`** chỉ true sau khi fetch existing purchases xong (hoặc fetch fail + cảnh báo).
+- Receipt invalid → **không** confirm order (pending giữ lại để retry).
 - Khi store ready, SDK tự apply Remove Ads nếu đã có trong persistence local.
 
 ---
@@ -169,7 +180,8 @@ bool owned = InAppPurchaser.Instance.HasPurchased("remove_ads");
 |----------|-----------|---------|
 | **Remove ads** | `ProductKind == RemoveAds` | `JisAds.SetRemoveAds(true)` hoặc `AdsManager` |
 | **Firebase** | `FirebaseManager` ready | Event `iap_purchase` |
-| **AppsFlyer** | `UNITY_APPSFLYER` + package analytics | `TrackAppflyerPurchase` |
+| **AppsFlyer** | `UNITY_APPSFLYER` + package analytics | `TrackAppflyerPurchase` (bỏ qua restore; revenue × 0.65) |
+| **SolarEngine** | `UNITY_SOLAR_ENGINE` | `trackPurchase` (bỏ qua restore; revenue × 0.65) |
 
 Game **không bắt buộc** gọi `SetRemoveAds` nếu dùng product kind RemoveAds.
 
@@ -206,7 +218,8 @@ Giá store cập nhật sau `IsStoreReady` (callback `OnInitialProductsFetched`)
 | `InAppPurchaser.Instance.InitializeAsync()` | Init + chờ store ready |
 | `InAppPurchaser.Instance.BuyIapProduct(...)` | Mua |
 | `InAppPurchaser.Instance.RestorePurchases()` | Restore |
-| `InAppPurchaser.Instance.HasPurchased(id)` | Local owned |
+| `InAppPurchaser.Instance.HasPurchased(id)` | Entitlement owned (không dùng cho consumable) |
+| `IapEvents.PurchaseDeferred` | Ask to Buy / deferred |
 | `InAppPurchaser.Instance.FindProduct(id)` | `Product` Unity IAP |
 | `IapEvents.*` | Event bus |
 | `IapIntegration.PurchaseCompleted` | Hook đa subscriber (Ads, AppsFlyer, game) |

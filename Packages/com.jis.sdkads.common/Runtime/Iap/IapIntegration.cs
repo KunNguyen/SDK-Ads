@@ -8,7 +8,8 @@ namespace JisSDKAds.Common
     public static class IapIntegration
     {
         static Action<IapPurchaseNotification> _purchaseCompleted;
-        static Action<string> _purchaseFailed;
+        static Action<IapPurchaseFailure> _purchaseFailed;
+        static Action<string> _purchaseDeferred;
         static Action<bool> _storeReady;
         static Action _applyRemoveAdsRequested;
 
@@ -18,10 +19,16 @@ namespace JisSDKAds.Common
             remove => _purchaseCompleted -= value;
         }
 
-        public static event Action<string> PurchaseFailed
+        public static event Action<IapPurchaseFailure> PurchaseFailed
         {
             add => _purchaseFailed += value;
             remove => _purchaseFailed -= value;
+        }
+
+        public static event Action<string> PurchaseDeferred
+        {
+            add => _purchaseDeferred += value;
+            remove => _purchaseDeferred -= value;
         }
 
         public static event Action<bool> StoreReady
@@ -33,8 +40,11 @@ namespace JisSDKAds.Common
         public static void NotifyPurchaseCompleted(IapPurchaseNotification notification) =>
             _purchaseCompleted?.Invoke(notification);
 
-        public static void NotifyPurchaseFailed(string reason) =>
-            _purchaseFailed?.Invoke(reason);
+        public static void NotifyPurchaseFailed(string productId, string reason) =>
+            _purchaseFailed?.Invoke(new IapPurchaseFailure { ProductId = productId, Reason = reason });
+
+        public static void NotifyPurchaseDeferred(string productId) =>
+            _purchaseDeferred?.Invoke(productId);
 
         public static void NotifyStoreReady(bool success) =>
             _storeReady?.Invoke(success);

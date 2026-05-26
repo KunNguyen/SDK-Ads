@@ -14,7 +14,7 @@ namespace JisSDKAds.Analytics.AppsFlyer
 
         static void OnPurchaseCompleted(IapPurchaseNotification notification)
         {
-            if (notification.LocalizedPrice <= 0)
+            if (notification.IsRestore || notification.LocalizedPrice <= 0)
                 return;
 
             AppsflyerTracking.TrackAppflyerPurchase(

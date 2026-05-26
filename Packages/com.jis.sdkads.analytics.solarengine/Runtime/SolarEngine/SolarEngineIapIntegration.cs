@@ -11,6 +11,9 @@ namespace JisSDKAds.Analytics.SolarEngineIntegration
 
         static void OnPurchaseCompleted(IapPurchaseNotification notification)
         {
+            if (notification.IsRestore)
+                return;
+
             var paymentAmount = (double)notification.LocalizedPrice * 0.65d;
             SolarEngineManager.Instance?.TrackPurchase(
                 notification.ProductId,

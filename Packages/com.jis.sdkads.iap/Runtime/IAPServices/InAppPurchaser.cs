@@ -60,6 +60,7 @@ namespace JisSDKAds.IAP
         UnityAction OnBuySuccessCallback { get; set; }
         UnityAction OnBuyFailedCallback { get; set; }
         bool isInitializing;
+        bool _awaitingEntitlementsReplay;
         TaskCompletionSource<bool> _readyTcs;
         string _lastInitError;
 
@@ -150,7 +151,14 @@ namespace JisSDKAds.IAP
 
             IAPLogger.LogConsole("Initializing In-App Purchaser...");
             InitCatalog();
-            InitializeIapServices();
+
+            if (!await IAPService.TryInitializeAsync())
+            {
+                FailReady("Unity Gaming Services initialization failed.");
+                await _readyTcs.Task;
+                return;
+            }
+
             CreateCrossPlatformValidator();
             await ConnectToStoreAsync();
             await _readyTcs.Task;
@@ -207,12 +215,6 @@ namespace JisSDKAds.IAP
 
             CatalogProvider.AddProducts(initialProductsToFetch, storeSpecificIdsByProductId);
             IAPLogger.LogConsole($"Catalog initialized with {initialProductsToFetch.Count} products.");
-        }
-
-        void InitializeIapServices()
-        {
-            IAPLogger.LogConsole("Initializing IAP Services...");
-            _ = IAPService.InitializeAsync(OnIAPServiceInitializeSuccess, OnIapServiceInitializeFailed);
         }
 
         void CreateCrossPlatformValidator()
@@ -278,6 +280,23 @@ namespace JisSDKAds.IAP
             CompleteStoreReady(false, message);
         }
 
+        /// <summary>Called after existing purchases fetch completes (success or failure).</summary>
+        internal void FinishEntitlementsReplay(string warningMessage = null)
+        {
+            if (!_awaitingEntitlementsReplay)
+                return;
+
+            _awaitingEntitlementsReplay = false;
+            if (!string.IsNullOrEmpty(warningMessage))
+                Debug.LogWarning($"[IAP] {warningMessage}");
+            CompleteStoreReady(true);
+        }
+
+        internal void BeginEntitlementsReplay()
+        {
+            _awaitingEntitlementsReplay = true;
+        }
+
         #endregion
 
         #region Command Methods
@@ -325,14 +344,19 @@ namespace JisSDKAds.IAP
 
         public void ProcessPendingOrder(PendingOrder pendingOrder)
         {
+            var allSucceeded = true;
             foreach (var cartItem in pendingOrder.CartOrdered.Items())
             {
                 var product = cartItem.Product;
                 IAPLogger.LogCompletedPurchase(product, pendingOrder.Info);
-                TryFulfillOrder(product.definition.id, pendingOrder.Info, product, isRestore: false);
+                if (!TryFulfillOrder(product.definition.id, pendingOrder.Info, product, isRestore: false))
+                    allSucceeded = false;
             }
 
-            ConfirmOrder(pendingOrder);
+            if (allSucceeded)
+                ConfirmOrder(pendingOrder);
+            else
+                IAPLogger.LogConsole("Pending order not confirmed — fulfillment or receipt validation failed.");
         }
 
         public void FetchExistingPurchases()
@@ -357,56 +381,61 @@ namespace JisSDKAds.IAP
             PurchaseService.RestoreTransactions(OnTransactionRestored);
         }
 
-        public void ValidatePurchaseIfPossible(IOrderInfo orderInfo)
+        public bool ValidatePurchaseIfPossible(IOrderInfo orderInfo, bool isRestore = false)
         {
-            if (CanCrossPlatformValidate())
-                ValidatePurchase(orderInfo);
+            if (!CanCrossPlatformValidate() || orderInfo == null)
+                return false;
+            return TryValidateAndFulfill(orderInfo, null, isRestore);
         }
 
-        void ValidatePurchase(IOrderInfo orderInfo)
+        bool TryValidateAndFulfill(IOrderInfo orderInfo, Product product, bool isRestore)
         {
             try
             {
                 var result = CrossPlatformValidator.Validate(orderInfo.Receipt);
                 IAPLogger.LogConsole("Validated Receipt. Contents:");
+                var allSucceeded = true;
                 foreach (IPurchaseReceipt productReceipt in result)
                 {
                     IAPLogger.LogReceiptValidation(productReceipt);
-                    TryFulfillFromReceipt(productReceipt, orderInfo, isRestore: false);
+                    if (!TryFulfillFromReceipt(productReceipt, orderInfo, isRestore))
+                        allSucceeded = false;
                 }
+
+                return allSucceeded;
             }
             catch (IAPSecurityException ex)
             {
                 IAPLogger.LogConsole("Invalid receipt, not unlocking content. " + ex);
-                NotifyPurchaseFailed(null, "Receipt validation failed.");
+                NotifyPurchaseFailed(product?.definition?.id, "Receipt validation failed.");
+                return false;
             }
         }
 
-        void TryFulfillFromReceipt(IPurchaseReceipt productReceipt, IOrderInfo orderInfo, bool isRestore)
+        bool TryFulfillFromReceipt(IPurchaseReceipt productReceipt, IOrderInfo orderInfo, bool isRestore)
         {
             var productId = productReceipt?.productID;
             if (string.IsNullOrEmpty(productId))
-                return;
-            TryFulfillOrder(productId, orderInfo, null, isRestore, productReceipt);
+                return false;
+            return TryFulfillOrder(productId, orderInfo, null, isRestore, productReceipt);
         }
 
-        void TryFulfillOrder(string productId, IOrderInfo orderInfo, Product product, bool isRestore,
+        /// <returns>True when the transaction is safe to confirm (fulfilled or already processed).</returns>
+        bool TryFulfillOrder(string productId, IOrderInfo orderInfo, Product product, bool isRestore,
             IPurchaseReceipt productReceipt = null)
         {
             var transactionId = ResolveTransactionId(orderInfo, productReceipt);
             if (IapPurchasePersistence.WasTransactionProcessed(transactionId))
             {
                 IAPLogger.LogConsole($"Skipping already processed transaction: {transactionId}");
-                return;
+                return true;
             }
 
             if (CanCrossPlatformValidate() && productReceipt == null && orderInfo != null)
-            {
-                ValidatePurchase(orderInfo);
-                return;
-            }
+                return TryValidateAndFulfill(orderInfo, product, isRestore);
 
             FulfillPurchase(productId, orderInfo, product, productReceipt, isRestore, transactionId);
+            return true;
         }
 
         void FulfillPurchase(string productId, IOrderInfo orderInfo, Product product, IPurchaseReceipt productReceipt,
@@ -418,12 +447,15 @@ namespace JisSDKAds.IAP
             var purchaseToken = ExtractPurchaseToken(productReceipt);
             var receipt = orderInfo?.Receipt ?? string.Empty;
 
-            IapPurchasePersistence.RecordPurchase(new PurchasedData(
-                productId,
-                transactionId,
-                purchaseToken,
-                receipt,
-                DateTime.UtcNow.ToString("o")));
+            if (ShouldPersistEntitlement(pack))
+            {
+                IapPurchasePersistence.RecordPurchase(new PurchasedData(
+                    productId,
+                    transactionId,
+                    purchaseToken,
+                    receipt,
+                    DateTime.UtcNow.ToString("o")));
+            }
 
             var notification = BuildNotification(productId, pack, orderInfo, productReceipt, purchaseToken, receipt,
                 isRestore);
@@ -500,10 +532,19 @@ namespace JisSDKAds.IAP
             EventManager.Trigger(IapEvents.BuySuccess);
         }
 
+        static bool ShouldPersistEntitlement(IAPPackage pack)
+        {
+            if (pack == null)
+                return true;
+            return pack.ProductKind != IapProductKind.Consumable;
+        }
+
         void NotifyPurchaseFailed(string productId, string reason)
         {
             OnBuyFailedCallback?.Invoke();
-            IapIntegration.NotifyPurchaseFailed(reason);
+            var failure = new IapPurchaseFailure { ProductId = productId, Reason = reason };
+            IapIntegration.NotifyPurchaseFailed(productId, reason);
+            EventManager.Trigger(IapEvents.BuyFail, failure);
             EventManager.Trigger(IapEvents.BuyFail);
             EventManager.Trigger(IapEvents.TurnOffLoading);
             if (!string.IsNullOrEmpty(productId))
@@ -534,20 +575,32 @@ namespace JisSDKAds.IAP
             IAPLogger.LogConsole($"Loaded store prices for {products.Count} product(s).");
         }
 
-        public bool HasPurchased(string productId) => IapPurchasePersistence.IsPurchased(productId);
+        /// <summary>
+        /// Local entitlement check for non-consumables, subscriptions, and remove-ads.
+        /// Consumables always return false — use game state for coin packs, etc.
+        /// </summary>
+        public bool HasPurchased(string productId)
+        {
+            if (string.IsNullOrEmpty(productId))
+                return false;
+
+            var pack = IapProductConfigs?.FindPackage(productId);
+            if (pack != null && pack.ProductKind == IapProductKind.Consumable)
+                return false;
+
+            return IapPurchasePersistence.IsPurchased(productId);
+        }
+
+        public void NotifyPurchaseDeferred(string productId)
+        {
+            IAPLogger.LogConsole($"Purchase deferred: {productId}");
+            IapIntegration.NotifyPurchaseDeferred(productId);
+            EventManager.Trigger(IapEvents.PurchaseDeferred, productId);
+        }
 
         #endregion
 
         #region Callbacks
-
-        void OnIAPServiceInitializeSuccess()
-        {
-        }
-
-        void OnIapServiceInitializeFailed(string error)
-        {
-            DebugAds.LogError($"IAP Service initialization failed: {error}");
-        }
 
         void OnTransactionRestored(bool success, string error)
         {

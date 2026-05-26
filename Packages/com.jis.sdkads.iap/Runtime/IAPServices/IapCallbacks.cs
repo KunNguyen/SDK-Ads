@@ -19,8 +19,8 @@ namespace JisSDKAds.IAP
             inAppPurchaser.IAPLogger.LogConsole("OnInitialProductsFetched:");
             inAppPurchaser.IAPLogger.LogFetchedProducts(products);
             inAppPurchaser.LoadProductDetails(products);
+            inAppPurchaser.BeginEntitlementsReplay();
             inAppPurchaser.FetchExistingPurchases();
-            inAppPurchaser.CompleteStoreReady(true);
         }
 
         public void OnInitialProductsFetchFailed(ProductFetchFailed failure)
@@ -39,17 +39,22 @@ namespace JisSDKAds.IAP
             inAppPurchaser.IAPLogger.LogConsole(
                 $"OnExistingPurchasesFetched: {confirmedCount} confirmed, {pendingCount} pending.");
 
-            if (existingOrders == null)
-                return;
+            if (existingOrders != null)
+            {
+                ProcessConfirmedOrders(existingOrders.ConfirmedOrders);
+                ProcessPendingOrders(existingOrders.PendingOrders);
+            }
 
-            ProcessConfirmedOrders(existingOrders.ConfirmedOrders);
-            ProcessPendingOrders(existingOrders.PendingOrders);
+            inAppPurchaser.FinishEntitlementsReplay();
         }
 
         public void OnExistingPurchasesFetchFailed(PurchasesFetchFailureDescription failure)
         {
             LogSectionHeader();
-            inAppPurchaser.IAPLogger.LogConsole($"OnExistingPurchasesFetchFailed: {failure.Message}");
+            var message = failure?.Message ?? "unknown";
+            inAppPurchaser.IAPLogger.LogConsole($"OnExistingPurchasesFetchFailed: {message}");
+            inAppPurchaser.FinishEntitlementsReplay(
+                $"Existing purchases could not be fetched ({message}). Shop is available; entitlements may need Restore.");
         }
 
         public void OnPurchasePending(PendingOrder order)
@@ -96,6 +101,7 @@ namespace JisSDKAds.IAP
             foreach (var cartItem in deferredOrder.CartOrdered.Items())
             {
                 inAppPurchaser.IAPLogger.LogDeferredPurchase(cartItem.Product);
+                inAppPurchaser.NotifyPurchaseDeferred(cartItem.Product.definition.id);
             }
         }
 
