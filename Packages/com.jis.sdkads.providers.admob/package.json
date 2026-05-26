@@ -6,7 +6,7 @@
   "unity": "2022.3",
   "dependencies": {
     "com.jis.sdkads.core": "5.0.0",
-    "com.jis.sdkads.ads": "5.1.0"
+    "com.jis.sdkads.ads": "5.1.1"
   },
   "author": {
     "name": "JustIdleGames"

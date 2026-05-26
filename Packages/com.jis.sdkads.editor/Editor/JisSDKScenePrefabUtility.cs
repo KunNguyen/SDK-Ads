@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using System;
+using JisSDKAds.Ads;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -26,14 +27,17 @@ namespace JisSDKAds.Editor
                 return;
             }
 
+            if (IsManagerPrefabName(prefabName) && TryFocusExistingManager(out _))
+                return;
+
             var prefab = ResolvePrefab(prefabName);
             if (prefab != null)
             {
-                InstantiatePrefab(prefab, activeScene, prefabName);
+                InstantiateManagerPrefab(prefab, activeScene, prefabName);
                 return;
             }
 
-            if (prefabName == "Manager")
+            if (IsManagerPrefabName(prefabName))
             {
                 JisSDKSceneSetupBuilder.CreateManagerInScene();
                 return;
@@ -52,6 +56,49 @@ namespace JisSDKAds.Editor
                 $"Expected under Assets/JisSDKAds/Prefabs/ or use menu to auto-create.");
         }
 
+        public static bool TryFocusExistingManager(out GameObject root)
+        {
+            root = null;
+            var existingAds = UnityEngine.Object.FindFirstObjectByType<AdsManager>(
+                FindObjectsInactive.Include);
+            if (existingAds == null)
+                return false;
+
+            root = existingAds.transform.root.gameObject;
+            Debug.LogWarning("[JIS SDK] Manager already exists in scene — selecting existing root.");
+            Selection.activeObject = root;
+            EditorGUIUtility.PingObject(root);
+            return true;
+        }
+
+        static bool IsManagerPrefabName(string prefabName) =>
+            prefabName.Equals("Manager", StringComparison.OrdinalIgnoreCase)
+            || prefabName.Equals(JisSDKSceneSetupBuilder.PrefabAssetName, StringComparison.OrdinalIgnoreCase);
+
+        static void InstantiateManagerPrefab(GameObject prefab, Scene scene, string prefabName)
+        {
+            var instance = PrefabUtility.InstantiatePrefab(prefab, scene) as GameObject;
+            if (instance == null)
+            {
+                Debug.LogError($"[JIS SDK] Failed to instantiate prefab '{prefabName}'.");
+                return;
+            }
+
+            var root = instance.transform.root.gameObject;
+            if (root.name != JisSDKSceneSetupBuilder.RootName)
+            {
+                Undo.RecordObject(root, "Rename JIS SDK Manager root");
+                root.name = JisSDKSceneSetupBuilder.RootName;
+            }
+
+            JisSDKSceneSetupBuilder.EnsurePersistentRootComponent(root);
+
+            Undo.RegisterCreatedObjectUndo(instance, $"Add {prefabName} Prefab");
+            EditorSceneManager.MarkSceneDirty(scene);
+            Selection.activeObject = root;
+            EditorGUIUtility.PingObject(root);
+        }
+
         static void InstantiatePrefab(GameObject prefab, Scene scene, string prefabName)
         {
             var instance = PrefabUtility.InstantiatePrefab(prefab, scene) as GameObject;
@@ -68,6 +115,19 @@ namespace JisSDKAds.Editor
         }
 
         static GameObject ResolvePrefab(string prefabName)
+        {
+            if (IsManagerPrefabName(prefabName))
+            {
+                var structured = TryLoadPrefab(JisSDKSceneSetupBuilder.PrefabAssetName);
+                if (structured != null) return structured;
+
+                return TryLoadPrefab("Manager");
+            }
+
+            return TryLoadPrefab(prefabName);
+        }
+
+        static GameObject TryLoadPrefab(string prefabName)
         {
             var fileName = $"{prefabName}.prefab";
 

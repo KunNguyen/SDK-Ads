@@ -1,13 +1,13 @@
 {
   "name": "com.jis.sdkads.ads",
-  "version": "5.1.0",
+  "version": "5.1.1",
   "displayName": "JIS SDK - Ads",
   "description": "Full ads stack: AdsManager, mediation, formats, remote config driven behavior. No Odin runtime dependency (editor UX via com.jis.sdkads.editor + com.jis.sdkads.odin).",
   "unity": "2022.3",
   "dependencies": {
     "com.jis.sdkads.core": "5.0.0",
-    "com.jis.sdkads.common": "5.0.1",
-    "com.jis.sdkads.firebase": "5.0.1"
+    "com.jis.sdkads.common": "5.0.2",
+    "com.jis.sdkads.firebase": "5.0.2"
   },
   "author": {
     "name": "JustIdleGames"

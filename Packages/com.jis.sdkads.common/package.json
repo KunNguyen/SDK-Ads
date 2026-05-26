@@ -1,6 +1,6 @@
 {
   "name": "com.jis.sdkads.common",
-  "version": "5.0.1",
+  "version": "5.0.2",
   "displayName": "JIS SDK - Common",
   "description": "Shared utilities and types for JIS SDK packages.",
   "unity": "2022.3",

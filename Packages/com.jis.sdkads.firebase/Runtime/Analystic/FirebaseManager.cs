@@ -69,7 +69,7 @@ namespace JisSDKAds.Firebase
             }
 
             instance = this;
-            DontDestroyOnLoad(gameObject);
+            JisSDKPersistence.DontDestroyUnlessUnderPersistentRoot(gameObject);
 
             if (InitializationMode == FirebaseInitializationMode.AutoOnAwake)
             {

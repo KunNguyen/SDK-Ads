@@ -31,7 +31,9 @@ JisSDK_Manager
 | **JIS SDK → Ads → Scene → Add Manager Prefab** | Create full hierarchy + wire `AdsManager` |
 | **JIS SDK → Ads → Scene → Reorganize Manager Hierarchy** | Move components from flat `Manager` into children |
 
-Prefab template (if missing): `Assets/JisSDKAds/Prefabs/Manager.prefab`
+Prefab template (if missing): `Assets/JisSDKAds/Prefabs/JisSDK_Manager.prefab` (legacy: `Manager.prefab`)
+
+Root has `Manager` component → **DontDestroyOnLoad** on the whole hierarchy when changing scenes.
 
 ## Init modes vs Remote Config
 

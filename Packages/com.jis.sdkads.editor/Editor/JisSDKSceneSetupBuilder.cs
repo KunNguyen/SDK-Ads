@@ -19,7 +19,8 @@ namespace JisSDKAds.Editor
     static class JisSDKSceneSetupBuilder
     {
         const string PrefabFolder = "Assets/JisSDKAds/Prefabs";
-        const string RootName = "JisSDK_Manager";
+        public const string RootName = "JisSDK_Manager";
+        public const string PrefabAssetName = "JisSDK_Manager";
         const string FirebaseChildName = "Firebase";
         const string JisAdsChildName = "JisAds";
         const string AdsRuntimeChildName = "Ads_Runtime";
@@ -28,26 +29,20 @@ namespace JisSDKAds.Editor
 
         public static GameObject CreateManagerInScene()
         {
-            var existingAds = UnityEngine.Object.FindFirstObjectByType<AdsManager>();
-            if (existingAds != null)
+            if (JisSDKScenePrefabUtility.TryFocusExistingManager(out var existingRoot))
             {
-                var root = existingAds.transform.root.gameObject;
-                if (IsFlatLayout(root))
+                if (IsFlatLayout(existingRoot)
+                    && EditorUtility.DisplayDialog(
+                        "JIS SDK Manager",
+                        "Manager uses a flat layout (all components on one object). Reorganize into a structured hierarchy?",
+                        "Reorganize",
+                        "Keep as-is"))
                 {
-                    if (EditorUtility.DisplayDialog(
-                            "JIS SDK Manager",
-                            "Manager uses a flat layout (all components on one object). Reorganize into a structured hierarchy?",
-                            "Reorganize",
-                            "Keep as-is"))
-                    {
-                        ReorganizeFlatHierarchy(root);
-                        EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
-                    }
+                    ReorganizeFlatHierarchy(existingRoot);
+                    EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
                 }
 
-                Debug.LogWarning("[JIS SDK] AdsManager already exists — selecting existing root.");
-                Selection.activeObject = root;
-                return root;
+                return existingRoot;
             }
 
             var hierarchyRoot = BuildHierarchy();
@@ -59,7 +54,7 @@ namespace JisSDKAds.Editor
             Selection.activeObject = hierarchyRoot;
             EditorGUIUtility.PingObject(hierarchyRoot);
 
-            TrySavePrefabAsset(hierarchyRoot, "Manager");
+            TrySavePrefabAsset(hierarchyRoot, PrefabAssetName);
             Debug.Log("[JIS SDK] Created structured JisSDK_Manager hierarchy.");
             return hierarchyRoot;
         }
@@ -92,6 +87,8 @@ namespace JisSDKAds.Editor
                 Undo.RecordObject(flatRoot, "Rename root");
                 flatRoot.name = RootName;
             }
+
+            EnsurePersistentRootComponent(flatRoot);
 
             var firebaseGo = GetOrCreateChild(flatRoot.transform, FirebaseChildName);
             var jisAdsGo = GetOrCreateChild(flatRoot.transform, JisAdsChildName);
@@ -154,6 +151,7 @@ namespace JisSDKAds.Editor
         {
             var root = new GameObject(RootName);
             Undo.RegisterCreatedObjectUndo(root, "Create JIS SDK Manager");
+            EnsurePersistentRootComponent(root);
 
             var firebaseGo = CreateChild(root.transform, FirebaseChildName);
             var firebase = firebaseGo.AddComponent<FirebaseManager>();
@@ -377,6 +375,13 @@ namespace JisSDKAds.Editor
             if (guids.Length == 0) return null;
             return AssetDatabase.LoadAssetAtPath<JisSDKAdsSettings>(
                 AssetDatabase.GUIDToAssetPath(guids[0]));
+        }
+
+        public static void EnsurePersistentRootComponent(GameObject root)
+        {
+            if (root == null) return;
+            if (root.GetComponent<Manager>() == null)
+                Undo.AddComponent<Manager>(root);
         }
 
         static void TrySavePrefabAsset(GameObject root, string prefabName)

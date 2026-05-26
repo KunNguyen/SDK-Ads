@@ -1,11 +1,11 @@
 {
   "name": "com.jis.sdkads.firebase",
-  "version": "5.0.1",
+  "version": "5.0.2",
   "displayName": "JIS SDK - Firebase",
   "description": "Firebase integration for JIS SDK.",
   "unity": "2022.3",
   "dependencies": {
-    "com.jis.sdkads.common": "5.0.1"
+    "com.jis.sdkads.common": "5.0.2"
   },
   "author": {
     "name": "JustIdleGames"

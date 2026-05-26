@@ -1,5 +1,6 @@
 using System.Threading.Tasks;
 using JisSDKAds.Ads.Settings;
+using JisSDKAds.Common;
 using JisSDKAds.Ads.Tiered;
 using JisSDKAds.Core;
 using JisSDKAds.Core.Interfaces;
@@ -69,7 +70,7 @@ namespace JisSDKAds.Ads
             }
 
             Instance = this;
-            DontDestroyOnLoad(gameObject);
+            JisSDKPersistence.DontDestroyUnlessUnderPersistentRoot(gameObject);
 
             if (settings == null)
             {

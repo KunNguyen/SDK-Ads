@@ -210,7 +210,7 @@ namespace JisSDKAds.Ads
             }
 
             Instance = this;
-            DontDestroyOnLoad(gameObject);
+            JisSDKPersistence.DontDestroyUnlessUnderPersistentRoot(gameObject);
             return true;
         }
 

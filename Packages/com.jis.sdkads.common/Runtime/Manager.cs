@@ -1,10 +1,13 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 
-public class Manager : MonoBehaviour {
-    private void Awake() {
+/// <summary>
+/// Place on the JIS SDK scene root (e.g. JisSDK_Manager) so the whole hierarchy survives scene loads.
+/// </summary>
+[DefaultExecutionOrder(-1000)]
+public class Manager : MonoBehaviour
+{
+    void Awake()
+    {
         DontDestroyOnLoad(gameObject);
     }
 } 
