@@ -27,7 +27,11 @@ namespace JisSDKAds.Editor
             var selectedAdsManager = go.GetComponent<AdsManager>();
             if (selectedAdsManager == null) return;
 
-            selectedAdsManager.UpdateAdsMediationConfig();
+            if (selectedAdsManager.SdkSettings != null)
+                selectedAdsManager.ApplyFromSettings(selectedAdsManager.SdkSettings);
+            else
+                selectedAdsManager.UpdateAdsMediationConfig();
+
             EditorUtility.SetDirty(selectedAdsManager);
             EditorSceneManager.MarkSceneDirty(selectedAdsManager.gameObject.scene);
         }

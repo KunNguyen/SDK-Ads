@@ -14,6 +14,21 @@ namespace JisSDKAds.Editor
     /// </summary>
     public static class JisSDKAdsSettingsApplier
     {
+        public static JisSDKAdsSettings TryLoadDefaultSettings()
+        {
+            var settings = AssetDatabase.LoadAssetAtPath<JisSDKAdsSettings>(
+                JisSDKAdsSettingsMenu.DefaultSettingsPath);
+            if (settings != null)
+                return settings;
+
+            var guids = AssetDatabase.FindAssets("t:JisSDKAdsSettings");
+            if (guids.Length == 0)
+                return null;
+
+            return AssetDatabase.LoadAssetAtPath<JisSDKAdsSettings>(
+                AssetDatabase.GUIDToAssetPath(guids[0]));
+        }
+
         public static bool Apply(JisSDKAdsSettings settings, string reason = "Apply")
         {
             if (settings == null)
@@ -100,6 +115,13 @@ namespace JisSDKAds.Editor
 
             if (profile.mediation == AdsMediationType.NONE)
                 result.AddWarning($"{label}: primary mediation is NONE.");
+
+            if (profile.sdkSetup.adsMediationType != profile.mediation)
+            {
+                result.AddWarning(
+                    $"{label}: SDKSetup.adsMediationType ({profile.sdkSetup.adsMediationType}) " +
+                    $"differs from profile mediation ({profile.mediation}). Use Apply to sync.");
+            }
 
             if (AdsSetupUtility.CountActiveFormats(profile.sdkSetup) == 0)
                 result.AddWarning($"{label}: no ad formats enabled (all mediation = NONE).");

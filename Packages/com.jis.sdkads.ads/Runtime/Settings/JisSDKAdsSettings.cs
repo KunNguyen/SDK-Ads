@@ -42,6 +42,8 @@ namespace JisSDKAds.Ads.Settings
         {
             if (adsManager == null) return;
 
+            SyncAllProfileMediationToSdkSetups();
+
             adsManager.SdkSettings = this;
             adsManager.AndroidSdkSetup = android?.sdkSetup;
             adsManager.IOSSdkSetup = ios?.sdkSetup;
@@ -54,8 +56,31 @@ namespace JisSDKAds.Ads.Settings
                 return;
             }
 
-            adsManager.MainAdsMediationType = profile.mediation;
             adsManager.UpdateAdsMediationConfig(profile.sdkSetup);
+        }
+
+        /// <summary>
+        /// Keeps legacy <see cref="SDKSetup.adsMediationType"/> aligned with profile primary mediation
+        /// (scripting defines, bridges, and editor refresh).
+        /// </summary>
+        public void SyncAllProfileMediationToSdkSetups()
+        {
+            SyncProfileMediationToSdkSetup(android);
+            SyncProfileMediationToSdkSetup(ios);
+        }
+
+        public static void SyncProfileMediationToSdkSetup(PlatformAdsProfile profile)
+        {
+            if (profile?.sdkSetup == null)
+                return;
+
+            if (profile.sdkSetup.adsMediationType == profile.mediation)
+                return;
+
+            profile.sdkSetup.adsMediationType = profile.mediation;
+#if UNITY_EDITOR
+            UnityEditor.EditorUtility.SetDirty(profile.sdkSetup);
+#endif
         }
     }
 

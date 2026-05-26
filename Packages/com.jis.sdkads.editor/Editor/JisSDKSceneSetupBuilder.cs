@@ -46,13 +46,13 @@ namespace JisSDKAds.Editor
                     EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
                 }
 
+                TryApplySceneSettings("Scene Setup Builder (existing)");
+
                 return existingRoot;
             }
 
             var hierarchyRoot = BuildHierarchy();
-            var settings = LoadSettingsAsset();
-            if (settings != null)
-                JisSDKAdsSettingsApplier.Apply(settings, "Scene Setup Builder");
+            TryApplySceneSettings("Scene Setup Builder");
 
             EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
             Selection.activeObject = hierarchyRoot;
@@ -337,6 +337,9 @@ namespace JisSDKAds.Editor
 
         static void ConfigureInitModes(FirebaseManager firebase, AdsManager adsManager)
         {
+            var settings = LoadSettingsAsset();
+            var adsInitMode = settings?.adsInitializationMode ?? AdsManager.AdsInitializationMode.Manual;
+
             var firebaseSo = new SerializedObject(firebase);
             var firebaseInit = FindProperty(firebaseSo, "InitializationMode");
             if (firebaseInit != null)
@@ -349,7 +352,7 @@ namespace JisSDKAds.Editor
             var adsInit = FindProperty(adsSo, "InitializationMode");
             if (adsInit != null)
             {
-                adsInit.enumValueIndex = (int)AdsManager.AdsInitializationMode.Manual;
+                adsInit.enumValueIndex = (int)adsInitMode;
                 adsSo.ApplyModifiedPropertiesWithoutUndo();
             }
         }
@@ -364,16 +367,13 @@ namespace JisSDKAds.Editor
                 prop.objectReferenceValue = value;
         }
 
-        static JisSDKAdsSettings LoadSettingsAsset()
-        {
-            var settings = AssetDatabase.LoadAssetAtPath<JisSDKAdsSettings>(
-                JisSDKAdsSettingsMenu.DefaultSettingsPath);
-            if (settings != null) return settings;
+        static JisSDKAdsSettings LoadSettingsAsset() => JisSDKAdsSettingsApplier.TryLoadDefaultSettings();
 
-            var guids = AssetDatabase.FindAssets("t:JisSDKAdsSettings");
-            if (guids.Length == 0) return null;
-            return AssetDatabase.LoadAssetAtPath<JisSDKAdsSettings>(
-                AssetDatabase.GUIDToAssetPath(guids[0]));
+        static void TryApplySceneSettings(string reason)
+        {
+            var adsSettings = LoadSettingsAsset();
+            if (adsSettings != null)
+                JisSDKAdsSettingsApplier.Apply(adsSettings, reason);
         }
 
         public static void EnsurePersistentRootComponent(GameObject root)

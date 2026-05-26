@@ -56,7 +56,7 @@ namespace JisSDKAds.Ads
                if (sdkSetup == null) return;
 
                CurrentSDKSetup = sdkSetup;
-               MainAdsMediationType = CurrentSDKSetup.adsMediationType;
+               MainAdsMediationType = ResolvePrimaryMediationType(sdkSetup);
                AdsConfigs ??= new List<AdsConfig>();
                AdsConfigs.Clear();
                AddAdsConfig(AdsType.INTERSTITIAL);
@@ -117,6 +117,13 @@ namespace JisSDKAds.Ads
 #if UNITY_AD_ADMOB
                AdMobMediationReflection.ApplySdkSetup(this, CurrentSDKSetup);
 #endif
+          }
+
+          AdsMediationType ResolvePrimaryMediationType(SDKSetup sdkSetup)
+          {
+               if (SdkSettings != null)
+                    return SdkSettings.GetActiveMediation();
+               return sdkSetup != null ? sdkSetup.adsMediationType : AdsMediationType.NONE;
           }
 
           #endregion

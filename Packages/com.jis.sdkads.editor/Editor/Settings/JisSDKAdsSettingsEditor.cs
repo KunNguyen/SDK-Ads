@@ -27,6 +27,8 @@ namespace JisSDKAds.Editor
             DrawPlatformProfile(settings);
 
             serializedObject.ApplyModifiedProperties();
+            settings.SyncAllProfileMediationToSdkSetups();
+            EditorUtility.SetDirty(settings);
         }
 
         void DrawHeader(JisSDKAdsSettings settings)

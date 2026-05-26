@@ -31,7 +31,10 @@ namespace JisSDKAds.Editor
             if (IsManagerPrefabName(prefabName))
             {
                 if (TryFocusExistingManager(out _))
+                {
+                    TryApplyDefaultSettings("Existing manager");
                     return;
+                }
 
                 var managerPrefab = ResolveManagerPrefab();
                 if (managerPrefab != null)
@@ -156,6 +159,20 @@ namespace JisSDKAds.Editor
             EditorSceneManager.MarkSceneDirty(scene);
             Selection.activeObject = root;
             EditorGUIUtility.PingObject(root);
+            TryApplyDefaultSettings("Prefab instantiate");
+        }
+
+        static void TryApplyDefaultSettings(string reason)
+        {
+            var settings = JisSDKAdsSettingsApplier.TryLoadDefaultSettings();
+            if (settings == null)
+            {
+                Debug.LogWarning(
+                    $"[JIS SDK] {reason}: No JisSDKAdsSettings asset found — assign manually or create via JIS SDK → Ads → Create Settings.");
+                return;
+            }
+
+            JisSDKAdsSettingsApplier.Apply(settings, reason);
         }
 
 #if UNITY_IAP_ACTIVE
