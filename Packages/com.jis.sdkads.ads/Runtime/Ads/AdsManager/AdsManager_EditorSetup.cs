@@ -79,14 +79,19 @@ namespace JisSDKAds.Ads
 #if UNITY_EDITOR
           void EnsureEditorSubManagersWired()
           {
-               var go = gameObject;
-               BannerAdManager ??= go.GetComponent<BannerAdManager>();
-               InterstitialAdManager ??= go.GetComponent<InterstitialAdManager>();
-               RewardAdManager ??= go.GetComponent<RewardAdManager>();
-               MRecAdManager ??= go.GetComponent<MRecAdManager>();
-               AppOpenAdManager ??= go.GetComponent<AppOpenAdManager>();
-               CollapsibleBannerAdManager ??= go.GetComponent<CollapsibleBannerAdManager>();
-               ResumeAdManager ??= go.GetComponent<ResumeAdManager>();
+               BannerAdManager ??= GetComponentInChildren<BannerAdManager>(true);
+               InterstitialAdManager ??= GetComponentInChildren<InterstitialAdManager>(true);
+               RewardAdManager ??= GetComponentInChildren<RewardAdManager>(true);
+               MRecAdManager ??= GetComponentInChildren<MRecAdManager>(true);
+               AppOpenAdManager ??= GetComponentInChildren<AppOpenAdManager>(true);
+               CollapsibleBannerAdManager ??= GetComponentInChildren<CollapsibleBannerAdManager>(true);
+               ResumeAdManager ??= GetComponentInChildren<ResumeAdManager>(true);
+
+               if (AdsMediationControllers == null || AdsMediationControllers.Count == 0)
+               {
+                    AdsMediationControllers = new List<AdsMediationController>(
+                         GetComponentsInChildren<AdsMediationController>(true));
+               }
           }
 #endif
 

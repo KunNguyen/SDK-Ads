@@ -30,6 +30,8 @@ namespace JisSDKAds.Firebase
                         { Keys.key_remote_free_ads, 1 },
                         { Keys.key_remote_banner_auto_refresh, false},
                         { Keys.key_remote_banner_auto_refresh_time, 15},
+                        { Keys.key_remote_interstitial_inventory_mode, "single" },
+                        { Keys.key_remote_rewarded_inventory_mode, "single" },
                         { Keys.key_remote_inter_premium_id, "" },
                         { Keys.key_remote_inter_high_id, "" },
                         { Keys.key_remote_inter_mid_id, "" },

@@ -11,12 +11,31 @@ Per platform (Android / iOS), for **Interstitial** and **Rewarded**:
 | **Single unit** | One default Ad Unit ID from SDK Settings (legacy rotation via `AdScheduleUnitID` on fail). No tier Remote Config keys. |
 | **Tiered** | Sequential 5-tier ladder (AdMob only). Unit IDs are loaded from **Firebase Remote Config** before the first ad request. |
 
-When **Tiered** is selected:
+### Firebase Remote Config — inventory mode (default: **single**)
 
-- Set mediation for that format to **ADMOB** in the same section.
-- Configure Firebase Remote Config keys (platform-specific ID string per key):
-  - Interstitial: `inter_premium_id`, `inter_high_id`, `inter_mid_id`, `inter_low_id`, `inter_fill_id`
-  - Rewarded: `reward_premium_id`, `reward_high_id`, `reward_mid_id`, `reward_low_id`, `reward_fill_id`
+| Key | Values | Default |
+|-----|--------|---------|
+| `interstitial_inventory_mode` | `single` \| `tiered` | `single` |
+| `rewarded_inventory_mode` | `single` \| `tiered` | `single` |
+
+At runtime, RC **overrides** the editor toolbar. Editor settings are the fallback before fetch.
+
+### Bootstrap order (AdsManager / JisAds)
+
+1. Firebase init  
+2. **Fetch & activate Remote Config** (when `fetchRemoteConfigBeforeAds` is enabled on AdsManager)  
+3. Apply inventory mode + tier unit IDs to AdMob controller  
+4. Init mediation → init unit managers → `ApplyRemoteConfigNow` per format (capping, AOA flags, autoload)  
+5. Ad requests / autoload start only after step 4  
+
+`JisAds.InitializeAsync(fetchRemoteConfig: true)` and `AdsManager.InitializeAllAsync()` follow this order by default.
+
+When RC (or editor) is **Tiered**:
+
+- Mediation for that format is forced to **ADMOB**.
+- Configure tier unit ID keys (platform-specific string per key, use Firebase Android/iOS conditions):
+  - Interstitial IDs: `inter_premium_id`, `inter_high_id`, `inter_mid_id`, `inter_low_id`, `inter_fill_id`
+  - Rewarded IDs: `reward_premium_id`, `reward_high_id`, `reward_mid_id`, `reward_low_id`, `reward_fill_id`
 - **JIS SDK Ads Settings (Tiered tab)** does not edit per-tier unit IDs — configure them in Firebase. Only optional **fallback unit ID**, tier timeouts, and memory/cooldown are stored locally.
 - Optional: **Tier memory + cooldown**, **Premium retry cooldown (min)**, **Failures before downgrade**.
 

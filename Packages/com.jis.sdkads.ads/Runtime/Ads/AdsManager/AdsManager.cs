@@ -47,6 +47,14 @@ namespace JisSDKAds.Ads
         private bool IsUpdateRemoteConfigSuccess { get; set; }
 
         [field: SerializeField]
+        [Tooltip("When true, fetch Firebase Remote Config before mediation init and any ad requests.")]
+        private bool fetchRemoteConfigBeforeAds = true;
+
+        bool _adsBootstrapInProgress;
+        bool _adsBootstrapCompleted;
+        bool _remoteConfigPrefetchedForAdsFlow;
+
+        [field: SerializeField]
         public bool IsRemoveAds { get; set; }
 
         [field: SerializeField]
@@ -82,9 +90,6 @@ namespace JisSDKAds.Ads
         private bool lastFocused = true;
         private bool isForeground = true;
         private Coroutine lifecycleCo;
-
-        private readonly Queue<IEnumerator> adInitQueue = new();
-        private bool isProcessingAdInitQueue;
 
         private readonly UnityEvent onRemoveAdsEvent = new();
 
@@ -168,10 +173,14 @@ namespace JisSDKAds.Ads
 
         private void Start()
         {
-            if (InitializationMode == AdsInitializationMode.AutoOnStart)
-            {
-                Init();
-            }
+            if (InitializationMode != AdsInitializationMode.AutoOnStart)
+                return;
+
+            // JisAds owns Firebase RC + ads bootstrap when present (avoid double init).
+            if (JisAds.Instance != null)
+                return;
+
+            Init();
         }
 
         private void OnApplicationPause(bool paused)
@@ -216,79 +225,109 @@ namespace JisSDKAds.Ads
         {
             AdsStateMachine = new AdsStateMachine();
             AdsStateMachine.ChangeState(AdsStateMachine.AdsState.Initializing);
-            StartCoroutine(CoWaitForFirebaseInitialization());
+            StartCoroutine(CoBootstrapAdsWithRemoteConfig());
         }
 
         /// <summary>
-        /// Option 2: game code can call async init in loading flow.
+        /// Full init: Firebase (+ Remote Config when enabled) then ads mediation and unit managers.
         /// </summary>
-        public async Task InitializeAllAsync(bool fetchRemoteConfig = false)
+        public async Task InitializeAllAsync(bool fetchRemoteConfig = true)
         {
             await InitializeFirebaseAsync(fetchRemoteConfig);
             InitializeAdsFlow();
+            while (!IsReady)
+                await Task.Yield();
         }
 
-        public async Task InitializeFirebaseAsync(bool fetchRemoteConfig = false)
+        public async Task InitializeFirebaseAsync(bool fetchRemoteConfig = true)
         {
-            if (FirebaseManager.Instance == null)
+            await AdsRemoteConfigBootstrap.EnsureFetchedAsync(fetchRemoteConfig && fetchRemoteConfigBeforeAds);
+            ApplyRemoteConfigBeforeAdsInit();
+            _remoteConfigPrefetchedForAdsFlow = true;
+        }
+
+        /// <summary>
+        /// Starts ads setup. When RC gate is on, use after <see cref="InitializeFirebaseAsync"/> or auto via <see cref="Init"/>.
+        /// </summary>
+        public void InitializeAdsFlow()
+        {
+            if (_adsBootstrapInProgress)
+                return;
+
+            if (_remoteConfigPrefetchedForAdsFlow)
             {
-                DebugAds.LogError("[AdsManager] FirebaseManager instance is missing in scene.");
+                _remoteConfigPrefetchedForAdsFlow = false;
+                StartCoroutine(CoRunAdsFlow());
                 return;
             }
 
-            await FirebaseManager.Instance.InitAsync();
-            if (fetchRemoteConfig)
+            if (fetchRemoteConfigBeforeAds && FirebaseManager.Instance != null && !_adsBootstrapCompleted)
             {
-                await FirebaseManager.Instance.FetchRemoteConfigAsync();
-                RefreshRemoteConfigDrivenSettings();
+                StartCoroutine(CoBootstrapAdsWithRemoteConfig());
+                return;
             }
+
+            StartCoroutine(CoRunAdsFlow());
         }
 
-        public void InitializeAdsFlow()
+        IEnumerator CoBootstrapAdsWithRemoteConfig()
+        {
+            if (_adsBootstrapInProgress)
+                yield break;
+
+            _adsBootstrapInProgress = true;
+
+            if (AdsStateMachine == null)
+            {
+                AdsStateMachine = new AdsStateMachine();
+                AdsStateMachine.ChangeState(AdsStateMachine.AdsState.Initializing);
+            }
+
+            yield return AdsRemoteConfigBootstrap.EnsureFetchedCoroutine(fetchRemoteConfigBeforeAds);
+            ApplyRemoteConfigBeforeAdsInit();
+            yield return CoRunAdsFlow();
+
+            _adsBootstrapInProgress = false;
+            _adsBootstrapCompleted = true;
+        }
+
+        IEnumerator CoRunAdsFlow()
         {
             if (AdsStateMachine == null)
             {
                 AdsStateMachine = new AdsStateMachine();
             }
+
             AdsStateMachine.ChangeState(AdsStateMachine.AdsState.Initializing);
             InitConfig();
             SetupUnitAdManager();
-            InitAdsMediation();
-            InitAds();
-        }
 
-        private IEnumerator CoWaitForFirebaseInitialization()
-        {
-            if (FirebaseManager.Instance == null)
+            foreach (var adsType in BuildMediationInitOrder())
             {
-                DebugAds.LogError("[AdsManager] FirebaseManager instance is missing in scene.");
-                yield break;
+                if (!IsAdTypeEnabled(adsType)) continue;
+                InitializeMediationIfNeeded(adsType);
+                var mediation = GetSelectedMediation(adsType);
+                yield return CoWaitForMediationReady(mediation, adsType);
             }
 
-            if (FirebaseManager.Instance != null && !FirebaseManager.Instance.IsFirebaseReady)
+            if (!PrioritizeAppOpenAndThrottleLoads)
+                DelayBetweenAdInits = 0;
+
+            IsReady = false;
+            foreach (var adsType in BuildAdInitializationOrder())
             {
-                var initTask = FirebaseManager.Instance.InitAsync();
-                while (!initTask.IsCompleted)
-                {
-                    yield return null;
-                }
+                if (!IsAdTypeEnabled(adsType)) continue;
+                yield return CoInitingAdType(adsType);
+                if (DelayBetweenAdInits > 0f)
+                    yield return new WaitForSecondsRealtime(DelayBetweenAdInits);
             }
 
-            while (!FirebaseManager.Instance.IsFirebaseReady)
-            {
-                yield return new WaitForEndOfFrame();
-            }
+            InitResumeAdManager();
+            ResumeAdManager?.ApplyRemoteConfigNow();
 
-            if (SequentialTierRemoteConfigResolver.RequiresFetchBeforeAds(CurrentSDKSetup))
-            {
-                var fetchTask = FirebaseManager.Instance.FetchRemoteConfigAsync();
-                while (!fetchTask.IsCompleted)
-                    yield return null;
-            }
-
-            ApplySequentialTierRemoteConfigIfNeeded();
-            InitializeAdsFlow();
-            NotifyRemoteConfigUpdated();
+            IsReady = true;
+            IsUpdateRemoteConfigSuccess = AdsRemoteConfigBootstrap.IsRemoteConfigReadyForAds;
+            _adsBootstrapCompleted = true;
         }
 
         private void InitConfig()
@@ -319,25 +358,6 @@ namespace JisSDKAds.Ads
                 var adsMediationType = CurrentSDKSetup.GetAdsMediationType(adsConfig.adsType);
                 var controller = GetAdsMediationController(adsMediationType);
                 adsConfig.Init(controller, OnAdRevenuePaidEvent);
-            }
-        }
-
-        private void InitAdsMediation()
-        {
-            DebugAds.Log("Init Ads Mediation (throttled)");
-            StartCoroutine(CoInitAdsMediationThrottled(BuildMediationInitOrder()));
-        }
-
-        private IEnumerator CoInitAdsMediationThrottled(List<AdsType> order)
-        {
-            foreach (var adsType in order)
-            {
-                InitializeMediationIfNeeded(adsType);
-
-                if (DelayBetweenAdInits > 0f)
-                    yield return new WaitForSecondsRealtime(DelayBetweenAdInits);
-                else
-                    yield return null;
             }
         }
 
@@ -383,27 +403,6 @@ namespace JisSDKAds.Ads
             SetupAppOpenAds();
         }
 
-        public void InitAds()
-        {
-            if (!PrioritizeAppOpenAndThrottleLoads)
-            {
-                DelayBetweenAdInits = 0;
-            }
-
-            IsReady = false;
-
-            var order = BuildAdInitializationOrder();
-            foreach (var type in order)
-            {
-                if (IsAdTypeEnabled(type))
-                {
-                    EnqueueAdInit(type);
-                }
-            }
-
-            InitResumeAdManager();
-        }
-
         private List<AdsType> BuildAdInitializationOrder()
         {
             var order = new List<AdsType>();
@@ -418,34 +417,6 @@ namespace JisSDKAds.Ads
             order.Add(AdsType.COLLAPSIBLE_BANNER);
 
             return order;
-        }
-
-        private void EnqueueAdInit(AdsType type)
-        {
-            adInitQueue.Enqueue(CoInitingAdType(type));
-            if (!isProcessingAdInitQueue)
-            {
-                StartCoroutine(CoProcessAdInitQueue());
-            }
-        }
-
-        private IEnumerator CoProcessAdInitQueue()
-        {
-            isProcessingAdInitQueue = true;
-            
-            while (adInitQueue.Count > 0)
-            {
-                var routine = adInitQueue.Dequeue();
-                yield return StartCoroutine(routine);
-
-                if (DelayBetweenAdInits > 0f)
-                    yield return new WaitForSecondsRealtime(DelayBetweenAdInits);
-                else
-                    yield return null;
-            }
-
-            isProcessingAdInitQueue = false;
-            IsReady = true;
         }
 
         private IEnumerator CoInitingAdType(AdsType adsType)
@@ -463,7 +434,8 @@ namespace JisSDKAds.Ads
             }
 
             adManager.Init();
-            DebugAds.Log($"Initialized {adsType} Ads with Mediation: {mediationType}");
+            adManager.ApplyRemoteConfigNow();
+            DebugAds.Log($"Initialized {adsType} Ads with Mediation: {mediationType} (Remote Config applied)");
         }
 
         private IEnumerator CoWaitForMediationReady(AdsMediationController mediationController, AdsType adsType)
@@ -504,7 +476,8 @@ namespace JisSDKAds.Ads
 
         private void UpdateAllAdManagerConfigs()
         {
-            ApplySequentialTierRemoteConfigIfNeeded();
+            ApplyRemoteConfigBeforeAdsInit();
+            ApplyAllUnitAdManagerRemoteConfigs();
             BannerAdManager.UpdateRemoteConfig();
             InterstitialAdManager.UpdateRemoteConfig();
             CollapsibleBannerAdManager.UpdateRemoteConfig();
@@ -526,24 +499,36 @@ namespace JisSDKAds.Ads
 
         public void RefreshRemoteConfigDrivenSettings()
         {
-            ApplySequentialTierRemoteConfigIfNeeded();
+            ApplyRemoteConfigBeforeAdsInit();
+            ApplyAllUnitAdManagerRemoteConfigs();
             NotifyRemoteConfigUpdated();
         }
 
-        void ApplySequentialTierRemoteConfigIfNeeded()
+        /// <summary>Inventory mode + tier unit IDs from Firebase (call before mediation/ad loads).</summary>
+        public void ApplyRemoteConfigBeforeAdsInit()
         {
             var setup = CurrentSDKSetup;
-            if (setup == null || !SequentialTierRemoteConfigResolver.RequiresFetchBeforeAds(setup))
-                return;
+            if (setup == null) return;
 
             if (FirebaseManager.Instance == null || !FirebaseManager.Instance.IsRemoteConfigReady)
             {
                 DebugAds.LogWarning(
-                    "[AdsManager] Sequential tier enabled but Remote Config is not ready; using local tier IDs as fallback.");
+                    "[AdsManager] Remote Config not ready — using local inventory mode and unit IDs.");
                 return;
             }
 
-            AdMobMediationReflection.ApplySequentialTierRemoteConfig(this, setup);
+            AdMobMediationReflection.ApplyRemoteAdInventorySettings(this, setup);
+        }
+
+        void ApplyAllUnitAdManagerRemoteConfigs()
+        {
+            BannerAdManager?.ApplyRemoteConfigNow();
+            InterstitialAdManager?.ApplyRemoteConfigNow();
+            RewardAdManager?.ApplyRemoteConfigNow();
+            CollapsibleBannerAdManager?.ApplyRemoteConfigNow();
+            MRecAdManager?.ApplyRemoteConfigNow();
+            AppOpenAdManager?.ApplyRemoteConfigNow();
+            ResumeAdManager?.ApplyRemoteConfigNow();
         }
 
         static void NotifyRemoteConfigUpdated() => EventManager.Trigger("UpdateRemoteConfigs");

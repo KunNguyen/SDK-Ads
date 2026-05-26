@@ -94,6 +94,14 @@ namespace JisSDKAds.Ads.UnitAdManagers
           {
                StartCoroutine(CoWaitingForRemoteConfigUpdate());
           }
+
+          /// <summary>Apply Remote Config values immediately (call after <see cref="Init"/> when RC was pre-fetched).</summary>
+          public void ApplyRemoteConfigNow()
+          {
+               if (Status != AdStatus.Inited) return;
+               UpdateRemoteConfigValue();
+          }
+
           private IEnumerator CoWaitingForRemoteConfigUpdate()
           {
                while (Status != AdStatus.Inited)

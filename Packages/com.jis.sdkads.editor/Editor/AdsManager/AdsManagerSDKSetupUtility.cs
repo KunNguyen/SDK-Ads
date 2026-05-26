@@ -2,7 +2,9 @@
 using System;
 using JisSDKAds.Ads;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace JisSDKAds.Editor
 {
@@ -37,6 +39,30 @@ namespace JisSDKAds.Editor
         public static void AddManagerPrefabToCurrentScene()
         {
             JisSDKScenePrefabUtility.AddPrefabToActiveScene("Manager");
+        }
+
+        [MenuItem(JisSDKMenuPaths.AdsSceneReorganizeManager, false, 201)]
+        public static void ReorganizeManagerInCurrentScene()
+        {
+            var adsManager = UnityEngine.Object.FindFirstObjectByType<AdsManager>();
+            if (adsManager == null)
+            {
+                EditorUtility.DisplayDialog("JIS SDK", "No AdsManager in scene.", "OK");
+                return;
+            }
+
+            var root = adsManager.transform.root.gameObject;
+            if (!JisSDKSceneSetupBuilder.IsFlatLayout(root))
+            {
+                EditorUtility.DisplayDialog(
+                    "JIS SDK",
+                    "Manager is already using a structured hierarchy (or layout not recognized).",
+                    "OK");
+                return;
+            }
+
+            JisSDKSceneSetupBuilder.ReorganizeFlatHierarchy(root);
+            EditorSceneManager.MarkSceneDirty(UnityEngine.SceneManagement.SceneManager.GetActiveScene());
         }
 
         [MenuItem(JisSDKMenuPaths.GameObjectAddManager, false, 10)]

@@ -23,6 +23,10 @@ namespace JisSDKAds.Common {
           public static readonly string key_remote_banner_auto_refresh = "banner_auto_refresh";
           public static readonly string key_remote_banner_auto_refresh_time = "banner_auto_refresh_time";
 
+          // Interstitial / Rewarded inventory mode: "single" (default) | "tiered"
+          public static readonly string key_remote_interstitial_inventory_mode = "interstitial_inventory_mode";
+          public static readonly string key_remote_rewarded_inventory_mode = "rewarded_inventory_mode";
+
           // Sequential tier unit IDs (Firebase Remote Config)
           public static readonly string key_remote_inter_premium_id = "inter_premium_id";
           public static readonly string key_remote_inter_high_id = "inter_high_id";

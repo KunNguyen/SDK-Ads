@@ -10,7 +10,7 @@ namespace JisSDKAds.Ads.Settings
 
         [HideInInspector] public PlatformAdsProfile ios = new PlatformAdsProfile();
 
-        [Tooltip("AutoOnStart: AdsManager init on Start. Manual: JisAds.InitializeAsync() controls init.")]
+        [Tooltip("Manual (recommended): call JisAds.InitializeAsync() from loading — fetches Remote Config then inits ads. AutoOnStart: AdsManager bootstraps on Start (prototypes only; do not use with JisAds auto-init).")]
         public AdsManager.AdsInitializationMode adsInitializationMode = AdsManager.AdsInitializationMode.Manual;
 
         [Tooltip("When enabled, AdManager will not fall back to another network on the same platform.")]

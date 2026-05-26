@@ -112,7 +112,9 @@ namespace JisSDKAds.Editor
                     primaryMediation,
                     () => JisSDKAdsSetupFieldDrawer.DrawInterstitialSingleUnit(setup, primaryMediation, _selectedPlatform),
                     () => JisSDKAdsSetupFieldDrawer.DrawSequentialTierConfig(
-                        setup.admobAdsSetup.InterstitialTierConfig, _selectedPlatform));
+                        setup.admobAdsSetup.InterstitialTierConfig,
+                        _selectedPlatform,
+                        JisSDKAds.Ads.SequentialTier.SequentialTierAdFormat.Interstitial));
 
                 EditorGUILayout.Space(6);
                 DrawFormatInventorySection(
@@ -123,7 +125,9 @@ namespace JisSDKAds.Editor
                     primaryMediation,
                     () => JisSDKAdsSetupFieldDrawer.DrawRewardedSingleUnit(setup, primaryMediation, _selectedPlatform),
                     () => JisSDKAdsSetupFieldDrawer.DrawSequentialTierConfig(
-                        setup.admobAdsSetup.RewardedTierConfig, _selectedPlatform));
+                        setup.admobAdsSetup.RewardedTierConfig,
+                        _selectedPlatform,
+                        JisSDKAds.Ads.SequentialTier.SequentialTierAdFormat.Rewarded));
 
                 EditorGUILayout.Space(6);
                 DrawSingleFormatSection("Banner", () =>
@@ -164,6 +168,9 @@ namespace JisSDKAds.Editor
             using (new EditorGUILayout.VerticalScope("box"))
             {
                 EditorGUILayout.LabelField(title, EditorStyles.boldLabel);
+                EditorGUILayout.LabelField(
+                    "Local default (overridden at runtime by Firebase interstitial_inventory_mode / rewarded_inventory_mode).",
+                    EditorStyles.miniLabel);
 
                 var newMode = DrawInventoryModeToolbar(currentMode);
                 if (newMode != currentMode)

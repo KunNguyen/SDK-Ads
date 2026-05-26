@@ -22,14 +22,21 @@ Hub creates:
 
 ## 3. Scene hierarchy
 
+Use **JIS SDK → Ads → Scene → Add Manager Prefab** (creates structured layout):
+
 ```
-DontDestroyOnLoad
-├── FirebaseManager   (your Firebase prefab)
-├── AdsManager        (legacy — all formats + RC)
-└── JisAds            (component)
-    └── JisSDKAdsSettings assigned
-    └── Use Core For Standard Formats: ON
+JisSDK_Manager
+├── Firebase              FirebaseManager, AdsTracker
+├── JisAds                  JisAds (+ JisSDKAdsSettings)
+└── Ads_Runtime             AdsManager
+    ├── UnitAdManagers
+    │   ├── Banner / Interstitial / Rewarded / MRec / AppOpen / CollapsibleBanner / Resume
+    └── Mediation
+        ├── MaxMediation      (if MAX package installed)
+        └── AdmobMediation    (if AdMob package installed)
 ```
+
+Flat single-object layouts from older SDK versions: **JIS SDK → Ads → Scene → Reorganize Manager Hierarchy**.
 
 ## 4. Code
 

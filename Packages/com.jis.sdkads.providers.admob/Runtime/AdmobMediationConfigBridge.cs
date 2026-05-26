@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using JisSDKAds.Ads;
 using JisSDKAds.Ads.SequentialTier;
-using JisSDKAds.Common;
 using JisSDKAds.Ads.Settings;
 using JisSDKAds.Ads.UnitAdManagers;
 using JisSDKAds.Common;
@@ -96,6 +95,57 @@ namespace JisSDKAds.Providers.AdMob
                 ? BuildTargetPlatform.iOS
                 : BuildTargetPlatform.Android;
             return schedule.GetPlatformList(platform) ?? new List<string>();
+        }
+
+        public static void ApplyInventoryModesFromRemoteConfig(
+            AdsManager manager,
+            SDKSetup setup,
+            AdInventorySetupMode interstitialMode,
+            AdInventorySetupMode rewardedMode)
+        {
+#if UNITY_AD_ADMOB
+            if (manager == null || setup?.admobAdsSetup == null) return;
+
+            var controller = manager.GetAdsMediationController(AdsMediationType.ADMOB) as AdmobMediationController;
+            if (controller?.m_AdmobAdSetup == null) return;
+
+            ApplyInventoryModeToRuntime(
+                setup,
+                controller.m_AdmobAdSetup,
+                isInterstitial: true,
+                interstitialMode);
+            ApplyInventoryModeToRuntime(
+                setup,
+                controller.m_AdmobAdSetup,
+                isInterstitial: false,
+                rewardedMode);
+
+            controller.ResetSequentialTierLoadersAfterRemoteConfig();
+            DebugAds.Log(
+                $"[AdMob] Remote inventory mode — interstitial: {interstitialMode}, rewarded: {rewardedMode}");
+#endif
+        }
+
+        static void ApplyInventoryModeToRuntime(
+            SDKSetup setup,
+            AdmobAdSetup admob,
+            bool isInterstitial,
+            AdInventorySetupMode mode)
+        {
+            var tierConfig = isInterstitial
+                ? admob.InterstitialTierConfig
+                : admob.RewardedTierConfig;
+            if (tierConfig == null) return;
+
+            var tiered = mode == AdInventorySetupMode.Tiered;
+            tierConfig.enableSequentialLadder = tiered;
+
+            if (!tiered) return;
+
+            if (isInterstitial)
+                setup.interstitialAdsMediationType = AdsMediationType.ADMOB;
+            else
+                setup.rewardedAdsMediationType = AdsMediationType.ADMOB;
         }
 
         public static void ApplyTierRemoteUnitIds(

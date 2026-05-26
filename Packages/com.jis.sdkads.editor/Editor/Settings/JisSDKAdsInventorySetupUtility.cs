@@ -6,12 +6,6 @@ using UnityEngine;
 
 namespace JisSDKAds.Editor
 {
-    public enum AdInventorySetupMode
-    {
-        SingleUnit = 0,
-        Tiered = 1
-    }
-
     static class JisSDKAdsInventorySetupUtility
     {
         const string SettingsFolder = "Assets/JisSDKAds/Settings";

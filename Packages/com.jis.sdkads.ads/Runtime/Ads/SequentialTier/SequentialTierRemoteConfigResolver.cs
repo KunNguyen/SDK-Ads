@@ -15,19 +15,8 @@ namespace JisSDKAds.Ads.SequentialTier
             AdTier.Premium, AdTier.High, AdTier.Mid, AdTier.Low, AdTier.Fill
         };
 
-        public static bool RequiresFetchBeforeAds(SDKSetup setup)
-        {
-            if (setup?.admobAdsSetup == null) return false;
-
-            var admob = setup.admobAdsSetup;
-            var inter = setup.interstitialAdsMediationType == AdsMediationType.ADMOB
-                        && admob.InterstitialTierConfig != null
-                        && admob.InterstitialTierConfig.enableSequentialLadder;
-            var rewarded = setup.rewardedAdsMediationType == AdsMediationType.ADMOB
-                           && admob.RewardedTierConfig != null
-                           && admob.RewardedTierConfig.enableSequentialLadder;
-            return inter || rewarded;
-        }
+        public static bool RequiresFetchBeforeAds(SDKSetup setup) =>
+            AdInventoryRemoteConfigResolver.RequiresFetchBeforeAds(setup);
 
         public static bool TryReadTierIds(
             SequentialTierAdFormat format,

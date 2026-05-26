@@ -14,6 +14,7 @@ namespace JisSDKAds.Editor
 
         public const string AdsSceneRoot = AdsRoot + "Scene/";
         public const string AdsSceneAddManager = AdsSceneRoot + "Add Manager Prefab";
+        public const string AdsSceneReorganizeManager = AdsSceneRoot + "Reorganize Manager Hierarchy";
 
         public const string AdsAutoApplyRoot = AdsRoot + "Auto Apply/";
         public const string AdsAutoApplyPlatformSwitch = AdsAutoApplyRoot + "Toggle On Platform Switch";

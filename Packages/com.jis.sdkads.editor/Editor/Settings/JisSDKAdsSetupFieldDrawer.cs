@@ -3,7 +3,9 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using JisSDKAds.Ads;
+using JisSDKAds.Ads.SequentialTier;
 using JisSDKAds.Ads.Settings;
+using JisSDKAds.Common;
 using JisSDKAds.Core.Tiered.Config;
 using SequentialAdTier = JisSDKAds.Ads.SequentialTier.AdTier;
 using JisSDKAds.Core.Tiered.Models;
@@ -70,18 +72,25 @@ namespace JisSDKAds.Editor
         }
 
         public static void DrawSequentialTierConfig(
-            JisSDKAds.Ads.SequentialTier.SequentialTierConfig tier,
-            BuildTargetPlatform platform)
+            SequentialTierConfig tier,
+            BuildTargetPlatform platform,
+            SequentialTierAdFormat format)
         {
             if (tier == null) return;
             tier.EnsureDefaultTierSlots();
 
             var platformLabel = platform == BuildTargetPlatform.iOS ? "iOS" : "Android";
+            var modeKey = format == SequentialTierAdFormat.Interstitial
+                ? Keys.key_remote_interstitial_inventory_mode
+                : Keys.key_remote_rewarded_inventory_mode;
+            var tierKeys = format == SequentialTierAdFormat.Interstitial
+                ? "inter_premium_id … inter_fill_id"
+                : "reward_premium_id … reward_fill_id";
             EditorGUILayout.HelpBox(
-                $"Tiered mode ({platformLabel}, AdMob): Premium → Fill unit IDs come from Firebase Remote Config before the first ad request.\n\n" +
-                "Interstitial keys: inter_premium_id, inter_high_id, inter_mid_id, inter_low_id, inter_fill_id\n" +
-                "Rewarded keys: reward_premium_id, reward_high_id, reward_mid_id, reward_low_id, reward_fill_id\n\n" +
-                "Use Firebase conditions for Android / iOS per key. Optional fallback below if RC is empty. See docs/TIERED_INTERSTITIAL.md.",
+                $"Remote Config overrides Single/Tiered at runtime (default: single).\n" +
+                $"Mode key: {modeKey} — values: single | tiered\n" +
+                $"Tier IDs (tiered only): {tierKeys}\n" +
+                $"Platform: {platformLabel}, AdMob. Editor toolbar = local default before RC fetch.",
                 MessageType.Info);
 
             if (platform == BuildTargetPlatform.iOS)

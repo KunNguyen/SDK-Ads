@@ -100,7 +100,7 @@ namespace JisSDKAds.Ads
                 _ = InitializeAsync();
         }
 
-        public async Task InitializeAsync(bool fetchRemoteConfig = false)
+        public async Task InitializeAsync(bool fetchRemoteConfig = true)
         {
             await InitializeFirebaseAsync(fetchRemoteConfig);
             InitializeLegacyFlow();
@@ -126,21 +126,16 @@ namespace JisSDKAds.Ads
             Debug.LogWarning("[JisAds] Legacy AdsManager did not become ready in time.");
         }
 
-        public async Task InitializeFirebaseAsync(bool fetchRemoteConfig = false)
+        public async Task InitializeFirebaseAsync(bool fetchRemoteConfig = true)
         {
-            if (FirebaseManager.Instance == null)
+            _legacy ??= FindFirstObjectByType<AdsManager>();
+            if (_legacy == null)
             {
-                Debug.LogError("[JisAds] FirebaseManager not found in scene.");
+                Debug.LogError("[JisAds] AdsManager not found in scene.");
                 return;
             }
 
-            await FirebaseManager.Instance.InitAsync();
-            if (fetchRemoteConfig)
-            {
-                await FirebaseManager.Instance.FetchRemoteConfigAsync();
-                _legacy ??= FindFirstObjectByType<AdsManager>();
-                _legacy?.RefreshRemoteConfigDrivenSettings();
-            }
+            await _legacy.InitializeFirebaseAsync(fetchRemoteConfig);
         }
 
         void ResolveLegacy()

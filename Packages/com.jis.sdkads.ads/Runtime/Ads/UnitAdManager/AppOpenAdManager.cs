@@ -30,15 +30,6 @@ namespace JisSDKAds.Ads.UnitAdManagers
                 OnAdShowSuccess,
                 OnAdShowFailed);
 
-            // Luôn request sớm
-            RequestAd();
-
-            // Tùy chọn hiển thị ở cold start (khuyến nghị tắt)
-            if (showOnColdStart && IsFirstOpen && IsActiveShowAdsFirstTime)
-            {
-                StartCoroutine(CoTryShowFirstTimeSafely());
-            }
-
             Status = AdStatus.Inited;
         }
 
@@ -85,6 +76,17 @@ namespace JisSDKAds.Ads.UnitAdManagers
             }
 
             IsReady = true;
+            BeginLoadingAfterRemoteConfig();
+        }
+
+        void BeginLoadingAfterRemoteConfig()
+        {
+            if (IsRemoveAds() || IsCheatAds()) return;
+
+            RequestAd();
+
+            if (showOnColdStart && IsFirstOpen && IsActiveShowAdsFirstTime)
+                StartCoroutine(CoTryShowFirstTimeSafely());
         }
 
         // Giữ API cũ nhưng hợp nhất flow (đảm bảo MarkShowingAds được gọi qua Show())
