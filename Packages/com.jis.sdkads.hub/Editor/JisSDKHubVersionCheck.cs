@@ -76,17 +76,26 @@ namespace JisSDKAds.Hub
                 && row.Status != JisPackageUpdateStatus.RevisionMismatch)
                 return false;
 
-            if (!string.IsNullOrEmpty(row.ManifestSource)
-                && row.ManifestSource.StartsWith("file:", StringComparison.OrdinalIgnoreCase))
+            var source = row.ManifestSource;
+            if (string.IsNullOrEmpty(source))
+            {
+                var dep = GetJisManifestDependencies().FirstOrDefault(d => d.id == row.PackageId);
+                source = dep.source;
+            }
+
+            return IsUpdatableGitManifestSource(source);
+        }
+
+        /// <summary>Git UPM entry in manifest.json (https or git@), not file: or registry semver.</summary>
+        public static bool IsUpdatableGitManifestSource(string source)
+        {
+            if (string.IsNullOrWhiteSpace(source)) return false;
+            if (source.StartsWith("file:", StringComparison.OrdinalIgnoreCase)) return false;
+
+            if (Version.TryParse(source.Trim(), out _))
                 return false;
 
-            if (IsGitUpmSource(row.ManifestSource))
-                return true;
-
-            var dep = GetJisManifestDependencies().FirstOrDefault(d => d.id == row.PackageId);
-            return !string.IsNullOrEmpty(dep.id)
-                   && dep.source.StartsWith("http", StringComparison.OrdinalIgnoreCase)
-                   && dep.source.IndexOf("path=Packages/", StringComparison.OrdinalIgnoreCase) >= 0;
+            return HasGitHost(source) && source.IndexOf("path=Packages/", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         public static bool TryApplyPackageUpdate(string packageId, string targetRevision, out string message)
@@ -108,15 +117,11 @@ namespace JisSDKAds.Hub
                 return false;
             }
 
-            if (dep.source.StartsWith("file:", StringComparison.OrdinalIgnoreCase))
+            if (!IsUpdatableGitManifestSource(dep.source))
             {
-                message = $"{packageId} uses file: — update the SDK repo or switch to Git UPM.";
-                return false;
-            }
-
-            if (!IsGitUpmSource(dep.source))
-            {
-                message = $"{packageId} is not a Git UPM dependency.";
+                message = dep.source.StartsWith("file:", StringComparison.OrdinalIgnoreCase)
+                    ? $"{packageId} uses file: — update the SDK repo or switch to Git UPM."
+                    : $"{packageId} is not a Git UPM dependency in manifest.json (need https/git@ URL with ?path=Packages/...).";
                 return false;
             }
 
@@ -149,10 +154,11 @@ namespace JisSDKAds.Hub
             return true;
         }
 
-        static bool IsGitUpmSource(string source) =>
-            !string.IsNullOrEmpty(source)
-            && source.IndexOf("github.com", StringComparison.OrdinalIgnoreCase) >= 0
-            && source.IndexOf("?path=Packages/", StringComparison.OrdinalIgnoreCase) >= 0;
+        static bool HasGitHost(string source) =>
+            source.IndexOf("github.com", StringComparison.OrdinalIgnoreCase) >= 0
+            || source.IndexOf("git@", StringComparison.OrdinalIgnoreCase) >= 0
+            || source.StartsWith("git+", StringComparison.OrdinalIgnoreCase)
+            || source.StartsWith("git://", StringComparison.OrdinalIgnoreCase);
 
         public static void RunCheck(string gitBaseUrl, string targetRevision, bool includeNotInManifest = false)
         {

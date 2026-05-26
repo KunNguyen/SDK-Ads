@@ -1,13 +1,15 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 
-/// <summary>
-/// Place on the JIS SDK scene root (e.g. JisSDK_Manager) so the whole hierarchy survives scene loads.
-/// </summary>
-[DefaultExecutionOrder(-1000)]
-public class Manager : MonoBehaviour
+namespace JisSDKAds.Common
 {
-    void Awake()
+    /// <summary>
+    /// Obsolete name kept so existing scenes/prefabs keep their script reference. Use <see cref="JisSDKPersistentRoot"/>.
+    /// </summary>
+    [Obsolete("Renamed to JisSDKPersistentRoot. Add JisSDKPersistentRoot on new JisSDK_Manager prefabs.")]
+    [DisallowMultipleComponent]
+    [AddComponentMenu("")]
+    public class Manager : JisSDKPersistentRoot
     {
-        DontDestroyOnLoad(gameObject);
     }
-} 
+}

@@ -28,12 +28,17 @@ JisSDK_Manager
 
 | Menu | Action |
 |------|--------|
-| **JIS SDK → Ads → Scene → Add Manager Prefab** | Create full hierarchy + wire `AdsManager` |
-| **JIS SDK → Ads → Scene → Reorganize Manager Hierarchy** | Move components from flat `Manager` into children |
+| **JIS SDK → Ads → Scene → Add JisSDK Manager Prefab** | Create `JisSDK_Manager` hierarchy + wire `AdsManager` |
+| **JIS SDK → Ads → Scene → Reorganize JisSDK Manager Hierarchy** | Move components from flat root into children |
+| **JIS SDK → IAP → Scene → Add JisSDK InApp Purchaser Prefab** | Create `JisSDK_InAppPurchaser` (separate from ads manager) |
 
-Prefab template (if missing): `Assets/JisSDKAds/Prefabs/JisSDK_Manager.prefab` (legacy: `Manager.prefab`)
+Prefab templates (if missing):
 
-Root has `Manager` component → **DontDestroyOnLoad** on the whole hierarchy when changing scenes.
+- Ads: `Assets/JisSDKAds/Prefabs/JisSDK_Manager.prefab` (legacy: `Manager.prefab`)
+- IAP: `Assets/JisSDKAds/Prefabs/JisSDK_InAppPurchaser.prefab` (legacy: `InAppPurchaser.prefab`)
+
+`JisSDK_Manager` uses **Jis SDK Persistent Root** (`JisSDKPersistentRoot`) → **DontDestroyOnLoad** for the full ads hierarchy.  
+`JisSDK_InAppPurchaser` is a **separate** object with `InAppPurchaser` only (do not mix prefabs).
 
 ## Init modes vs Remote Config
 

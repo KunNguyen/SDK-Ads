@@ -34,7 +34,7 @@ namespace JisSDKAds.Editor
         [MenuItem(JisSDKMenuPaths.IapSceneAddPurchaser, false, 110)]
         public static void AddInAppPurchaserToScene()
         {
-            JisSDKScenePrefabUtility.AddPrefabToActiveScene("InAppPurchaser");
+            JisSDKScenePrefabUtility.AddPrefabToActiveScene(JisSDKSceneSetupBuilder.IapPrefabAssetName);
         }
 
         [MenuItem(JisSDKMenuPaths.GameObjectAddInAppPurchaser, false, 10)]

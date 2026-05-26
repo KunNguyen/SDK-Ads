@@ -11,6 +11,7 @@ namespace JisSDKAds.Hub
     {
         private const string PrefsGitBaseUrl = "JisSDKAds.Hub.GitBaseUrl";
         private const string PrefsGitRevision = "JisSDKAds.Hub.GitRevision";
+        private const string PrefsUseEmbedded = "JisSDKAds.Hub.UseEmbeddedPackages";
         public const string DefaultGitBaseUrl = "https://github.com/KunNguyen/SDK-Ads.git";
         public const string DefaultGitRevision = "main";
 
@@ -26,7 +27,9 @@ namespace JisSDKAds.Hub
         {
             _gitBaseUrl = EditorPrefs.GetString(PrefsGitBaseUrl, DefaultGitBaseUrl);
             _gitRevision = EditorPrefs.GetString(PrefsGitRevision, DefaultGitRevision);
-            _useEmbeddedPackages = JisSDKHubManifest.IsSdkAdsDevRepo();
+            _useEmbeddedPackages = EditorPrefs.HasKey(PrefsUseEmbedded)
+                ? EditorPrefs.GetBool(PrefsUseEmbedded)
+                : JisSDKHubManifest.IsSdkAdsDevRepo();
         }
 
         private void OnGUI()
@@ -39,7 +42,11 @@ namespace JisSDKAds.Hub
                 "• Game projects: disable embedded packages; use Git revision main.",
                 MessageType.Info);
 
+            EditorGUI.BeginChangeCheck();
             _useEmbeddedPackages = EditorGUILayout.Toggle("Use embedded packages (SDK-Ads dev repo)", _useEmbeddedPackages);
+            if (EditorGUI.EndChangeCheck())
+                EditorPrefs.SetBool(PrefsUseEmbedded, _useEmbeddedPackages);
+
             if (_useEmbeddedPackages && !JisSDKHubManifest.IsSdkAdsDevRepo())
             {
                 EditorGUILayout.HelpBox(
@@ -99,7 +106,7 @@ namespace JisSDKAds.Hub
 
             var results = JisSDKHubVersionCheck.LastResults;
             var updatable = results?.Count > 0 == true ? JisSDKHubVersionCheck.UpdatableCount : 0;
-            GUI.enabled = updatable > 0 && !_useEmbeddedPackages;
+            GUI.enabled = updatable > 0;
             if (GUILayout.Button($"Update all ({updatable})", GUILayout.Height(24), GUILayout.Width(140)))
                 PerformUpdateAllPackages();
             GUI.enabled = true;
@@ -120,6 +127,15 @@ namespace JisSDKAds.Hub
                 EditorGUILayout.HelpBox(
                     $"{updates} package(s) have a newer version on #{_gitRevision.Trim().TrimStart('#')}.",
                     MessageType.Warning);
+
+                if (updatable == 0)
+                {
+                    EditorGUILayout.HelpBox(
+                        "Update buttons are disabled: manifest.json entries are not Git UPM URLs " +
+                        "(need https://…github.com/…?path=Packages/…#revision). " +
+                        "Registry versions (e.g. \"5.1.0\") or file: paths must be edited manually.",
+                        MessageType.Warning);
+                }
             }
             else if (revisionDrift > 0)
             {
@@ -139,7 +155,7 @@ namespace JisSDKAds.Hub
         private void DrawVersionRow(JisPackageVersionRow row)
         {
             var shortId = row.PackageId.Replace("com.jis.sdkads.", "");
-            var canUpdate = JisSDKHubVersionCheck.CanUpdate(row) && !_useEmbeddedPackages;
+            var canUpdate = JisSDKHubVersionCheck.CanUpdate(row);
 
             EditorGUILayout.BeginVertical("box");
             EditorGUILayout.BeginHorizontal();

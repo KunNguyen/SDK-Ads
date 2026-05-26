@@ -13,8 +13,8 @@ namespace JisSDKAds.Editor
         public const string AdsCreateTieredConfig = AdsRoot + "Create/Open Tiered Ads Config";
 
         public const string AdsSceneRoot = AdsRoot + "Scene/";
-        public const string AdsSceneAddManager = AdsSceneRoot + "Add Manager Prefab";
-        public const string AdsSceneReorganizeManager = AdsSceneRoot + "Reorganize Manager Hierarchy";
+        public const string AdsSceneAddManager = AdsSceneRoot + "Add JisSDK Manager Prefab";
+        public const string AdsSceneReorganizeManager = AdsSceneRoot + "Reorganize JisSDK Manager Hierarchy";
 
         public const string AdsAutoApplyRoot = AdsRoot + "Auto Apply/";
         public const string AdsAutoApplyPlatformSwitch = AdsAutoApplyRoot + "Toggle On Platform Switch";
@@ -29,15 +29,15 @@ namespace JisSDKAds.Editor
         public const string IapRoot = Root + "IAP/";
         public const string IapEnable = IapRoot + "Enable IAP";
         public const string IapCreatePackagesConfig = IapRoot + "Create/Open Packages Config";
-        public const string IapSceneAddPurchaser = IapRoot + "Scene/Add InApp Purchaser Prefab";
+        public const string IapSceneAddPurchaser = IapRoot + "Scene/Add JisSDK InApp Purchaser Prefab";
 
         // GameObject context
         public const string GameObjectAdsRoot = "GameObject/JIS SDK/Ads/";
-        public const string GameObjectAddManager = GameObjectAdsRoot + "Add Manager";
+        public const string GameObjectAddManager = GameObjectAdsRoot + "Add JisSDK Manager";
 
         public const string GameObjectIapRoot = "GameObject/JIS SDK/IAP/";
         public const string GameObjectEnableIap = GameObjectIapRoot + "Enable IAP";
-        public const string GameObjectAddInAppPurchaser = GameObjectIapRoot + "Add InApp Purchaser";
+        public const string GameObjectAddInAppPurchaser = GameObjectIapRoot + "Add JisSDK InApp Purchaser";
     }
 }
 #endif
