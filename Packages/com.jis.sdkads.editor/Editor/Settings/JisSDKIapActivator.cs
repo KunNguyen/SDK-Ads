@@ -82,8 +82,7 @@ namespace JisSDKAds.Editor
             EditorUtility.SetDirty(settings);
             AssetDatabase.SaveAssets();
 
-            var activeSetup = settings.GetActiveSdkSetup();
-            activeSetup?.SetupSymbol();
+            settings.ApplyScriptingDefinesForAllPlatforms();
 
             Selection.activeObject = settings;
             EditorGUIUtility.PingObject(settings);

@@ -61,7 +61,8 @@ namespace JisSDKAds.Ads
                {
                     if (initStatus == null)
                     {
-                         Debug.LogError("Google Mobile Ads initialization failed.");
+                         Status = MediationStatus.FailedToInit;
+                         DebugAds.LogSdkInit("AdMob", "MobileAds.Initialize", false, "initStatus is null");
                          isInitialized = null;
                          return;
                     }
@@ -84,8 +85,14 @@ namespace JisSDKAds.Ads
                                         break;
                               }
                          }
-                         Debug.Log("Google Mobile Ads initialization complete.");
-                         Status = MediationStatus.Inited;     
+                         DebugAds.LogSdkInit("AdMob", "MobileAds.Initialize", true,
+                              $"adapters={adapterStatusMap?.Count ?? 0}");
+                         Status = MediationStatus.Inited;
+                    }
+                    else
+                    {
+                         Status = MediationStatus.FailedToInit;
+                         DebugAds.LogSdkInit("AdMob", "MobileAds.Initialize", false, "adapterStatusMap is null");
                     }
 
                     isInitialized = true;

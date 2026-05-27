@@ -79,7 +79,9 @@ namespace JisSDKAds.Ads
 
           void SyncMediationControllersToSetup()
           {
+#if UNITY_EDITOR
                EnsureEditorSubManagersWired();
+#endif
                if (CurrentSDKSetup == null || AdsMediationControllers == null)
                     return;
 
@@ -101,7 +103,9 @@ namespace JisSDKAds.Ads
                     }
 
                     controller.IsActive = usedByAnyFormat;
+#if UNITY_EDITOR
                     EditorUtility.SetDirty(controller);
+#endif
                }
           }
 

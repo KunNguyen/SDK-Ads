@@ -45,6 +45,10 @@ namespace JisSDKAds.Editor
 
                 if (GUILayout.Button("Validate", GUILayout.Height(32), GUILayout.Width(90)))
                     DrawValidation(settings);
+
+                EditorGUILayout.HelpBox(
+                    "Scripting defines: Android setup → Android platform; iOS setup → iOS platform (Apply syncs both).",
+                    MessageType.None);
             }
         }
 
@@ -55,6 +59,17 @@ namespace JisSDKAds.Editor
                 EditorGUILayout.LabelField("Runtime", EditorStyles.boldLabel);
                 EditorGUILayout.PropertyField(serializedObject.FindProperty("adsInitializationMode"));
                 EditorGUILayout.PropertyField(serializedObject.FindProperty("singleMediationOnly"));
+                EditorGUILayout.PropertyField(serializedObject.FindProperty("enableAdsDebugLogging"),
+                    new GUIContent("Ads debug logging",
+                        "Logs init steps, ad load/show with unit IDs, and errors. Applied on Play and Apply to Scene."));
+
+                var debugOn = serializedObject.FindProperty("enableAdsDebugLogging").boolValue;
+                if (debugOn)
+                {
+                    EditorGUILayout.HelpBox(
+                        "Console filter: [JIS Ads] — init [Init], tier loads (interstitial_load_success), legacy AdMob callbacks.",
+                        MessageType.Info);
+                }
             }
         }
 

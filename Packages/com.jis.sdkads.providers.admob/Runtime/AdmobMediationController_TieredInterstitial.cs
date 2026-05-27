@@ -81,21 +81,24 @@ namespace JisSDKAds.Ads
             var adUnitId = GetLegacyInterstitialAdUnit();
             if (string.IsNullOrEmpty(adUnitId))
             {
+                DebugAds.LogAdEvent("interstitial", "load_fail", null, "legacy", "no ad unit id configured");
                 OnAdInterstitialFailedToLoad();
                 return;
             }
 
+            DebugAds.LogAdEvent("interstitial", "load_start", adUnitId, "legacy");
             InterstitialAd.Load(adUnitId, adRequest, (ad, error) =>
             {
                 if (error != null || ad == null)
                 {
-                    DebugAds.LogError("interstitial ad failed to load: " + error);
+                    DebugAds.LogAdEvent("interstitial", "load_fail", adUnitId, "legacy", error?.ToString() ?? "null ad");
                     OnAdInterstitialFailedToLoad();
                     return;
                 }
 
                 InterstitialAds = ad;
                 RegisterInterstitialAd(ad);
+                DebugAds.LogAdEvent("interstitial", "load_success", adUnitId, "legacy");
                 OnAdInterstitialSuccessToLoad();
             });
         }

@@ -60,7 +60,7 @@ namespace JisSDKAds.Ads
                 Debug.LogWarning("[AdsManager] No AdsManager in scene — assign JisSDKAdsSettings on JisAds manually.");
             }
 
-            GetSetupForActiveBuildTarget()?.SetupSymbol();
+            unifiedSettings.ApplyScriptingDefinesForAllPlatforms();
         }
 
         void ApplyLegacyContainer()
@@ -75,7 +75,10 @@ namespace JisSDKAds.Ads
             adsManager.ApplyFromContainer(this);
             EditorUtility.SetDirty(adsManager);
             EditorSceneManager.MarkSceneDirty(adsManager.gameObject.scene);
-            GetSetupForActiveBuildTarget()?.SetupSymbol();
+            if (unifiedSettings != null)
+                unifiedSettings.ApplyScriptingDefinesForAllPlatforms();
+            else
+                GetSetupForActiveBuildTarget()?.SetupSymbol();
         }
 
         public void SyncLegacyFieldsFromSettings()

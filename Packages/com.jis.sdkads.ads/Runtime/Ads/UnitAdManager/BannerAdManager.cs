@@ -52,8 +52,11 @@ namespace JisSDKAds.Ads.UnitAdManagers
 
           public override void RequestAd()
           {
-               if (MediationController.IsBannerLoaded()) return;
-               MediationController.RequestBannerAds();
+               if (!TryGetMediationController(out var mediation))
+                    return;
+               if (mediation.IsBannerLoaded())
+                    return;
+               mediation.RequestBannerAds();
           }
           private void StartAutoReset()
           {
@@ -90,15 +93,20 @@ namespace JisSDKAds.Ads.UnitAdManagers
           }
           public override void Show()
           {
+               if (!TryGetMediationController(out var mediation))
+                    return;
                Debug.Log("Banner ShowAd");
                IsShowingAd = true;
-               MediationController.ShowBannerAds();
+               mediation.ShowBannerAds();
           }
+
           public override void Hide()
           {
+               if (!TryGetMediationController(out var mediation))
+                    return;
                Debug.Log("Banner HideAd");
                IsShowingAd = false;
-               MediationController.HideBannerAds();
+               mediation.HideBannerAds();
           }
           
           public override void OnAdShowSuccess()
@@ -120,9 +128,11 @@ namespace JisSDKAds.Ads.UnitAdManagers
           public override void DestroyAd()
           {
                base.DestroyAd();
+               if (!TryGetMediationController(out var mediation))
+                    return;
                Debug.Log("Banner DestroyAd");
                IsShowingAd = false;
-               MediationController.DestroyBannerAds();
+               mediation.DestroyBannerAds();
           }
 
           public override bool IsLoaded()

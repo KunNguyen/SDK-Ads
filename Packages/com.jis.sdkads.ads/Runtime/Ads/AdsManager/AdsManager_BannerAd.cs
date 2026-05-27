@@ -24,12 +24,23 @@ namespace JisSDKAds.Ads
 
           public void RequestBannerAds()
           {
+               if (!IsReady)
+               {
+                    DebugAds.LogWarning("[AdsManager] RequestBannerAds ignored — ads not ready (wait for JisAds/AdsManager init).");
+                    return;
+               }
+
+               if (BannerAdManager == null)
+                    return;
+
                BannerAdManager.RequestAd();
           }
+
           public void ShowBannerAds()
           {
                DebugAds.Log(("Call Show Banner Ads"));
-               if (!IsReady) return;
+               if (!IsReady || BannerAdManager == null)
+                    return;
                BannerAdManager.Show();
           }
           public void HideBannerAds()

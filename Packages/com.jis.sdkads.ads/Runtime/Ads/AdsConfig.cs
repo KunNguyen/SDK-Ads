@@ -19,6 +19,7 @@ namespace JisSDKAds.Ads
 
         public void Init(AdsMediationController adsMediationController, UnityAction<ImpressionData> adRevenuePaidCallback = null)
         {
+            adsMediations.Clear();
             if (adsMediationController != null)
             {
                 adsMediations.Add(adsMediationController);
@@ -64,9 +65,13 @@ namespace JisSDKAds.Ads
 
         public AdsMediationController GetAdsMediation(AdsMediationType adsType)
         {
-            foreach (AdsMediationController adsMediationController in adsMediations.Where(adsMediationController => adsMediationController.GetAdsMediationType() == adsType))
+            if (adsMediations == null || adsMediations.Count == 0)
+                return null;
+
+            foreach (var adsMediationController in adsMediations)
             {
-                return adsMediationController;
+                if (adsMediationController != null && adsMediationController.GetAdsMediationType() == adsType)
+                    return adsMediationController;
             }
 
             return adsMediations[0];

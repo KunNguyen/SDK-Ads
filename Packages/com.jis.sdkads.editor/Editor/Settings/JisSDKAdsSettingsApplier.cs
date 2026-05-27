@@ -1,7 +1,9 @@
 #if UNITY_EDITOR
+using System.Collections.Generic;
 using JisSDKAds.Ads;
 using JisSDKAds.Ads.Settings;
 using JisSDKAds.Ads.SequentialTier;
+using JisSDKAds.Common;
 using JisSDKAds.Core.Tiered.Config;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -48,12 +50,9 @@ namespace JisSDKAds.Editor
                 return false;
             }
 
+            settings.ApplyRuntimeDebugSettings();
             settings.SyncAllProfileMediationToSdkSetups();
-            activeSetup.SetupSymbol();
-            if (settings.android?.sdkSetup != null && settings.android.sdkSetup != activeSetup)
-                settings.android.sdkSetup.SetupSymbol();
-            if (settings.ios?.sdkSetup != null && settings.ios.sdkSetup != activeSetup)
-                settings.ios.sdkSetup.SetupSymbol();
+            settings.ApplyScriptingDefinesForAllPlatforms();
 
             var adsManager = Object.FindFirstObjectByType<AdsManager>();
             if (adsManager != null)
@@ -101,7 +100,40 @@ namespace JisSDKAds.Editor
 
             ValidateProfile(settings.android, BuildTargetPlatform.Android, result);
             ValidateProfile(settings.ios, BuildTargetPlatform.iOS, result);
+            ValidateScriptingDefines(settings.android, BuildTargetGroup.Android, "Android", result);
+            ValidateScriptingDefines(settings.ios, BuildTargetGroup.iOS, "iOS", result);
             return result;
+        }
+
+        static void ValidateScriptingDefines(
+            PlatformAdsProfile profile,
+            BuildTargetGroup group,
+            string label,
+            ValidationResult result)
+        {
+            if (profile?.sdkSetup == null)
+                return;
+
+            var expected = new HashSet<string>(profile.sdkSetup.GetExpectedScriptingDefineSymbols());
+            var actual = SymbolHelper.GetDefineSymbols(group);
+
+            foreach (var sym in expected)
+            {
+                if (!actual.Contains(sym))
+                {
+                    result.AddWarning(
+                        $"{label}: missing scripting define '{sym}' on {group} (click Apply to Scene).");
+                }
+            }
+
+            foreach (var sym in new[] { "UNITY_AD_MAX", "UNITY_AD_ADMOB" })
+            {
+                if (!expected.Contains(sym) && actual.Contains(sym))
+                {
+                    result.AddWarning(
+                        $"{label}: stale scripting define '{sym}' on {group} — Apply to Scene to sync.");
+                }
+            }
         }
 
         static void ValidateProfile(PlatformAdsProfile profile, BuildTargetPlatform platform, ValidationResult result)

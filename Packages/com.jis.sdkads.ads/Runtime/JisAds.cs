@@ -78,6 +78,7 @@ namespace JisSDKAds.Ads
                 return;
             }
 
+            settings.ApplyRuntimeDebugSettings();
             ResolveLegacy();
             if (_legacy != null)
                 _legacy.InitializationMode = AdsManager.AdsInitializationMode.Manual;
@@ -103,6 +104,9 @@ namespace JisSDKAds.Ads
 
         public async Task InitializeAsync(bool fetchRemoteConfig = true)
         {
+            settings?.ApplyRuntimeDebugSettings();
+            DebugAds.LogSdkInit("JisAds", "InitializeAsync", true, $"fetchRemoteConfig={fetchRemoteConfig}");
+
             await InitializeFirebaseAsync(fetchRemoteConfig);
             InitializeLegacyFlow();
             if (useCoreForStandardFormats)
@@ -112,6 +116,8 @@ namespace JisSDKAds.Ads
 
             await WaitUntilLegacyReadyAsync();
             _isReady = _legacy != null && _legacy.IsReady;
+            DebugAds.LogSdkInit("JisAds", "InitializeAsync complete", _isReady,
+                _isReady ? null : "AdsManager not ready — check mediation init logs above.");
         }
 
         async Task WaitUntilLegacyReadyAsync()
@@ -124,7 +130,7 @@ namespace JisSDKAds.Ads
                 await Task.Yield();
             }
 
-            Debug.LogWarning("[JisAds] Legacy AdsManager did not become ready in time.");
+            DebugAds.LogSdkInit("JisAds", "Legacy AdsManager ready wait", false, "timeout");
         }
 
         public async Task InitializeFirebaseAsync(bool fetchRemoteConfig = true)
@@ -190,10 +196,10 @@ namespace JisSDKAds.Ads
 
             _core.RegisterProvider(providerConfig.ProviderId, provider);
             _core.Initialize(
-                onSuccess: () => Debug.Log("[JisAds] Core AdManager ready."),
+                onSuccess: () => DebugAds.LogSdkInit("JisAds", "Core AdManager", true),
                 onFailure: err =>
                 {
-                    Debug.LogWarning($"[JisAds] Core init failed, falling back to legacy: {err}");
+                    DebugAds.LogSdkInit("JisAds", "Core AdManager", false, err);
                     if (_tiered == null)
                         useCoreForStandardFormats = false;
                 });

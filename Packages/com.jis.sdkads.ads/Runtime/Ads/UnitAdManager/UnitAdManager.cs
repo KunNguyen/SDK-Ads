@@ -57,7 +57,18 @@ namespace JisSDKAds.Ads.UnitAdManagers
                IsActive = adsConfig.isActive;
                AdsConfig.isActive = SDKSetup.IsActiveAdsType(AdsConfig.adsType);
                AdsMediationType = adsConfig.adsMediationType;
-               MediationController = mediationController;
+               MediationController = mediationController ?? adsConfig.GetAdsMediation();
+          }
+
+          protected bool TryGetMediationController(out AdsMediationController controller)
+          {
+               controller = MediationController;
+               if (controller != null)
+                    return true;
+
+               DebugAds.LogWarning(
+                    $"[{GetType().Name}] MediationController is null — wait for AdsManager.IsReady or check mediation in scene.");
+               return false;
           }
 
           public abstract void Init();

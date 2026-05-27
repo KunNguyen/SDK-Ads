@@ -103,18 +103,25 @@ namespace JisSDKAds.Editor
             var container = LoadContainer();
             if (container == null) return false;
 
-            var setup = target switch
+            if (container.unifiedSettings != null)
             {
-                BuildTarget.Android => container.GetAndroidSetup(),
-                BuildTarget.iOS => container.GetIosSetup(),
-                _ => null
-            };
-
-            if (setup == null) return false;
+                container.unifiedSettings.ApplyScriptingDefinesForAllPlatforms();
+            }
+            else
+            {
+                var setup = target switch
+                {
+                    BuildTarget.Android => container.GetAndroidSetup(),
+                    BuildTarget.iOS => container.GetIosSetup(),
+                    _ => null
+                };
+                if (setup == null) return false;
+                var group = BuildPipeline.GetBuildTargetGroup(target);
+                setup.ApplyScriptingDefines(group);
+            }
 
             var adsManager = Object.FindFirstObjectByType<AdsManager>();
             adsManager?.ApplyFromContainer(container);
-            setup.SetupSymbol();
             Debug.Log($"[JIS SDK] {reason}: Applied legacy Container for {target}.");
             return true;
         }

@@ -62,7 +62,7 @@ namespace JisSDKAds.Ads
                     Debug.LogError("Please add Manager Prefab to scene (Assets/ABIMaxSDKAds/Prefabs/Manager.prefab)");
                }
 
-               SetupSymbol();
+               ApplyScriptingDefines(EditorUserBuildSettings.selectedBuildTargetGroup);
                if (adsManager != null)
                {
 #if UNITY_AD_MAX
@@ -78,136 +78,69 @@ namespace JisSDKAds.Ads
                }
           }
 
-          public void SetupSymbol()
+          /// <summary>Legacy name — applies defines for the currently selected build target group only.</summary>
+          public void SetupSymbol() =>
+               ApplyScriptingDefines(EditorUserBuildSettings.selectedBuildTargetGroup);
+
+          /// <summary>
+          /// Sync scripting defines for one platform (Android or iOS group).
+          /// Call once per <see cref="SDKSetup"/> asset — do not call Android+iOS setups back-to-back on the selected group.
+          /// </summary>
+          public void ApplyScriptingDefines(BuildTargetGroup buildTargetGroup)
           {
-               List<string> removeSymbols = new List<string>
-                    { MAX_MEDIATION_SYMBOL, ADMOB_MEDIATION_SYMBOL };
-               List<string> defineSymbols = new List<string>();
+               var mediationSymbols = CollectMediationDefineSymbols();
+               SymbolHelper.SyncMediationDefines(buildTargetGroup, mediationSymbols);
+               SymbolHelper.SetOptionalDefine(buildTargetGroup, "UNITY_APPSFLYER", IsActiveAppsflyer);
+               SymbolHelper.SetOptionalDefine(buildTargetGroup, FIREBASE_AUTH_SYMBOL, IsActiveFirebaseAuth);
+               SymbolHelper.SetOptionalDefine(buildTargetGroup, UNITY_IAP_ACTIVE_SYMBOL, IsActiveIAP);
+          }
+
+          /// <summary>Defines that should be present for this setup (validation).</summary>
+          public List<string> GetExpectedScriptingDefineSymbols()
+          {
+               var list = new List<string>(CollectMediationDefineSymbols());
+               if (IsActiveAppsflyer) list.Add("UNITY_APPSFLYER");
+               if (IsActiveFirebaseAuth) list.Add(FIREBASE_AUTH_SYMBOL);
+               if (IsActiveIAP) list.Add(UNITY_IAP_ACTIVE_SYMBOL);
+               return list;
+          }
+
+          List<string> CollectMediationDefineSymbols()
+          {
+               var defineSymbols = new List<string>();
                switch (adsMediationType)
                {
                     case AdsMediationType.MAX:
-                    {
                          defineSymbols.Add(MAX_MEDIATION_SYMBOL);
-                    }
                          break;
                     case AdsMediationType.ADMOB:
-                    {
                          defineSymbols.Add(ADMOB_MEDIATION_SYMBOL);
-                    }
-                         break;
-                    case AdsMediationType.NONE:
-                    {
-                    }
                          break;
                }
 
-               if (bannerAdsMediationType != AdsMediationType.NONE)
-               {
-                    string symbol = GetSymbolByMediationType(bannerAdsMediationType);
-                    if (!defineSymbols.Contains(symbol))
-                    {
-                         defineSymbols.Add(symbol);
-                    }
-               }
-
-               if (collapsibleBannerAdsMediationType != AdsMediationType.NONE)
-               {
-                    string symbol = GetSymbolByMediationType(collapsibleBannerAdsMediationType);
-                    if (!defineSymbols.Contains(symbol))
-                    {
-                         defineSymbols.Add(symbol);
-                    }
-               }
-
-               if (interstitialAdsMediationType != AdsMediationType.NONE)
-               {
-                    string symbol = GetSymbolByMediationType(interstitialAdsMediationType);
-                    if (!defineSymbols.Contains(symbol))
-                    {
-                         defineSymbols.Add(symbol);
-                    }
-               }
-
-               if (rewardedAdsMediationType != AdsMediationType.NONE)
-               {
-                    string symbol = GetSymbolByMediationType(rewardedAdsMediationType);
-                    if (!defineSymbols.Contains(symbol))
-                    {
-                         defineSymbols.Add(symbol);
-                    }
-               }
-
-               if (mrecAdsMediationType != AdsMediationType.NONE)
-               {
-                    string symbol = GetSymbolByMediationType(mrecAdsMediationType);
-                    if (!defineSymbols.Contains(symbol))
-                    {
-                         defineSymbols.Add(symbol);
-                    }
-               }
-
-               if (appOpenAdsMediationType != AdsMediationType.NONE)
-               {
-                    string symbol = GetSymbolByMediationType(appOpenAdsMediationType);
-                    if (!defineSymbols.Contains(symbol))
-                    {
-                         defineSymbols.Add(symbol);
-                    }
-               }
-
-               int num = 0;
-               while (num < removeSymbols.Count)
-               {
-                    if (defineSymbols.Contains(removeSymbols[num]))
-                         removeSymbols.RemoveAt(num);
-                    else
-                         num++;
-               }
-
-               foreach (var removeSymbol in removeSymbols)
-               {
-                    SymbolHelper.RemoveDefineSymbol(removeSymbol);
-               }
-
-               SymbolHelper.AddDefineSymbols(defineSymbols);
-               string appsflyerDefineSymbol = "UNITY_APPSFLYER";
-               if (IsActiveAppsflyer)
-               {
-                    SymbolHelper.AddDefineSymbol(appsflyerDefineSymbol);
-               }
-               else
-               {
-                    SymbolHelper.RemoveDefineSymbol(appsflyerDefineSymbol);
-               }
-
-               if (IsActiveFirebaseAuth)
-               {
-                    SymbolHelper.AddDefineSymbol(FIREBASE_AUTH_SYMBOL);
-               }
-               else
-               {
-                    SymbolHelper.RemoveDefineSymbol(FIREBASE_AUTH_SYMBOL);
-               }
-
-               if (IsActiveIAP)
-               {
-                    SymbolHelper.AddDefineSymbol(UNITY_IAP_ACTIVE_SYMBOL);
-               }
-               else
-               {
-                    SymbolHelper.RemoveDefineSymbol(UNITY_IAP_ACTIVE_SYMBOL);
-               }
+               AddMediationSymbolIfNeeded(defineSymbols, bannerAdsMediationType);
+               AddMediationSymbolIfNeeded(defineSymbols, collapsibleBannerAdsMediationType);
+               AddMediationSymbolIfNeeded(defineSymbols, interstitialAdsMediationType);
+               AddMediationSymbolIfNeeded(defineSymbols, rewardedAdsMediationType);
+               AddMediationSymbolIfNeeded(defineSymbols, mrecAdsMediationType);
+               AddMediationSymbolIfNeeded(defineSymbols, appOpenAdsMediationType);
+               return defineSymbols;
           }
 
-          private string GetSymbolByMediationType(AdsMediationType adsMediationType)
+          static void AddMediationSymbolIfNeeded(List<string> defineSymbols, AdsMediationType mediation)
           {
-               return adsMediationType switch
+               if (mediation == AdsMediationType.NONE)
+                    return;
+               var symbol = mediation switch
                {
                     AdsMediationType.MAX => MAX_MEDIATION_SYMBOL,
                     AdsMediationType.ADMOB => ADMOB_MEDIATION_SYMBOL,
-                    _ => ""
+                    _ => null
                };
+               if (!string.IsNullOrEmpty(symbol) && !defineSymbols.Contains(symbol))
+                    defineSymbols.Add(symbol);
           }
+
 #endif
      }
 }

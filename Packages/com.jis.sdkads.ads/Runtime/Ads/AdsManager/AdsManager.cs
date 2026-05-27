@@ -158,6 +158,8 @@ namespace JisSDKAds.Ads
         {
             if (!InitializeSingleton()) return;
 
+            SdkSettings?.ApplyRuntimeDebugSettings();
+
             EventManager.StartListening("UpdateRemoteConfigs", UpdateRemoteConfigs);
 
 #if UNITY_EDITOR
@@ -335,6 +337,7 @@ namespace JisSDKAds.Ads
             if (SdkSettings != null)
                 MainAdsMediationType = SdkSettings.GetActiveMediation();
 
+            EnsureMediationControllersWired();
             ConfigureMainAdsMediation();
             InitializeAdsConfigs();
         }
@@ -356,9 +359,81 @@ namespace JisSDKAds.Ads
             foreach (var adsConfig in AdsConfigs)
             {
                 var adsMediationType = CurrentSDKSetup.GetAdsMediationType(adsConfig.adsType);
-                var controller = GetAdsMediationController(adsMediationType);
+                var controller = ResolveMediationController(adsMediationType);
                 adsConfig.Init(controller, OnAdRevenuePaidEvent);
             }
+        }
+
+        void EnsureMediationControllersWired()
+        {
+            var fromChildren = GetComponentsInChildren<AdsMediationController>(true);
+            if (fromChildren == null || fromChildren.Length == 0)
+                return;
+
+            AdsMediationControllers ??= new List<AdsMediationController>();
+            foreach (var controller in fromChildren)
+            {
+                if (controller != null && !AdsMediationControllers.Contains(controller))
+                    AdsMediationControllers.Add(controller);
+            }
+        }
+
+        AdsMediationController ResolveMediationController(AdsMediationType adsMediationType)
+        {
+            if (adsMediationType == AdsMediationType.NONE)
+                return null;
+
+            var controller = GetAdsMediationController(adsMediationType);
+            if (controller != null)
+                return controller;
+
+            EnsureMediationControllersWired();
+            controller = GetAdsMediationController(adsMediationType);
+            if (controller != null)
+                return controller;
+
+            foreach (var candidate in GetComponentsInChildren<AdsMediationController>(true))
+            {
+                if (candidate != null && candidate.GetAdsMediationType() == adsMediationType)
+                {
+                    if (!AdsMediationControllers.Contains(candidate))
+                        AdsMediationControllers.Add(candidate);
+                    return candidate;
+                }
+            }
+
+            DebugAds.LogSdkInit("AdsManager", $"No mediation controller for {adsMediationType}", false,
+                "Add AdmobMediation/MaxMediation under Ads_Runtime/Mediation.");
+            return null;
+        }
+
+        void RefreshUnitManagerMediationBindings()
+        {
+            RefreshUnitManagerMediation(BannerAdManager, AdsType.BANNER);
+            RefreshUnitManagerMediation(InterstitialAdManager, AdsType.INTERSTITIAL);
+            RefreshUnitManagerMediation(RewardAdManager, AdsType.REWARDED);
+            RefreshUnitManagerMediation(MRecAdManager, AdsType.MREC);
+            RefreshUnitManagerMediation(AppOpenAdManager, AdsType.APP_OPEN);
+            RefreshUnitManagerMediation(CollapsibleBannerAdManager, AdsType.COLLAPSIBLE_BANNER);
+        }
+
+        void RefreshUnitManagerMediation(UnitAdManager unit, AdsType adsType)
+        {
+            if (unit == null || CurrentSDKSetup == null)
+                return;
+
+            var cfg = GetAdsConfig(adsType);
+            if (cfg == null)
+                return;
+
+            var mediationType = CurrentSDKSetup.GetAdsMediationType(adsType);
+            var controller = cfg.GetAdsMediation() ?? ResolveMediationController(mediationType);
+
+            unit.AdsConfig = cfg;
+            unit.SDKSetup = CurrentSDKSetup;
+            unit.AdsMediationType = mediationType;
+            unit.MediationController = controller;
+            unit.IsActive = cfg.isActive && controller != null;
         }
 
         private void InitializeMediationIfNeeded(AdsType adsType)
@@ -401,6 +476,21 @@ namespace JisSDKAds.Ads
             SetupCollapsibleBannerAds();
             SetupMRecAds();
             SetupAppOpenAds();
+            RefreshUnitManagerMediationBindings();
+        }
+
+        /// <summary>
+        /// Binds each <see cref="UnitAdManager"/> to its <see cref="AdsMediationController"/> from current SDKSetup.
+        /// Call after <see cref="UpdateAdsMediationConfig"/> or during ads init.
+        /// </summary>
+        public void RebindUnitManagersToMediation()
+        {
+            if (CurrentSDKSetup == null)
+                return;
+
+            EnsureMediationControllersWired();
+            InitializeAdsConfigs();
+            SetupUnitAdManager();
         }
 
         private List<AdsType> BuildAdInitializationOrder()
@@ -429,13 +519,15 @@ namespace JisSDKAds.Ads
 
             if (mediationController == null || mediationController.Status != AdsMediationController.MediationStatus.Inited)
             {
-                DebugAds.LogWarning($"Mediation controller for {adsType} not ready after {initialization_timeout}s. Skipping init this round.");
+                var status = mediationController == null ? "controller=null" : mediationController.Status.ToString();
+                DebugAds.LogSdkInit("AdsManager", $"{adsType} unit init skipped", false,
+                    $"mediation={mediationType} status={status} after {initialization_timeout}s");
                 yield break;
             }
 
             adManager.Init();
             adManager.ApplyRemoteConfigNow();
-            DebugAds.Log($"Initialized {adsType} Ads with Mediation: {mediationType} (Remote Config applied)");
+            DebugAds.LogSdkInit("AdsManager", $"{adsType} unit ready", true, $"mediation={mediationType}");
         }
 
         private IEnumerator CoWaitForMediationReady(AdsMediationController mediationController, AdsType adsType)
