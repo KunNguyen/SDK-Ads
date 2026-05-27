@@ -369,6 +369,9 @@ namespace JisSDKAds.Editor
 
         static void TrySavePrefabAsset(GameObject root, string prefabName)
         {
+            if (root == null)
+                return;
+
             if (!AssetDatabase.IsValidFolder("Assets/JisSDKAds"))
                 AssetDatabase.CreateFolder("Assets", "JisSDKAds");
             if (!AssetDatabase.IsValidFolder(PrefabFolder))
@@ -378,9 +381,25 @@ namespace JisSDKAds.Editor
             if (AssetDatabase.LoadAssetAtPath<GameObject>(path) != null)
                 return;
 
-            PrefabUtility.SaveAsPrefabAsset(root, path);
-            AssetDatabase.SaveAssets();
-            Debug.Log($"[JIS SDK] Saved prefab template to {path}");
+            // Save a scene-detached clone so the template prefab is not tied to the scene instance.
+            var clone = UnityEngine.Object.Instantiate(root);
+            clone.name = prefabName;
+            clone.transform.SetParent(null, false);
+
+            try
+            {
+                using (new EditorLogNoiseFilter())
+                {
+                    PrefabUtility.SaveAsPrefabAsset(clone, path);
+                    AssetDatabase.SaveAssets();
+                }
+
+                Debug.Log($"[JIS SDK] Saved prefab template to {path}");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(clone);
+            }
         }
     }
 }

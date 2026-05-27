@@ -8,7 +8,8 @@ JisSDK_Manager
 │   ├── FirebaseManager
 │   └── AdsTracker
 ├── JisAds
-│   └── JisAds
+│   ├── JisAds                    → App Open + ResumeAdCoordinator
+│   └── (Core AdManager child created at runtime when needed)
 └── Ads_Runtime
     ├── AdsManager
     ├── UnitAdManagers/
@@ -16,9 +17,7 @@ JisSDK_Manager
     │   ├── Interstitial        → InterstitialAdManager
     │   ├── Rewarded            → RewardAdManager
     │   ├── MRec                  → MRecAdManager
-    │   ├── AppOpen               → AppOpenAdManager
-    │   ├── CollapsibleBanner     → CollapsibleBannerAdManager
-    │   └── Resume                → ResumeAdManager
+    │   └── CollapsibleBanner     → CollapsibleBannerAdManager
     └── Mediation/
         ├── MaxMediation          → MaxMediationController (optional)
         └── AdmobMediation        → AdmobMediationController (optional)

@@ -257,7 +257,7 @@ JisAds.Instance.ShowMRecAds();
 JisAds.Instance.HideMRecAds();
 JisAds.Instance.ShowCollapsibleBannerAds(closeCallback: null);
 JisAds.Instance.HideCollapsibleBannerAds();
-JisAds.Instance.InitResumeAdManager();
+// Resume ads: automatic after InitializeAsync (ResumeAdCoordinator on JisAds)
 
 // Remove ads (thường gắn IAP)
 JisAds.Instance.SetRemoveAds(true);
