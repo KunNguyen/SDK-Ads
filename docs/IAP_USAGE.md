@@ -29,9 +29,10 @@ Tài liệu runtime cho **Unity Purchasing 5.x** qua package `com.jis.sdkads.iap
 2. **JIS SDK → IAP → Enable IAP** (nếu menu IAP đầy đủ chưa hiện)
 3. **JIS SDK → IAP → Create/Open Packages Config** → `IAPPackageConfigs.asset`
 4. Thêm sản phẩm trong Inspector (Product ID, loại, Android/iOS ID nếu khác)
-5. **JIS SDK → IAP → Validate Packages Config**
-6. **JIS SDK → IAP → Scene → Add InApp Purchaser Prefab**
-7. Gán `IAPPackageConfigs` vào `InAppPurchaser`
+5. **Window → Unity IAP → IAP Receipt Validation Obfuscator** → Obfuscate Google Play + Apple (tạo `GooglePlayTangle.cs`, `AppleTangle.cs` trong project)
+6. **JIS SDK → IAP → Validate Packages Config**
+7. **JIS SDK → IAP → Scene → Add InApp Purchaser Prefab**
+8. Gán `IAPPackageConfigs` vào `InAppPurchaser`
 
 ---
 
@@ -207,7 +208,9 @@ Giá store cập nhật sau `IsStoreReady` (callback `OnInitialProductsFetched`)
 | Product not found | Validate config, đúng Product ID store, đã fetch catalog |
 | Mua không remove ads | `ProductKind = RemoveAds`, scene có `JisAds`/`AdsManager` |
 | AppsFlyer không track | Define `UNITY_APPSFLYER` trên **cả iOS và Android** |
+| `GooglePlayTangle` compile error (cũ) | Package ≥ bản có `IapTangleLoader` — không cần reference trực tiếp; vẫn nên generate Tangle cho production |
 | Receipt invalid | Kiểm tra Tangle / bundle id / sandbox account |
+| Thiếu Tangle | **Window → Unity IAP → IAP Receipt Validation Obfuscator**; chạy **Validate Packages Config** |
 
 ---
 

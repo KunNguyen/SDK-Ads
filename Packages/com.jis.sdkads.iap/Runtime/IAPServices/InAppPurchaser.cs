@@ -222,17 +222,18 @@ namespace JisSDKAds.IAP
 #if !UNITY_EDITOR
             try
             {
-                if (CanCrossPlatformValidate())
+                if (!CanCrossPlatformValidate())
+                    return;
+
+                if (!IapTangleLoader.TryGetTangleData(out var googlePlay, out var apple))
                 {
-#if !DEBUG_STOREKIT_TEST
-                    CrossPlatformValidator =
-                        new CrossPlatformValidator(GooglePlayTangle.Data(), AppleTangle.Data(), Application.identifier);
-#else
-                    CrossPlatformValidator =
-                        new CrossPlatformValidator(GooglePlayTangle.Data(), AppleStoreKitTestTangle.Data(),
-                            Application.identifier);
-#endif
+                    IAPLogger.LogConsole(
+                        "Receipt validation disabled: missing GooglePlayTangle / AppleTangle in the project. " +
+                        "Generate them via Window > Unity IAP > IAP Receipt Validation Obfuscator.");
+                    return;
                 }
+
+                CrossPlatformValidator = new CrossPlatformValidator(googlePlay, apple, Application.identifier);
             }
             catch (NotImplementedException exception)
             {
@@ -390,6 +391,14 @@ namespace JisSDKAds.IAP
 
         bool TryValidateAndFulfill(IOrderInfo orderInfo, Product product, bool isRestore)
         {
+            if (CrossPlatformValidator == null)
+            {
+                if (product != null)
+                    return TryFulfillOrder(product.definition.id, orderInfo, product, isRestore);
+                IAPLogger.LogConsole("Cannot validate purchase: CrossPlatformValidator not configured.");
+                return false;
+            }
+
             try
             {
                 var result = CrossPlatformValidator.Validate(orderInfo.Receipt);

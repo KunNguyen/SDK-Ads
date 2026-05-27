@@ -1,4 +1,6 @@
 #if UNITY_EDITOR
+using System;
+using System.Reflection;
 using System.Text;
 using UnityEditor;
 using UnityEngine;
@@ -41,6 +43,14 @@ namespace JisSDKAds.IAP.Editor
             }
 
             var ok = config.Validate(out var errors);
+            if (!HasReceiptTangleTypes())
+            {
+                errors.Add(
+                    "Missing GooglePlayTangle / AppleTangle. " +
+                    "Window > Unity IAP > IAP Receipt Validation Obfuscator.");
+                ok = false;
+            }
+
             if (ok)
             {
                 Debug.Log($"[JIS SDK IAP] '{config.name}' is valid ({config.Packages?.Count ?? 0} product(s)).");
@@ -53,6 +63,24 @@ namespace JisSDKAds.IAP.Editor
                 sb.AppendLine("  - " + err);
             Debug.LogError(sb.ToString());
             return false;
+        }
+
+        static bool HasReceiptTangleTypes()
+        {
+            return FindTangleType("GooglePlayTangle") != null && FindTangleType("AppleTangle") != null;
+        }
+
+        static Type FindTangleType(string typeName)
+        {
+            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                var type = assembly.GetType(typeName, false)
+                    ?? assembly.GetType($"UnityEngine.Purchasing.Security.{typeName}", false);
+                if (type?.GetMethod("Data", BindingFlags.Public | BindingFlags.Static) != null)
+                    return type;
+            }
+
+            return null;
         }
     }
 }
