@@ -237,8 +237,39 @@ namespace JisSDKAds.Ads
         {
             await InitializeFirebaseAsync(fetchRemoteConfig);
             InitializeAdsFlow();
-            while (!IsReady)
+            await WaitUntilReadyAsync();
+        }
+
+        /// <summary>Waits until <see cref="IsReady"/> or timeout (mediation + unit init can take 30–90s).</summary>
+        public async Task WaitUntilReadyAsync(float timeoutSeconds = 120f)
+        {
+            var deadline = Time.realtimeSinceStartup + timeoutSeconds;
+            while (!IsReady && Time.realtimeSinceStartup < deadline)
                 await Task.Yield();
+        }
+
+        public void LogInitDiagnosticsIfNotReady()
+        {
+            if (IsReady) return;
+
+            Debug.LogWarning(
+                $"[AdsManager] Not ready — bootstrapInProgress={_adsBootstrapInProgress}, " +
+                $"bootstrapCompleted={_adsBootstrapCompleted}, state={AdsStateMachine?.GetCurrentState()}, " +
+                $"mainMediation={MainAdsMediationType}, activeSetup={CurrentSDKSetup?.name ?? "null"}");
+
+            if (AdsMediationControllers == null || AdsMediationControllers.Count == 0)
+            {
+                Debug.LogWarning("[AdsManager] No AdsMediationControllers assigned — check scene / Apply to Scene.");
+                return;
+            }
+
+            foreach (var controller in AdsMediationControllers)
+            {
+                if (controller == null) continue;
+                Debug.LogWarning(
+                    $"[AdsManager] Mediation {controller.GetAdsMediationType()}: " +
+                    $"status={controller.Status}, active={controller.IsActive}");
+            }
         }
 
         public async Task InitializeFirebaseAsync(bool fetchRemoteConfig = true)
@@ -259,7 +290,7 @@ namespace JisSDKAds.Ads
             if (_remoteConfigPrefetchedForAdsFlow)
             {
                 _remoteConfigPrefetchedForAdsFlow = false;
-                StartCoroutine(CoRunAdsFlow());
+                StartAdsBootstrapCoroutine();
                 return;
             }
 
@@ -269,7 +300,22 @@ namespace JisSDKAds.Ads
                 return;
             }
 
-            StartCoroutine(CoRunAdsFlow());
+            StartAdsBootstrapCoroutine();
+        }
+
+        void StartAdsBootstrapCoroutine()
+        {
+            if (_adsBootstrapInProgress)
+                return;
+
+            _adsBootstrapInProgress = true;
+            StartCoroutine(CoRunAdsFlowAndReleaseBootstrap());
+        }
+
+        IEnumerator CoRunAdsFlowAndReleaseBootstrap()
+        {
+            yield return CoRunAdsFlow();
+            _adsBootstrapInProgress = false;
         }
 
         IEnumerator CoBootstrapAdsWithRemoteConfig()

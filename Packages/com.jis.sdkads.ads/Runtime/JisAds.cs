@@ -114,23 +114,15 @@ namespace JisSDKAds.Ads
             else
                 InitializeTieredOnlyFlow();
 
-            await WaitUntilLegacyReadyAsync();
+            if (_legacy != null)
+                await _legacy.WaitUntilReadyAsync();
+
             _isReady = _legacy != null && _legacy.IsReady;
+            if (!_isReady)
+                _legacy?.LogInitDiagnosticsIfNotReady();
+
             DebugAds.LogSdkInit("JisAds", "InitializeAsync complete", _isReady,
                 _isReady ? null : "AdsManager not ready — check mediation init logs above.");
-        }
-
-        async Task WaitUntilLegacyReadyAsync()
-        {
-            const int maxFrames = 600;
-            for (var i = 0; i < maxFrames; i++)
-            {
-                if (_legacy != null && _legacy.IsReady)
-                    return;
-                await Task.Yield();
-            }
-
-            DebugAds.LogSdkInit("JisAds", "Legacy AdsManager ready wait", false, "timeout");
         }
 
         public async Task InitializeFirebaseAsync(bool fetchRemoteConfig = true)
