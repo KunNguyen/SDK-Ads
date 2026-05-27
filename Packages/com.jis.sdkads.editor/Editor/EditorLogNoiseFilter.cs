@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using System;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace JisSDKAds.Editor
 {
@@ -25,13 +26,13 @@ namespace JisSDKAds.Editor
             Debug.unityLogger.logEnabled = _previousEnabled;
         }
 
-        public void LogFormat(LogType logType, LogOption logOptions, Object context, string format, params object[] args)
+        public void LogFormat(LogType logType, Object context, string format, params object[] args)
         {
             var message = args != null && args.Length > 0 ? string.Format(format, args) : format;
             if (ShouldSuppress(logType, message))
                 return;
 
-            _inner.LogFormat(logType, logOptions, context, format, args);
+            _inner.LogFormat(logType, context, format, args);
         }
 
         public void LogException(Exception exception, Object context) =>
@@ -46,3 +47,4 @@ namespace JisSDKAds.Editor
         }
     }
 }
+#endif
