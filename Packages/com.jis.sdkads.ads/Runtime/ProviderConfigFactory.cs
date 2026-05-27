@@ -1,6 +1,8 @@
 using System;
 using System.Reflection;
+using JisSDKAds.Ads.Tiered;
 using JisSDKAds.Ads.Settings;
+using JisSDKAds.Ads.SequentialTier;
 using JisSDKAds.Core.Interfaces;
 using UnityEngine;
 
@@ -35,13 +37,47 @@ namespace JisSDKAds.Ads
                 AdsMediationType.ADMOB => CreateProviderConfig("JisSDKAds.Providers.AdMob.AdMobConfig, JisSDKAds.Providers.AdMob", setup =>
                 {
                     SetField(setup, "appId", "");
-                    var inter = profile.sdkSetup.admobAdsSetup?.InterstitialAdUnitIDList;
-                    var reward = profile.sdkSetup.admobAdsSetup?.RewardedAdUnitIDList;
-                    var banner = profile.sdkSetup.admobAdsSetup?.BannerAdUnitIDList;
-                    SetField(setup, "interstitialAdUnitId", inter != null && inter.Count > 0 ? inter[0] : "");
-                    SetField(setup, "rewardedAdUnitId", reward != null && reward.Count > 0 ? reward[0] : "");
+                    var admob = profile.sdkSetup.admobAdsSetup;
+                    var inter = admob?.InterstitialAdUnitIDList;
+                    var reward = admob?.RewardedAdUnitIDList;
+                    var banner = admob?.BannerAdUnitIDList;
+                    var appOpen = admob?.AppOpenAdUnitIDList;
+
+                    // IMPORTANT: Core AdMob provider cannot load with an empty/invalid unit id.
+                    // Prefer:
+                    // - legacy list[0] (if populated)
+                    // - Remote Config applied to SequentialTierConfig (Premium first; then High)
+                    // - SequentialTier default fallback from settings
+                    // This ensures Core preload uses the same RC-driven inventory as SequentialTier loader.
+                    var fallbackInter = TieredAdsConfigFactory.ResolveDefaultFallbackUnitId(SequentialTierAdFormat.Interstitial, profile);
+                    var fallbackReward = TieredAdsConfigFactory.ResolveDefaultFallbackUnitId(SequentialTierAdFormat.Rewarded, profile);
+
+                    static string FirstNonEmpty(params string[] values)
+                    {
+                        if (values == null) return null;
+                        foreach (var v in values)
+                        {
+                            if (!string.IsNullOrWhiteSpace(v))
+                                return v.Trim();
+                        }
+                        return null;
+                    }
+
+                    string interList0 = inter != null && inter.Count > 0 ? inter[0] : null;
+                    string rewardList0 = reward != null && reward.Count > 0 ? reward[0] : null;
+
+                    // Pull the RC-resolved unit id from SequentialTierConfig entries (set via ApplyResolvedIdsToAdmobSetup).
+                    string interTierPremium = admob?.InterstitialTierConfig?.GetEntry(AdTier.Premium)?.ResolveAdUnitId();
+                    string interTierHigh = admob?.InterstitialTierConfig?.GetEntry(AdTier.High)?.ResolveAdUnitId();
+                    string rewardTierPremium = admob?.RewardedTierConfig?.GetEntry(AdTier.Premium)?.ResolveAdUnitId();
+                    string rewardTierHigh = admob?.RewardedTierConfig?.GetEntry(AdTier.High)?.ResolveAdUnitId();
+
+                    var interId = FirstNonEmpty(interList0, interTierPremium, interTierHigh, fallbackInter) ?? "";
+                    var rewardId = FirstNonEmpty(rewardList0, rewardTierPremium, rewardTierHigh, fallbackReward) ?? "";
+
+                    SetField(setup, "interstitialAdUnitId", interId);
+                    SetField(setup, "rewardedAdUnitId", rewardId);
                     SetField(setup, "bannerAdUnitId", banner != null && banner.Count > 0 ? banner[0] : "");
-                    var appOpen = profile.sdkSetup.admobAdsSetup?.AppOpenAdUnitIDList;
                     SetField(setup, "appOpenAdUnitId", appOpen != null && appOpen.Count > 0 ? appOpen[0] : "");
                 }),
 #endif
