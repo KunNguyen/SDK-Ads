@@ -12,6 +12,7 @@ namespace JisSDKAds.Hub
     internal static class JisSDKOdinModuleGuard
     {
         const string MathematicsModuleId = "Unity.Mathematics";
+        const string AddressablesModuleId = "Unity.Addressables";
 
         static JisSDKOdinModuleGuard()
         {
@@ -21,7 +22,8 @@ namespace JisSDKAds.Hub
         static void RunOnceAfterLoad()
         {
             WarnIfCoreStillBundlesSirenix();
-            DisableMathematicsModuleIfMisconfigured();
+            DisableOptionalOdinModuleIfDataMissing(MathematicsModuleId, FindOdinModuleDataPath(MathematicsModuleId));
+            DisableOptionalOdinModuleIfDataMissing(AddressablesModuleId, FindOdinModuleDataPath(AddressablesModuleId));
         }
 
         static void WarnIfCoreStillBundlesSirenix()
@@ -64,19 +66,25 @@ namespace JisSDKAds.Hub
                 lines);
         }
 
-        static void DisableMathematicsModuleIfMisconfigured()
+        static void DisableOptionalOdinModuleIfDataMissing(string moduleId, string dataPath)
         {
-            var dataPath = FindOdinMathematicsDataPath();
             if (!string.IsNullOrEmpty(dataPath) && File.Exists(dataPath))
                 return;
 
-            // Broken install: module folder without .data — tell Odin not to auto-activate.
-            var type = System.Type.GetType(
-                "Sirenix.OdinInspector.Editor.Modules.OdinModuleConfig, Sirenix.OdinInspector.Editor");
-            if (type == null)
+            if (!TryDisableOdinModule(moduleId, out var configPath))
                 return;
 
+            Debug.LogWarning(
+                $"[JIS SDK Hub] Disabled Odin module '{moduleId}' (missing {moduleId}.data in com.jis.sdkads.odin). " +
+                "Install full Odin from Asset Store to enable, or keep disabled if you only need Addressables at runtime.");
+        }
+
+        static bool TryDisableOdinModule(string moduleId, out string configPath)
+        {
+            configPath = null;
             var assets = AssetDatabase.FindAssets("t:OdinModuleConfig");
+            var changed = false;
+
             foreach (var guid in assets)
             {
                 var path = AssetDatabase.GUIDToAssetPath(guid);
@@ -87,18 +95,17 @@ namespace JisSDKAds.Hub
                 if (config == null)
                     continue;
 
-                // Serialized: configurations[].ActivationSettings — 2 = Disabled in Odin 3.x
+                configPath = path;
                 var so = new SerializedObject(config);
                 var configurations = so.FindProperty("configurations");
                 if (configurations == null)
                     continue;
 
-                var changed = false;
                 for (var i = 0; i < configurations.arraySize; i++)
                 {
                     var entry = configurations.GetArrayElementAtIndex(i);
                     var id = entry.FindPropertyRelative("ID");
-                    if (id == null || id.stringValue != MathematicsModuleId)
+                    if (id == null || id.stringValue != moduleId)
                         continue;
 
                     var activation = entry.FindPropertyRelative("ActivationSettings");
@@ -117,39 +124,33 @@ namespace JisSDKAds.Hub
                 }
 
                 if (changed)
-                {
                     so.ApplyModifiedPropertiesWithoutUndo();
-                    Debug.LogWarning(
-                        "[JIS SDK Hub] Disabled Odin Unity.Mathematics auto-activation (module data missing or duplicate Sirenix).");
-                }
             }
+
+            return changed;
         }
 
-        static string FindOdinMathematicsDataPath()
+        static string FindOdinModuleDataPath(string moduleId) =>
+            FindOdinModuleDataFile($"{moduleId}.data");
+
+        static string FindOdinModuleDataFile(string fileName)
         {
             var projectRoot = Path.GetDirectoryName(Application.dataPath);
             if (string.IsNullOrEmpty(projectRoot))
                 return null;
 
-            var candidates = new[]
-            {
-                Path.Combine(projectRoot, "Packages", "com.jis.sdkads.odin", "Plugins", "Sirenix",
-                    "Odin Inspector", "Modules", "Unity.Mathematics.data"),
-                Path.Combine(projectRoot, "Library", "PackageCache")
-            };
-
-            var direct = candidates[0];
+            var direct = Path.Combine(projectRoot, "Packages", "com.jis.sdkads.odin", "Plugins", "Sirenix",
+                "Odin Inspector", "Modules", fileName);
             if (File.Exists(direct))
                 return direct;
 
-            var cache = candidates[1];
+            var cache = Path.Combine(projectRoot, "Library", "PackageCache");
             if (!Directory.Exists(cache))
                 return null;
 
             foreach (var dir in Directory.GetDirectories(cache, "com.jis.sdkads.odin@*"))
             {
-                var path = Path.Combine(dir, "Plugins", "Sirenix", "Odin Inspector", "Modules",
-                    "Unity.Mathematics.data");
+                var path = Path.Combine(dir, "Plugins", "Sirenix", "Odin Inspector", "Modules", fileName);
                 if (File.Exists(path))
                     return path;
             }
