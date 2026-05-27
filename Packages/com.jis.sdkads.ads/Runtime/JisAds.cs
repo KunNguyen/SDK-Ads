@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using JisSDKAds.Ads.AppOpen;
 using JisSDKAds.Ads.Integration;
 using JisSDKAds.Ads.Resume;
+using JisSDKAds.Ads.SequentialTier;
 using JisSDKAds.Ads.Settings;
 using JisSDKAds.Common;
 using JisSDKAds.Ads.Tiered;
@@ -39,6 +40,10 @@ namespace JisSDKAds.Ads
         private bool _isReady;
         private bool _isShowingAd;
         private bool _isRemoveAds;
+        private bool _standardFormatsPreloadedAfterRemoteConfig;
+        private int _preloadRetryAttempt;
+        private const int PreloadMaxRetries = 3;
+        private bool _preloadRetryScheduled;
         public bool IsReady => _isReady;
         public bool UseCoreForStandardFormats => useCoreForStandardFormats && _core != null && _core.IsInitialized;
         public bool UseTieredInterstitial =>
@@ -104,6 +109,7 @@ namespace JisSDKAds.Ads
             DebugAds.LogSdkInit("JisAds", "InitializeAsync", true, $"fetchRemoteConfig={fetchRemoteConfig}");
             AdMobSdkEarlyInitBridge.TryWarmUpFromSettings(settings);
             await InitializeFirebaseAsync(fetchRemoteConfig);
+            ApplyRemoteTierInventoryFromSettings();
             InitializeCoreFlow();
 
             // Core-only readiness: wait a bit for Core to finish initializing.
@@ -117,13 +123,97 @@ namespace JisSDKAds.Ads
 
             _isReady = _core != null && _core.IsInitialized;
             if (_isReady)
+            {
+                PreloadStandardFormatsAfterRemoteConfig();
                 StartCoroutine(CoInitializeAppOpenAndResume());
+            }
 
             DebugAds.LogSdkInit(
                 "JisAds",
                 "InitializeAsync complete",
                 _isReady,
                 _isReady ? null : "Core AdManager not initialized — check provider init logs above.");
+        }
+
+        void PreloadStandardFormatsAfterRemoteConfig()
+        {
+            if (Application.isEditor)
+                return;
+            if (_standardFormatsPreloadedAfterRemoteConfig)
+                return;
+
+            // Only preload when Remote Config has been fetched+activated.
+            if (FirebaseManager.Instance == null || !FirebaseManager.Instance.IsRemoteConfigReady)
+                return;
+
+            if (_core == null || !_core.IsInitialized)
+                return;
+
+            var provider = _core.PrimaryProvider;
+            if (provider == null)
+                return;
+
+            _standardFormatsPreloadedAfterRemoteConfig = true;
+
+            // Banner + Interstitial are typically disabled by "remove ads".
+            if (!_isRemoveAds)
+            {
+                provider.Banner?.Load(
+                    onLoaded: () => DebugAds.Log("[JisAds] Preload Banner: loaded"),
+                    onFailed: err =>
+                    {
+                        DebugAds.LogWarning($"[JisAds] Preload Banner failed: {err}");
+                        SchedulePreloadRetry();
+                    });
+
+                provider.Interstitial?.Load(
+                    onLoaded: () => DebugAds.Log("[JisAds] Preload Interstitial: loaded"),
+                    onFailed: err =>
+                    {
+                        DebugAds.LogWarning($"[JisAds] Preload Interstitial failed: {err}");
+                        SchedulePreloadRetry();
+                    });
+            }
+
+            // Rewarded should remain available even if remove-ads is enabled.
+            provider.Rewarded?.Load(
+                onLoaded: () => DebugAds.Log("[JisAds] Preload Rewarded: loaded"),
+                onFailed: err =>
+                {
+                    DebugAds.LogWarning($"[JisAds] Preload Rewarded failed: {err}");
+                    SchedulePreloadRetry();
+                });
+        }
+
+        void SchedulePreloadRetry()
+        {
+            if (_preloadRetryScheduled)
+                return;
+
+            if (_preloadRetryAttempt >= PreloadMaxRetries)
+                return;
+
+            _preloadRetryScheduled = true;
+            StartCoroutine(CoRetryPreloadStandardFormats());
+        }
+
+        IEnumerator CoRetryPreloadStandardFormats()
+        {
+            // simple backoff: 2s, 5s, 10s
+            _preloadRetryAttempt++;
+            var delay = _preloadRetryAttempt switch
+            {
+                1 => 2f,
+                2 => 5f,
+                _ => 10f
+            };
+
+            yield return new WaitForSecondsRealtime(delay);
+            _preloadRetryScheduled = false;
+
+            // Allow re-attempts by resetting the one-shot flag.
+            _standardFormatsPreloadedAfterRemoteConfig = false;
+            PreloadStandardFormatsAfterRemoteConfig();
         }
         IEnumerator CoInitializeAppOpenAndResume()
         {
@@ -169,6 +259,19 @@ namespace JisSDKAds.Ads
             if (resumeCoordinator == null)
                 resumeCoordinator = gameObject.AddComponent<ResumeAdCoordinator>();
         }
+        void ApplyRemoteTierInventoryFromSettings()
+        {
+            if (settings == null) return;
+            var profile = settings.GetActiveProfile();
+            if (profile == null) return;
+
+            SequentialTierRemoteConfigResolver.ApplyResolvedIdsToAdmobSetup(profile);
+
+            var tieredConfig = ResolveTieredConfig(profile);
+            if (tieredConfig != null && tieredConfig.EnableTieredInventory)
+                TieredAdsConfigFactory.ApplyRemoteTierIdsWithFallback(profile, tieredConfig);
+        }
+
         void InitializeCoreFlow()
         {
             var profile = settings.GetActiveProfile();
@@ -218,6 +321,8 @@ namespace JisSDKAds.Ads
                 return;
             }
             TieredAdsConfigFactory.ApplyLegacyFallbackFromSdkSetup(profile, tieredConfig);
+            if (FirebaseManager.Instance != null && FirebaseManager.Instance.IsRemoteConfigReady)
+                TieredAdsConfigFactory.ApplyRemoteTierIdsWithFallback(profile, tieredConfig);
             _tiered = TieredAdsBootstrap.CreateExtension(tieredConfig, backend, transform);
             if (_tiered != null)
                 Debug.Log("[JisAds] Tiered inventory extension ready.");

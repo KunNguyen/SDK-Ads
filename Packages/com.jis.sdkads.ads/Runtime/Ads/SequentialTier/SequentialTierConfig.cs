@@ -21,6 +21,17 @@ namespace JisSDKAds.Ads.SequentialTier
         [Min(1f)] public float premiumRetryCooldownMinutes = 45f;
         [Min(1)] public int consecutiveFailuresBeforeDowngrade = 2;
 
+        [Header("Fill hold policy (after full ladder fail)")]
+        [Tooltip("If the ladder fails all tiers: keep retrying Fill this many times (spaced by fillHoldRetryIntervalSeconds), then restart normal schedule.")]
+        [Min(0)] public int fillHoldMaxRetries = 10;
+
+        [Tooltip("Delay between Fill retries when holding on Fill.")]
+        [Min(1f)] public float fillHoldRetryIntervalSeconds = 30f;
+
+        [Header("eCPM recovery")]
+        [Tooltip("If a show succeeds on a tier below Premium, after this many minutes the next load will start from Premium again (to recover eCPM).")]
+        [Min(0f)] public float returnToPremiumAfterNonPremiumShowMinutes = 10f;
+
         [SerializeField] private SequentialTierEntry[] tiers = CreateDefaultTiers();
 
         /// <summary>Backward-compatible alias used by earlier interstitial-only builds.</summary>

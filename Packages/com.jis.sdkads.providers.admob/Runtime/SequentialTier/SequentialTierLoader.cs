@@ -31,6 +31,10 @@ namespace JisSDKAds.Providers.AdMob.SequentialTier
         Coroutine _timeoutRoutine;
         DateTime _loadStartedUtc;
 
+        bool _fillHoldActive;
+        int _fillHoldAttempt;
+        Coroutine _fillHoldRoutine;
+
         Action _onLoadedSuccess;
         Action _onLoadedFail;
         SequentialTierShowHooks _showHooks;
@@ -72,7 +76,10 @@ namespace JisSDKAds.Providers.AdMob.SequentialTier
 
             _isLoading = true;
             _loadGeneration++;
-            TryLoadTier(_memory.ResolveStartTier(_config));
+            if (_fillHoldActive && _config.fillHoldMaxRetries > 0 && _fillHoldAttempt < _config.fillHoldMaxRetries)
+                TryLoadTier(AdTier.Fill);
+            else
+                TryLoadTier(_memory.ResolveStartTier(_config));
         }
 
         public bool Show()
@@ -111,12 +118,17 @@ namespace JisSDKAds.Providers.AdMob.SequentialTier
                 return false;
             }
 
+            // A successful TryShow means we have a real impression attempt.
+            // Use this to drive "return to Premium after X minutes" policy.
+            _memory.RecordShowSuccess(cache.Tier);
+
             return true;
         }
 
         public void Destroy()
         {
             StopTimeout();
+            StopFillHold();
             _loadAdapter?.Destroy();
             ClearReady();
             _isLoading = false;
@@ -222,6 +234,15 @@ namespace JisSDKAds.Providers.AdMob.SequentialTier
                 return;
             }
 
+            // All tiers failed in this ladder run.
+            // Policy: hold on Fill and retry it N times spaced by interval; after that restart normal schedule.
+            if (_config.fillHoldMaxRetries > 0 && _config.fillHoldRetryIntervalSeconds > 0f)
+            {
+                StartFillHoldIfNeeded();
+                ScheduleNextFillHoldAttemptOrRestart();
+                return;
+            }
+
             FinishLadderFailed("all_tiers_failed");
         }
 
@@ -231,6 +252,53 @@ namespace JisSDKAds.Providers.AdMob.SequentialTier
             _isLoading = false;
             SequentialTierAnalytics.LogLoadFail(_format, "", AdTier.Fill, 0, reason, 0);
             _onLoadedFail?.Invoke();
+        }
+
+        void StartFillHoldIfNeeded()
+        {
+            if (_fillHoldActive)
+                return;
+
+            _fillHoldActive = true;
+            _fillHoldAttempt = 0;
+        }
+
+        void StopFillHold()
+        {
+            _fillHoldActive = false;
+            _fillHoldAttempt = 0;
+            if (_fillHoldRoutine != null && _host != null)
+                _host.StopCoroutine(_fillHoldRoutine);
+            _fillHoldRoutine = null;
+        }
+
+        void ScheduleNextFillHoldAttemptOrRestart()
+        {
+            // If we still have fill attempts, schedule a Fill-only reload.
+            if (_fillHoldActive && _fillHoldAttempt < _config.fillHoldMaxRetries)
+            {
+                _fillHoldAttempt++;
+                StopTimeout();
+                _isLoading = false;
+
+                if (_fillHoldRoutine != null && _host != null)
+                    _host.StopCoroutine(_fillHoldRoutine);
+                _fillHoldRoutine = _host.StartCoroutine(CoDelayedFillReload());
+                return;
+            }
+
+            // Fill hold exhausted → restart normal schedule from resolved start tier.
+            StopFillHold();
+            _isLoading = false;
+            Load(forceReload: true);
+        }
+
+        IEnumerator CoDelayedFillReload()
+        {
+            yield return new WaitForSecondsRealtime(_config.fillHoldRetryIntervalSeconds);
+            if (_host == null) yield break;
+            if (IsReady) yield break;
+            Load(forceReload: true);
         }
 
         void ClearReady()

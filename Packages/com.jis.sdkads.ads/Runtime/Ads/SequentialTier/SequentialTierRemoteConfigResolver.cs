@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using JisSDKAds.Ads.Settings;
+using JisSDKAds.Ads.Tiered;
 using JisSDKAds.Common;
 using JisSDKAds.Firebase;
 using UnityEngine;
@@ -7,6 +9,7 @@ namespace JisSDKAds.Ads.SequentialTier
 {
     /// <summary>
     /// Reads sequential tier AdMob unit IDs from Firebase Remote Config and applies them to tier entries.
+    /// RC tiers are resolved high→low with cascade; settings fallback is used only when all RC tiers are empty.
     /// </summary>
     public static class SequentialTierRemoteConfigResolver
     {
@@ -20,24 +23,66 @@ namespace JisSDKAds.Ads.SequentialTier
 
         public static bool TryReadTierIds(
             SequentialTierAdFormat format,
+            out Dictionary<AdTier, string> tierIds) =>
+            TryReadTierIds(format, profile: null, out tierIds);
+
+        public static bool TryReadTierIds(
+            SequentialTierAdFormat format,
+            PlatformAdsProfile profile,
             out Dictionary<AdTier, string> tierIds)
         {
+            if (profile != null)
+                return TieredAdsConfigFactory.TryBuildSequentialTierIds(format, profile, out tierIds);
+
             tierIds = new Dictionary<AdTier, string>();
             if (FirebaseManager.Instance == null || !FirebaseManager.Instance.IsRemoteConfigReady)
                 return false;
 
-            var any = false;
+            var anyRc = false;
+            string cascadeId = null;
+
             foreach (var tier in TierOrder)
             {
                 var key = GetRemoteConfigKey(format, tier);
-                var value = FirebaseManager.Instance.GetConfigString(key);
-                if (string.IsNullOrWhiteSpace(value)) continue;
+                if (string.IsNullOrEmpty(key)) continue;
 
-                tierIds[tier] = value.Trim();
-                any = true;
+                var rcValue = FirebaseManager.Instance.GetConfigString(key);
+                if (!string.IsNullOrWhiteSpace(rcValue))
+                {
+                    cascadeId = rcValue.Trim();
+                    tierIds[tier] = cascadeId;
+                    anyRc = true;
+                }
+                else if (!string.IsNullOrEmpty(cascadeId))
+                {
+                    tierIds[tier] = cascadeId;
+                }
             }
 
-            return any;
+            return anyRc && tierIds.Count > 0;
+        }
+
+        /// <summary>Applies RC + settings fallback to AdMob sequential tier configs (Core / JisAds path without AdsManager).</summary>
+        public static void ApplyResolvedIdsToAdmobSetup(PlatformAdsProfile profile)
+        {
+#if UNITY_AD_ADMOB
+            var admob = profile?.sdkSetup?.admobAdsSetup;
+            if (admob == null) return;
+            if (FirebaseManager.Instance == null || !FirebaseManager.Instance.IsRemoteConfigReady)
+                return;
+
+            if (TryReadTierIds(SequentialTierAdFormat.Interstitial, profile, out var interIds))
+            {
+                ApplyToConfig(admob.InterstitialTierConfig, interIds);
+                LogAppliedIds(SequentialTierAdFormat.Interstitial, admob.InterstitialTierConfig);
+            }
+
+            if (TryReadTierIds(SequentialTierAdFormat.Rewarded, profile, out var rewardIds))
+            {
+                ApplyToConfig(admob.RewardedTierConfig, rewardIds);
+                LogAppliedIds(SequentialTierAdFormat.Rewarded, admob.RewardedTierConfig);
+            }
+#endif
         }
 
         public static void ApplyToConfig(

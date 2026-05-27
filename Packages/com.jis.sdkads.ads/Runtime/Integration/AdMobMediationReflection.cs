@@ -49,16 +49,18 @@ namespace JisSDKAds.Ads.Integration
             Dictionary<AdTier, string> interstitialIds = null;
             Dictionary<AdTier, string> rewardedIds = null;
 
+            var profile = manager.SdkSettings?.GetActiveProfile();
+
             if (interMode == AdInventorySetupMode.Tiered)
             {
                 SequentialTierRemoteConfigResolver.TryReadTierIds(
-                    SequentialTierAdFormat.Interstitial, out interstitialIds);
+                    SequentialTierAdFormat.Interstitial, profile, out interstitialIds);
             }
 
             if (rewardMode == AdInventorySetupMode.Tiered)
             {
                 SequentialTierRemoteConfigResolver.TryReadTierIds(
-                    SequentialTierAdFormat.Rewarded, out rewardedIds);
+                    SequentialTierAdFormat.Rewarded, profile, out rewardedIds);
             }
 
             if (interstitialIds == null && rewardedIds == null) return;

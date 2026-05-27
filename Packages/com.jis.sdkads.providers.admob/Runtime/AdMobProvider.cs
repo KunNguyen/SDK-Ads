@@ -88,21 +88,31 @@ namespace JisSDKAds.Providers.AdMob
     {
         private readonly string _adUnitId;
         private InterstitialAd _ad;
+        private bool _isLoading;
+
+        Action _pendingOnShown;
+        Action _pendingOnClosed;
+        Action<string> _pendingOnFailed;
 
         public AdMobInterstitialAd(string adUnitId) => _adUnitId = adUnitId;
         public bool IsLoaded => _ad != null && _ad.CanShowAd();
 
         public void Load(Action onLoaded = null, Action<string> onFailed = null)
         {
+            if (_isLoading)
+                return;
+
             if (_ad != null)
             {
                 _ad.Destroy();
                 _ad = null;
             }
 
+            _isLoading = true;
             var request = new AdRequest();
             InterstitialAd.Load(_adUnitId, request, (ad, error) =>
             {
+                _isLoading = false;
                 if (error != null)
                 {
                     onFailed?.Invoke(error.GetMessage());
@@ -117,8 +127,18 @@ namespace JisSDKAds.Providers.AdMob
         private void RegisterEvents()
         {
             if (_ad == null) return;
-            _ad.OnAdFullScreenContentClosed += () => { };
-            _ad.OnAdFullScreenContentFailed += _ => { };
+            // Interstitial is one-time-use. After close/fail, destroy and warm-load the next one.
+            _ad.OnAdFullScreenContentOpened += () => _pendingOnShown?.Invoke();
+            _ad.OnAdFullScreenContentClosed += () =>
+            {
+                _pendingOnClosed?.Invoke();
+                DestroyAndWarmReload();
+            };
+            _ad.OnAdFullScreenContentFailed += err =>
+            {
+                _pendingOnFailed?.Invoke(err.GetMessage());
+                DestroyAndWarmReload();
+            };
         }
 
         public void Show(Action onShown = null, Action onClosed = null, Action<string> onFailed = null)
@@ -129,10 +149,26 @@ namespace JisSDKAds.Providers.AdMob
                 return;
             }
 
-            _ad.OnAdFullScreenContentOpened += () => onShown?.Invoke();
-            _ad.OnAdFullScreenContentClosed += () => onClosed?.Invoke();
-            _ad.OnAdFullScreenContentFailed += err => onFailed?.Invoke(err.GetMessage());
+            _pendingOnShown = onShown;
+            _pendingOnClosed = onClosed;
+            _pendingOnFailed = onFailed;
             _ad.Show();
+        }
+
+        void DestroyAndWarmReload()
+        {
+            try
+            {
+                _ad?.Destroy();
+            }
+            catch
+            {
+                // best effort
+            }
+            _ad = null;
+
+            // Fire-and-forget preload for next impression.
+            Load();
         }
     }
 
@@ -140,27 +176,38 @@ namespace JisSDKAds.Providers.AdMob
     {
         private readonly string _adUnitId;
         private RewardedAd _ad;
+        private bool _isLoading;
+
+        Action _pendingOnRewardEarned;
+        Action _pendingOnClosed;
+        Action<string> _pendingOnFailed;
 
         public AdMobRewardedAd(string adUnitId) => _adUnitId = adUnitId;
         public bool IsLoaded => _ad != null && _ad.CanShowAd();
 
         public void Load(Action onLoaded = null, Action<string> onFailed = null)
         {
+            if (_isLoading)
+                return;
+
             if (_ad != null)
             {
                 _ad.Destroy();
                 _ad = null;
             }
 
+            _isLoading = true;
             var request = new AdRequest();
             RewardedAd.Load(_adUnitId, request, (ad, error) =>
             {
+                _isLoading = false;
                 if (error != null)
                 {
                     onFailed?.Invoke(error.GetMessage());
                     return;
                 }
                 _ad = ad;
+                RegisterEvents();
                 onLoaded?.Invoke();
             });
         }
@@ -173,11 +220,44 @@ namespace JisSDKAds.Providers.AdMob
                 return;
             }
 
-            _ad.OnAdFullScreenContentOpened += () => { };
-            _ad.OnAdFullScreenContentClosed += () => onClosed?.Invoke();
-            _ad.OnAdFullScreenContentFailed += err => onFailed?.Invoke(err.GetMessage());
-            _ad.OnAdPaid += _ => onRewardEarned?.Invoke();
-            _ad.Show(reward => onRewardEarned?.Invoke());
+            _pendingOnRewardEarned = onRewardEarned;
+            _pendingOnClosed = onClosed;
+            _pendingOnFailed = onFailed;
+
+            _ad.Show(_ => _pendingOnRewardEarned?.Invoke());
+        }
+
+        void RegisterEvents()
+        {
+            if (_ad == null) return;
+
+            // Rewarded is one-time-use. After close/fail, destroy and warm-load the next one.
+            _ad.OnAdFullScreenContentClosed += () =>
+            {
+                _pendingOnClosed?.Invoke();
+                DestroyAndWarmReload();
+            };
+            _ad.OnAdFullScreenContentFailed += err =>
+            {
+                _pendingOnFailed?.Invoke(err.GetMessage());
+                DestroyAndWarmReload();
+            };
+        }
+
+        void DestroyAndWarmReload()
+        {
+            try
+            {
+                _ad?.Destroy();
+            }
+            catch
+            {
+                // best effort
+            }
+            _ad = null;
+
+            // Fire-and-forget preload for next impression.
+            Load();
         }
     }
 
