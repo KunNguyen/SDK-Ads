@@ -278,13 +278,36 @@ namespace JisSDKAds.Ads
                }
 
                if (InterstitialAds != null && InterstitialAds.CanShowAd())
+               {
                     InterstitialAds.Show();
+               }
+               else
+               {
+                    // Legacy path: ensure callers get a failure signal instead of silently doing nothing.
+                    OnAdInterstitialFailToShow(null);
+               }
           }
 
           private void OnCloseInterstitialAd()
           {
                DebugAds.Log("Close Interstitial");
                InterstitialCallbacks.Closed?.Invoke(true);
+
+               // Legacy interstitials are one-time use. After closing, dispose and request a fresh ad.
+               if (!UseSequentialInterstitial)
+               {
+                    try
+                    {
+                         InterstitialAds?.Destroy();
+                    }
+                    catch
+                    {
+                         // ignore best-effort cleanup
+                    }
+
+                    InterstitialAds = null;
+                    RequestInterstitialLegacy();
+               }
           }
 
           private void OnAdInterstitialSuccessToLoad()
@@ -313,6 +336,22 @@ namespace JisSDKAds.Ads
           {
                DebugAds.Log("Interstitial ad failed to show with error: " + (e != null ? e.GetMessage() : "unknown"));
                InterstitialCallbacks.DisplayedFail?.Invoke();
+
+               // If the legacy instance got into a bad state, dispose and try to reload.
+               if (!UseSequentialInterstitial)
+               {
+                    try
+                    {
+                         InterstitialAds?.Destroy();
+                    }
+                    catch
+                    {
+                         // ignore best-effort cleanup
+                    }
+
+                    InterstitialAds = null;
+                    RequestInterstitialLegacy();
+               }
           }
 
           public void DestroyInterstitialAd()
@@ -390,7 +429,7 @@ namespace JisSDKAds.Ads
           {
 #if UNITY_EDITOR
                return false;
-#endif
+#else
                if (UseSequentialRewarded)
                {
                     EnsureRewardedTierLoader();
@@ -398,6 +437,7 @@ namespace JisSDKAds.Ads
                }
 
                return RewardVideoAds != null && RewardVideoAds.CanShowAd();
+#endif
           }
 
           private void OnRewardBasedVideoClosed()
@@ -608,7 +648,7 @@ namespace JisSDKAds.Ads
                     {
                          adSourceInstanceId = loadedAdapterResponseInfo.AdSourceInstanceId;
                     }
-                    catch (Exception exception)
+                    catch (Exception)
                     {
                          // ignored
                     }
