@@ -87,13 +87,21 @@ namespace JisSDKAds.Editor
             if (jisAds == null) return;
 
             var so = new SerializedObject(jisAds);
+
             var settingsProp = so.FindProperty("settings");
             if (settingsProp != null)
-            {
                 settingsProp.objectReferenceValue = settings;
-                so.ApplyModifiedPropertiesWithoutUndo();
-                EditorUtility.SetDirty(jisAds);
-            }
+
+            // Keep autoInitializeOnStart in sync with adsInitializationMode:
+            // Manual → JisAds should NOT auto-init (game calls InitializeAsync explicitly).
+            // AutoOnStart → JisAds auto-inits on Start.
+            var autoInitProp = so.FindProperty("autoInitializeOnStart");
+            if (autoInitProp != null)
+                autoInitProp.boolValue =
+                    settings.adsInitializationMode == AdsManager.AdsInitializationMode.AutoOnStart;
+
+            so.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(jisAds);
         }
 
         public static ValidationResult Validate(JisSDKAdsSettings settings)
