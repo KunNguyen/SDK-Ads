@@ -119,4 +119,20 @@ public class AdmobAdSetup
         get => rewardedInterstitialAdUnitID.CurrentPlatformID;
         set => rewardedInterstitialAdUnitID.CurrentPlatformID = value;
     }
+
+    /// <summary>
+    /// Ensures nested unit-id schedules exist (fresh ScriptableObjects / scene controllers often have null fields).
+    /// </summary>
+    public void EnsureInitialized()
+    {
+        interstitialAdUnitID ??= new AdScheduleUnitID();
+        rewardedAdUnitID ??= new AdScheduleUnitID();
+        bannerAdUnitID ??= new AdScheduleUnitID();
+        collapsibleBannerAdUnitID ??= new AdScheduleUnitID();
+        mrecAdUnitID ??= new AdScheduleUnitID();
+        appOpenAdUnitID ??= new AdScheduleUnitID();
+        rewardedInterstitialAdUnitID ??= new AdScheduleUnitID();
+        _ = InterstitialTierConfig;
+        _ = RewardedTierConfig;
+    }
 }

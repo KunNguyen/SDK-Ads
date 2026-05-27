@@ -86,6 +86,7 @@ namespace JisSDKAds.Ads.Settings
                 return;
             }
 
+            profile.sdkSetup.EnsureMediationSetups();
             adsManager.UpdateAdsMediationConfig(profile.sdkSetup);
 #if UNITY_EDITOR
             if (!Application.isPlaying)

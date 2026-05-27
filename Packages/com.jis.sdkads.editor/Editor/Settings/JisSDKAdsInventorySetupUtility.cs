@@ -133,20 +133,11 @@ namespace JisSDKAds.Editor
         {
             if (setup == null) return;
 
-            var changed = false;
-            if (setup.maxAdsSetup == null)
-            {
-                setup.maxAdsSetup = new MaxAdSetup();
-                changed = true;
-            }
+            var hadMax = setup.maxAdsSetup != null;
+            var hadAdmob = setup.admobAdsSetup != null;
+            setup.EnsureMediationSetups();
 
-            if (setup.admobAdsSetup == null)
-            {
-                setup.admobAdsSetup = new AdmobAdSetup();
-                changed = true;
-            }
-
-            if (changed)
+            if (!hadMax || !hadAdmob)
                 EditorUtility.SetDirty(setup);
         }
 

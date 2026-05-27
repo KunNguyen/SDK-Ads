@@ -47,6 +47,13 @@ namespace JisSDKAds.Ads
                return GetAdsMediationType(adsType) != AdsMediationType.NONE;
           }
 
+          public void EnsureMediationSetups()
+          {
+               maxAdsSetup ??= new MaxAdSetup();
+               admobAdsSetup ??= new AdmobAdSetup();
+               admobAdsSetup.EnsureInitialized();
+          }
+
 #if UNITY_EDITOR
           public void Setup()
           {

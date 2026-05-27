@@ -30,44 +30,50 @@ namespace JisSDKAds.Providers.AdMob
                 return;
             }
 
+            setup.EnsureMediationSetups();
+            if (admobMediationController.m_AdmobAdSetup == null)
+                admobMediationController.m_AdmobAdSetup = new AdmobAdSetup();
+            admobMediationController.m_AdmobAdSetup.EnsureInitialized();
+
             admobMediationController.AdsMediationType = adsMediationType;
+            var sdkAdmob = setup.admobAdsSetup;
+            var controllerAdmob = admobMediationController.m_AdmobAdSetup;
 
             if (setup.interstitialAdsMediationType == adsMediationType)
             {
                 manager.MainAdsMediationType = adsMediationType;
-                admobMediationController.m_AdmobAdSetup.InterstitialAdUnitIDList =
-                    setup.admobAdsSetup.InterstitialAdUnitIDList;
+                controllerAdmob.InterstitialAdUnitIDList = sdkAdmob.InterstitialAdUnitIDList;
                 ApplySequentialTierConfig(
-                    admobMediationController.m_AdmobAdSetup.InterstitialTierConfig,
-                    ResolvePlatformUnitIds(manager, setup, setup.admobAdsSetup.InterstitialAdUnitID));
+                    controllerAdmob.InterstitialTierConfig,
+                    ResolvePlatformUnitIds(manager, setup, sdkAdmob.InterstitialAdUnitID));
             }
             else
             {
-                admobMediationController.m_AdmobAdSetup.InterstitialAdUnitIDList = new List<string>();
+                controllerAdmob.InterstitialAdUnitIDList = new List<string>();
             }
 
-            admobMediationController.m_AdmobAdSetup.RewardedAdUnitIDList =
+            controllerAdmob.RewardedAdUnitIDList =
                 setup.rewardedAdsMediationType == adsMediationType
-                    ? setup.admobAdsSetup.RewardedAdUnitIDList
+                    ? sdkAdmob.RewardedAdUnitIDList
                     : new List<string>();
 
             if (setup.rewardedAdsMediationType == adsMediationType)
             {
                 ApplySequentialTierConfig(
-                    admobMediationController.m_AdmobAdSetup.RewardedTierConfig,
-                    ResolvePlatformUnitIds(manager, setup, setup.admobAdsSetup.RewardedAdUnitID));
+                    controllerAdmob.RewardedTierConfig,
+                    ResolvePlatformUnitIds(manager, setup, sdkAdmob.RewardedAdUnitID));
             }
 
-            admobMediationController.m_AdmobAdSetup.BannerAdUnitIDList =
+            controllerAdmob.BannerAdUnitIDList =
                 setup.bannerAdsMediationType == adsMediationType
-                    ? setup.admobAdsSetup.BannerAdUnitIDList
+                    ? sdkAdmob.BannerAdUnitIDList
                     : new List<string>();
             admobMediationController.IsBannerShowingOnStart = setup.isBannerShowingOnStart;
             admobMediationController.m_BannerPosition = setup.admobBannerAdsPosition;
 
-            admobMediationController.m_AdmobAdSetup.CollapsibleBannerAdUnitIDList =
+            controllerAdmob.CollapsibleBannerAdUnitIDList =
                 setup.collapsibleBannerAdsMediationType == adsMediationType
-                    ? setup.admobAdsSetup.CollapsibleBannerAdUnitIDList
+                    ? sdkAdmob.CollapsibleBannerAdUnitIDList
                     : new List<string>();
             admobMediationController.IsCollapsibleBannerShowingOnStart = setup.isShowingOnStartCollapsibleBanner;
             var collapsible = manager.CollapsibleBannerAdManager;
@@ -78,15 +84,15 @@ namespace JisSDKAds.Providers.AdMob
             }
             admobMediationController.m_CollapsibleBannerPosition = setup.adsPositionCollapsibleBanner;
 
-            admobMediationController.m_AdmobAdSetup.MrecAdUnitIDList =
+            controllerAdmob.MrecAdUnitIDList =
                 setup.mrecAdsMediationType == adsMediationType
-                    ? setup.admobAdsSetup.MrecAdUnitIDList
+                    ? sdkAdmob.MrecAdUnitIDList
                     : new List<string>();
             admobMediationController.m_MRecPosition = setup.mrecAdsPosition;
 
-            admobMediationController.m_AdmobAdSetup.AppOpenAdUnitIDList =
+            controllerAdmob.AppOpenAdUnitIDList =
                 setup.appOpenAdsMediationType == adsMediationType
-                    ? setup.admobAdsSetup.AppOpenAdUnitIDList
+                    ? sdkAdmob.AppOpenAdUnitIDList
                     : new List<string>();
 
 #if UNITY_EDITOR

@@ -54,6 +54,10 @@ namespace JisSDKAds.Editor
             settings.SyncAllProfileMediationToSdkSetups();
             settings.ApplyScriptingDefinesForAllPlatforms();
 
+            TryInitializeSetupDefaults(settings.android?.sdkSetup);
+            TryInitializeSetupDefaults(settings.ios?.sdkSetup);
+            TryInitializeSetupDefaults(activeSetup);
+
             var adsManager = Object.FindFirstObjectByType<AdsManager>();
             if (adsManager != null)
             {
@@ -73,6 +77,9 @@ namespace JisSDKAds.Editor
                 $"(mediation={activeProfile.mediation}, active formats={AdsSetupUtility.CountActiveFormats(activeSetup)}).");
             return true;
         }
+
+        static void TryInitializeSetupDefaults(SDKSetup setup) =>
+            JisSDKAdsInventorySetupUtility.TryInitializeSetupDefaults(setup);
 
         public static void SyncJisAdsInScene(JisSDKAdsSettings settings)
         {
