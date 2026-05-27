@@ -41,6 +41,8 @@ namespace JisSDKAds.Ads
                     SetField(setup, "interstitialAdUnitId", inter != null && inter.Count > 0 ? inter[0] : "");
                     SetField(setup, "rewardedAdUnitId", reward != null && reward.Count > 0 ? reward[0] : "");
                     SetField(setup, "bannerAdUnitId", banner != null && banner.Count > 0 ? banner[0] : "");
+                    var appOpen = profile.sdkSetup.admobAdsSetup?.AppOpenAdUnitIDList;
+                    SetField(setup, "appOpenAdUnitId", appOpen != null && appOpen.Count > 0 ? appOpen[0] : "");
                 }),
 #endif
                 _ => null

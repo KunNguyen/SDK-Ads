@@ -76,7 +76,7 @@ namespace JisSDKAds.Ads
         public List<AdsMediationController> AdsMediationControllers { get; set; } = new();
 
         [field: SerializeField]
-        [Tooltip("Nếu bật, hệ thống sẽ init/load quảng cáo theo hàng đợi: AppOpen -> Banner -> Interstitial -> Rewarded -> MRec -> Collapsible")]
+        [Tooltip("Nếu bật, hệ thống sẽ init/load quảng cáo theo hàng đợi: AppOpen -> Banner -> Interstitial -> Rewarded")]
         public bool PrioritizeAppOpenAndThrottleLoads { get; set; } = true;
 
         [field: SerializeField]
@@ -370,9 +370,6 @@ namespace JisSDKAds.Ads
                     yield return new WaitForSecondsRealtime(DelayBetweenAdInits);
             }
 
-            InitResumeAdManager();
-            ResumeAdManager?.ApplyRemoteConfigNow();
-
             IsReady = true;
             IsUpdateRemoteConfigSuccess = AdsRemoteConfigBootstrap.IsRemoteConfigReadyForAds;
             _adsBootstrapCompleted = true;
@@ -458,9 +455,6 @@ namespace JisSDKAds.Ads
             RefreshUnitManagerMediation(BannerAdManager, AdsType.BANNER);
             RefreshUnitManagerMediation(InterstitialAdManager, AdsType.INTERSTITIAL);
             RefreshUnitManagerMediation(RewardAdManager, AdsType.REWARDED);
-            RefreshUnitManagerMediation(MRecAdManager, AdsType.MREC);
-            RefreshUnitManagerMediation(AppOpenAdManager, AdsType.APP_OPEN);
-            RefreshUnitManagerMediation(CollapsibleBannerAdManager, AdsType.COLLAPSIBLE_BANNER);
         }
 
         void RefreshUnitManagerMediation(UnitAdManager unit, AdsType adsType)
@@ -492,16 +486,11 @@ namespace JisSDKAds.Ads
         {
             var order = new List<AdsType>();
             
-            if (PrioritizeAppOpenAndThrottleLoads && IsAdTypeEnabled(AdsType.APP_OPEN))
-                order.Add(AdsType.APP_OPEN);
-
             var rest = new[] 
             { 
                 AdsType.BANNER, 
                 AdsType.INTERSTITIAL, 
-                AdsType.REWARDED, 
-                AdsType.MREC, 
-                AdsType.COLLAPSIBLE_BANNER 
+                AdsType.REWARDED
             };
             
             foreach (var type in rest)
@@ -519,9 +508,6 @@ namespace JisSDKAds.Ads
             SetupInterstitialAds();
             SetupRewardVideo();
             SetupBannerAds();
-            SetupCollapsibleBannerAds();
-            SetupMRecAds();
-            SetupAppOpenAds();
             RefreshUnitManagerMediationBindings();
         }
 
@@ -543,15 +529,9 @@ namespace JisSDKAds.Ads
         {
             var order = new List<AdsType>();
             
-            if (IsAdTypeEnabled(AdsType.APP_OPEN))
-                order.Add(AdsType.APP_OPEN);
-
             order.Add(AdsType.BANNER);
             order.Add(AdsType.INTERSTITIAL);
             order.Add(AdsType.REWARDED);
-            order.Add(AdsType.MREC);
-            order.Add(AdsType.COLLAPSIBLE_BANNER);
-
             return order;
         }
 
@@ -618,10 +598,7 @@ namespace JisSDKAds.Ads
             ApplyAllUnitAdManagerRemoteConfigs();
             BannerAdManager.UpdateRemoteConfig();
             InterstitialAdManager.UpdateRemoteConfig();
-            CollapsibleBannerAdManager.UpdateRemoteConfig();
-            MRecAdManager.UpdateRemoteConfig();
-            AppOpenAdManager.UpdateRemoteConfig();
-            ResumeAdManager.UpdateRemoteConfig();
+            JisAds.Instance?.RefreshAppOpenAndResumeRemoteConfig();
         }
 
         private IEnumerator CoWaitForInterstitialLoad()
@@ -663,10 +640,7 @@ namespace JisSDKAds.Ads
             BannerAdManager?.ApplyRemoteConfigNow();
             InterstitialAdManager?.ApplyRemoteConfigNow();
             RewardAdManager?.ApplyRemoteConfigNow();
-            CollapsibleBannerAdManager?.ApplyRemoteConfigNow();
-            MRecAdManager?.ApplyRemoteConfigNow();
-            AppOpenAdManager?.ApplyRemoteConfigNow();
-            ResumeAdManager?.ApplyRemoteConfigNow();
+            JisAds.Instance?.RefreshAppOpenAndResumeRemoteConfig();
         }
 
         static void NotifyRemoteConfigUpdated() => EventManager.Trigger("UpdateRemoteConfigs");
@@ -690,6 +664,8 @@ namespace JisSDKAds.Ads
         {
             SetRemoveAds(PlayerPrefs.GetInt(key_local_remove_ads, 0) == 1);
         }
+
+        public void SetAdsShowingState(bool isShowing) => MarkShowingAds(isShowing);
 
         private void MarkShowingAds(bool isShowing)
         {
@@ -764,11 +740,9 @@ namespace JisSDKAds.Ads
             return adsType switch
             {
                 AdsType.BANNER => BannerAdsConfig.GetAdsMediation(),
-                AdsType.COLLAPSIBLE_BANNER => CollapsibleBannerAdsConfig.GetAdsMediation(),
                 AdsType.INTERSTITIAL => InterstitialAdsConfig.GetAdsMediation(),
                 AdsType.REWARDED => RewardVideoAdsConfig.GetAdsMediation(),
-                AdsType.MREC => MRecAdsConfig.GetAdsMediation(),
-                AdsType.APP_OPEN => AppOpenAdsConfig.GetAdsMediation(),
+                AdsType.APP_OPEN => GetAdsConfig(AdsType.APP_OPEN)?.GetAdsMediation(),
                 _ => null
             };
         }
@@ -799,11 +773,8 @@ namespace JisSDKAds.Ads
             return adsType switch
             {
                 AdsType.BANNER => BannerAdManager,
-                AdsType.COLLAPSIBLE_BANNER => CollapsibleBannerAdManager,
                 AdsType.INTERSTITIAL => InterstitialAdManager,
                 AdsType.REWARDED => RewardAdManager,
-                AdsType.MREC => MRecAdManager,
-                AdsType.APP_OPEN => AppOpenAdManager,
                 _ => null
             };
         }
@@ -858,10 +829,6 @@ namespace JisSDKAds.Ads
             InterstitialAdManager.OnPause(isPaused);
             RewardAdManager.OnPause(isPaused);
             BannerAdManager.OnPause(isPaused);
-            CollapsibleBannerAdManager.OnPause(isPaused);
-            MRecAdManager.OnPause(isPaused);
-            AppOpenAdManager.OnPause(isPaused);
-            ResumeAdManager.OnPause(isPaused);
         }
 
         #endregion

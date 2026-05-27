@@ -5,8 +5,7 @@ namespace JisSDKAds.Core.Models
         Banner,
         Interstitial,
         Rewarded,
-        AppOpen,
-        MRec
+        AppOpen
     }
 
     public enum AdProviderId

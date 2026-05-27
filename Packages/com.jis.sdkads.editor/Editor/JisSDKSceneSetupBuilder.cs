@@ -5,7 +5,7 @@ using JisSDKAds.Ads;
 using JisSDKAds.Ads.Settings;
 using JisSDKAds.Common;
 using JisSDKAds.Ads.UnitAdManagers;
-using JisSDKAds.Ads.UnitAdManagers.Interface;
+using JisSDKAds.Ads.Resume;
 using JisSDKAds.Firebase;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -79,11 +79,6 @@ namespace JisSDKAds.Editor
             var banner = flatRoot.GetComponent<BannerAdManager>();
             var interstitial = flatRoot.GetComponent<InterstitialAdManager>();
             var rewarded = flatRoot.GetComponent<RewardAdManager>();
-            var mrec = flatRoot.GetComponent<MRecAdManager>();
-            var appOpen = flatRoot.GetComponent<AppOpenAdManager>();
-            var collapsible = flatRoot.GetComponent<CollapsibleBannerAdManager>();
-            var resume = flatRoot.GetComponent<ResumeAdManager>();
-
             var mediationOnRoot = flatRoot.GetComponents<AdsMediationController>();
 
             if (flatRoot.name != RootName)
@@ -108,11 +103,6 @@ namespace JisSDKAds.Editor
             MoveComponent(banner, GetOrCreateChild(unitRoot.transform, "Banner"));
             MoveComponent(interstitial, GetOrCreateChild(unitRoot.transform, "Interstitial"));
             MoveComponent(rewarded, GetOrCreateChild(unitRoot.transform, "Rewarded"));
-            MoveComponent(mrec, GetOrCreateChild(unitRoot.transform, "MRec"));
-            MoveComponent(appOpen, GetOrCreateChild(unitRoot.transform, "AppOpen"));
-            MoveComponent(collapsible, GetOrCreateChild(unitRoot.transform, "CollapsibleBanner"));
-            MoveComponent(resume, GetOrCreateChild(unitRoot.transform, "Resume"));
-
             var mediationControllers = new List<AdsMediationController>();
             foreach (var mediation in mediationOnRoot)
             {
@@ -131,10 +121,6 @@ namespace JisSDKAds.Editor
                     unitRoot.GetComponentInChildren<BannerAdManager>(true),
                     unitRoot.GetComponentInChildren<InterstitialAdManager>(true),
                     unitRoot.GetComponentInChildren<RewardAdManager>(true),
-                    unitRoot.GetComponentInChildren<MRecAdManager>(true),
-                    unitRoot.GetComponentInChildren<AppOpenAdManager>(true),
-                    unitRoot.GetComponentInChildren<CollapsibleBannerAdManager>(true),
-                    unitRoot.GetComponentInChildren<ResumeAdManager>(true),
                     mediationControllers);
 
                 var firebaseComp = firebaseGo.GetComponent<FirebaseManager>();
@@ -171,12 +157,6 @@ namespace JisSDKAds.Editor
             var banner = CreateChild(unitRoot.transform, "Banner").AddComponent<BannerAdManager>();
             var interstitial = CreateChild(unitRoot.transform, "Interstitial").AddComponent<InterstitialAdManager>();
             var rewarded = CreateChild(unitRoot.transform, "Rewarded").AddComponent<RewardAdManager>();
-            var mrec = CreateChild(unitRoot.transform, "MRec").AddComponent<MRecAdManager>();
-            var appOpen = CreateChild(unitRoot.transform, "AppOpen").AddComponent<AppOpenAdManager>();
-            var collapsible = CreateChild(unitRoot.transform, "CollapsibleBanner")
-                .AddComponent<CollapsibleBannerAdManager>();
-            var resume = CreateChild(unitRoot.transform, "Resume").AddComponent<ResumeAdManager>();
-
             var mediationRoot = CreateChild(adsRuntimeGo.transform, MediationChildName);
             var mediationControllers = new List<AdsMediationController>();
             TryAddMediationController(mediationRoot, mediationControllers,
@@ -184,8 +164,7 @@ namespace JisSDKAds.Editor
             TryAddMediationController(mediationRoot, mediationControllers,
                 "JisSDKAds.Ads.AdmobMediationController, JisSDKAds.Providers.AdMob", "AdmobMediation");
 
-            WireAdsManager(adsManager, banner, interstitial, rewarded, mrec, appOpen, collapsible, resume,
-                mediationControllers);
+            WireAdsManager(adsManager, banner, interstitial, rewarded, mediationControllers);
             WireJisAds(jisAds);
             ConfigureInitModes(firebase, adsManager);
 
@@ -284,20 +263,12 @@ namespace JisSDKAds.Editor
             BannerAdManager banner,
             InterstitialAdManager interstitial,
             RewardAdManager rewarded,
-            MRecAdManager mrec,
-            AppOpenAdManager appOpen,
-            CollapsibleBannerAdManager collapsible,
-            ResumeAdManager resume,
             List<AdsMediationController> mediationControllers)
         {
             var so = new SerializedObject(adsManager);
             AssignRef(so, "BannerAdManager", banner);
             AssignRef(so, "InterstitialAdManager", interstitial);
             AssignRef(so, "RewardAdManager", rewarded);
-            AssignRef(so, "MRecAdManager", mrec);
-            AssignRef(so, "AppOpenAdManager", appOpen);
-            AssignRef(so, "CollapsibleBannerAdManager", collapsible);
-            AssignRef(so, "ResumeAdManager", resume);
 
             var listProp = FindProperty(so, "AdsMediationControllers");
             if (listProp != null)
@@ -324,14 +295,19 @@ namespace JisSDKAds.Editor
             var settings = LoadSettingsAsset();
             if (settings == null) return;
 
+            if (jisAds.GetComponent<ResumeAdCoordinator>() == null)
+                jisAds.gameObject.AddComponent<ResumeAdCoordinator>();
+
             var so = new SerializedObject(jisAds);
             var prop = so.FindProperty("settings");
             if (prop != null)
-            {
                 prop.objectReferenceValue = settings;
-                so.ApplyModifiedPropertiesWithoutUndo();
-            }
 
+            var resumeProp = so.FindProperty("resumeCoordinator");
+            if (resumeProp != null)
+                resumeProp.objectReferenceValue = jisAds.GetComponent<ResumeAdCoordinator>();
+
+            so.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(jisAds);
         }
 

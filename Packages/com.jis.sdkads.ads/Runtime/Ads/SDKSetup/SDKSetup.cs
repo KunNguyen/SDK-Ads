@@ -33,10 +33,8 @@ namespace JisSDKAds.Ads
                return adsType switch
                {
                     AdsType.BANNER => bannerAdsMediationType,
-                    AdsType.COLLAPSIBLE_BANNER => collapsibleBannerAdsMediationType,
                     AdsType.INTERSTITIAL => interstitialAdsMediationType,
                     AdsType.REWARDED => rewardedAdsMediationType,
-                    AdsType.MREC => mrecAdsMediationType,
                     AdsType.APP_OPEN => appOpenAdsMediationType,
                     _ => AdsMediationType.NONE
                };
@@ -126,10 +124,8 @@ namespace JisSDKAds.Ads
                }
 
                AddMediationSymbolIfNeeded(defineSymbols, bannerAdsMediationType);
-               AddMediationSymbolIfNeeded(defineSymbols, collapsibleBannerAdsMediationType);
                AddMediationSymbolIfNeeded(defineSymbols, interstitialAdsMediationType);
                AddMediationSymbolIfNeeded(defineSymbols, rewardedAdsMediationType);
-               AddMediationSymbolIfNeeded(defineSymbols, mrecAdsMediationType);
                AddMediationSymbolIfNeeded(defineSymbols, appOpenAdsMediationType);
                return defineSymbols;
           }

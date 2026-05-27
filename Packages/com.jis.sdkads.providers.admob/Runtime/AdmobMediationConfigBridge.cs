@@ -71,25 +71,6 @@ namespace JisSDKAds.Providers.AdMob
             admobMediationController.IsBannerShowingOnStart = setup.isBannerShowingOnStart;
             admobMediationController.m_BannerPosition = setup.admobBannerAdsPosition;
 
-            controllerAdmob.CollapsibleBannerAdUnitIDList =
-                setup.collapsibleBannerAdsMediationType == adsMediationType
-                    ? sdkAdmob.CollapsibleBannerAdUnitIDList
-                    : new List<string>();
-            admobMediationController.IsCollapsibleBannerShowingOnStart = setup.isShowingOnStartCollapsibleBanner;
-            var collapsible = manager.CollapsibleBannerAdManager;
-            if (collapsible != null)
-            {
-                collapsible.IsAutoRefresh = setup.isAutoRefreshCollapsibleBanner;
-                collapsible.AutoRefreshTime = setup.autoRefreshTime;
-            }
-            admobMediationController.m_CollapsibleBannerPosition = setup.adsPositionCollapsibleBanner;
-
-            controllerAdmob.MrecAdUnitIDList =
-                setup.mrecAdsMediationType == adsMediationType
-                    ? sdkAdmob.MrecAdUnitIDList
-                    : new List<string>();
-            admobMediationController.m_MRecPosition = setup.mrecAdsPosition;
-
             controllerAdmob.AppOpenAdUnitIDList =
                 setup.appOpenAdsMediationType == adsMediationType
                     ? sdkAdmob.AppOpenAdUnitIDList

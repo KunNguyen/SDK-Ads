@@ -14,9 +14,10 @@ namespace JisSDKAds.Providers.AdMob
         public string interstitialAdUnitId;
         public string rewardedAdUnitId;
         public string bannerAdUnitId;
+        public string appOpenAdUnitId;
 
         public AdProviderId ProviderId => AdProviderId.AdMob;
-        public IAdService CreateProvider() => new AdMobProvider(appId, interstitialAdUnitId, rewardedAdUnitId, bannerAdUnitId);
+        public IAdService CreateProvider() => new AdMobProvider(appId, interstitialAdUnitId, rewardedAdUnitId, bannerAdUnitId, appOpenAdUnitId);
     }
 
     /// <summary>
@@ -36,9 +37,9 @@ namespace JisSDKAds.Providers.AdMob
         public IInterstitialAd Interstitial { get; }
         public IRewardedAd Rewarded { get; }
         public IBannerAd Banner { get; }
-        public IAppOpenAd AppOpen { get; } = NullAppOpenAd.Instance;
+        public IAppOpenAd AppOpen { get; }
 
-        public AdMobProvider(string appId, string interstitialAdUnitId, string rewardedAdUnitId, string bannerAdUnitId)
+        public AdMobProvider(string appId, string interstitialAdUnitId, string rewardedAdUnitId, string bannerAdUnitId, string appOpenAdUnitId = null)
         {
             _appId = appId;
             _interstitialAdUnitId = interstitialAdUnitId;
@@ -48,6 +49,9 @@ namespace JisSDKAds.Providers.AdMob
             Interstitial = new AdMobInterstitialAd(_interstitialAdUnitId);
             Rewarded = new AdMobRewardedAd(_rewardedAdUnitId);
             Banner = new AdMobBannerAd(_bannerAdUnitId);
+            AppOpen = string.IsNullOrEmpty(appOpenAdUnitId)
+                ? NullAppOpenAd.Instance
+                : new AdMobAppOpenAd(appOpenAdUnitId);
         }
 
         public void Initialize(Action onSuccess, Action<string> onFailure)
@@ -58,11 +62,19 @@ namespace JisSDKAds.Providers.AdMob
                 return;
             }
 
-            MobileAds.Initialize(initStatus =>
-            {
-                _isInitialized = true;
-                onSuccess?.Invoke();
-            });
+            AdMobMobileAdsInitializer.EnsureInitialized(
+                requestConsent: false,
+                onComplete: success =>
+                {
+                    if (!success)
+                    {
+                        onFailure?.Invoke("AdMob MobileAds.Initialize failed");
+                        return;
+                    }
+
+                    _isInitialized = true;
+                    onSuccess?.Invoke();
+                });
         }
 
         public void SetConsent(bool hasConsent)
@@ -216,6 +228,61 @@ namespace JisSDKAds.Providers.AdMob
             _banner?.Destroy();
             _banner = null;
             _isVisible = false;
+        }
+    }
+
+    internal class AdMobAppOpenAd : IAppOpenAd
+    {
+        private readonly string _adUnitId;
+        private AppOpenAd _ad;
+
+        public AdMobAppOpenAd(string adUnitId) => _adUnitId = adUnitId;
+        public bool IsLoaded => _ad != null && _ad.CanShowAd();
+
+        public void Load(Action onLoaded = null, Action<string> onFailed = null)
+        {
+            if (_ad != null)
+            {
+                _ad.Destroy();
+                _ad = null;
+            }
+
+            var request = new AdRequest();
+            AppOpenAd.Load(_adUnitId, request, (ad, error) =>
+            {
+                if (error != null)
+                {
+                    onFailed?.Invoke(error.GetMessage());
+                    return;
+                }
+
+                _ad = ad;
+                onLoaded?.Invoke();
+            });
+        }
+
+        public void Show(Action onShown = null, Action onClosed = null, Action<string> onFailed = null)
+        {
+            if (_ad == null || !_ad.CanShowAd())
+            {
+                onFailed?.Invoke("App open ad not loaded");
+                return;
+            }
+
+            _ad.OnAdFullScreenContentOpened += () => onShown?.Invoke();
+            _ad.OnAdFullScreenContentClosed += () =>
+            {
+                _ad.Destroy();
+                _ad = null;
+                onClosed?.Invoke();
+            };
+            _ad.OnAdFullScreenContentFailed += err =>
+            {
+                _ad.Destroy();
+                _ad = null;
+                onFailed?.Invoke(err.GetMessage());
+            };
+            _ad.Show();
         }
     }
 }

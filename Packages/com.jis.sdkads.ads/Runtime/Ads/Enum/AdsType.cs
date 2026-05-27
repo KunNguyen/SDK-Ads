@@ -2,13 +2,10 @@
 {
      public enum AdsType
      {
-          BANNER,
-          INTERSTITIAL,
-          REWARDED,
-          MREC,
-          APP_OPEN,
-          COLLAPSIBLE_BANNER,
-          RESUME_ADS,
-          REWARDED_INTERSTITIAL
+          BANNER = 0,
+          INTERSTITIAL = 1,
+          REWARDED = 2,
+          APP_OPEN = 4,
+          REWARDED_INTERSTITIAL = 7
      }
 }

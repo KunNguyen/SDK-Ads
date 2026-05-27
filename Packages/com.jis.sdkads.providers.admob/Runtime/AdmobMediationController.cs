@@ -10,6 +10,7 @@ namespace JisSDKAds.Ads
 {
 #if UNITY_AD_ADMOB
      using GoogleMobileAds.Api;
+     using JisSDKAds.Providers.AdMob;
 #endif
 
      /// <summary>
@@ -23,99 +24,39 @@ namespace JisSDKAds.Ads
 #if UNITY_AD_ADMOB
           private InterstitialAd InterstitialAds { get; set; }
           private RewardedAd RewardVideoAds { get; set; }
-          private BannerView MRecAds { get; set; }
           private AppOpenAd AppOpenAd { get; set; }
           private bool IsWatchSuccess { get; set; } = false;
-          private static bool? isInitialized;
-          
-
-          private void Start()
-          {
-               RequestConfiguration requestConfiguration = new RequestConfiguration();
-               requestConfiguration.TestDeviceIds.Add("F0DE51766DB7C0740DEF1633ACCB3755");
-               requestConfiguration.TestDeviceIds.Add("4849D928DCE8B9A471CE3BAB5E57E08A");
-               MobileAds.SetRequestConfiguration(requestConfiguration);
-          }
-
           #region Init
 
           public override void Init()
           {
-               if (Status != MediationStatus.NotInited) return;
-               base.Init();
-               if (IsActiveConsent)
-                    InitConsent();
-               else
-                    InitAdmob();
-               
-          }
-          private void InitAdmob()
-          {
-               if (isInitialized.HasValue)
+               if (Status == MediationStatus.Inited)
+                    return;
+
+               if (AdMobMobileAdsInitializer.IsReady)
                {
+                    Status = MediationStatus.Inited;
                     return;
                }
 
-               isInitialized = false;
-               MobileAds.Initialize((initStatus) =>
-               {
-                    if (initStatus == null)
-                    {
-                         Status = MediationStatus.FailedToInit;
-                         DebugAds.LogSdkInit("AdMob", "MobileAds.Initialize", false, "initStatus is null");
-                         isInitialized = null;
-                         return;
-                    }
-                    Dictionary<string, AdapterStatus> adapterStatusMap = initStatus.getAdapterStatusMap();
-                    if (adapterStatusMap != null)
-                    {
-                         foreach (KeyValuePair<string, AdapterStatus> keyValuePair in adapterStatusMap)
-                         {
-                              string className = keyValuePair.Key;
-                              AdapterStatus status = keyValuePair.Value;
-                              switch (status.InitializationState)
-                              {
-                                   case AdapterState.NotReady:
-                                        // The adapter initialization did not complete.
-                                        print("Adapter: " + className + " not ready.");
-                                        break;
-                                   case AdapterState.Ready:
-                                        // The adapter was successfully initialized.
-                                        print("Adapter: " + className + " is initialized.");
-                                        break;
-                              }
-                         }
-                         DebugAds.LogSdkInit("AdMob", "MobileAds.Initialize", true,
-                              $"adapters={adapterStatusMap?.Count ?? 0}");
-                         Status = MediationStatus.Inited;
-                    }
-                    else
-                    {
-                         Status = MediationStatus.FailedToInit;
-                         DebugAds.LogSdkInit("AdMob", "MobileAds.Initialize", false, "adapterStatusMap is null");
-                    }
+               if (Status != MediationStatus.NotInited)
+                    return;
 
-                    isInitialized = true;
-               });
+               base.Init();
+               AdMobMobileAdsInitializer.EnsureInitialized(IsActiveConsent, OnSharedMobileAdsInitComplete);
+          }
+
+          void OnSharedMobileAdsInitComplete(bool success)
+          {
+               if (Status == MediationStatus.Inited || Status == MediationStatus.FailedToInit)
+                    return;
+
+               Status = success ? MediationStatus.Inited : MediationStatus.FailedToInit;
           }
 
           #endregion
 
           #region Consent
-
-          private void InitConsent()
-          {
-               if (!AdmobUmpConsent.IsAvailable)
-               {
-                    DebugAds.LogWarning($"[AdMob] UMP not available. {AdmobUmpConsent.PluginHint}");
-                    InitAdmob();
-                    return;
-               }
-
-               AdmobUmpConsent.RequestConsentAndInitialize(
-                    InitAdmob,
-                    msg => DebugAds.LogError(msg));
-          }
 
           public void ShowConsentFormAgain()
           {
@@ -279,168 +220,6 @@ namespace JisSDKAds.Ads
           private string GetBannerID()
           {
                return m_AdmobAdSetup.BannerAdUnitID.ID;
-          }
-
-          #endregion
-
-          #region Collapsible Banner
-
-          private BannerView CollapsibleBanner { get; set; }
-          public AdPosition m_CollapsibleBannerPosition;
-          public bool IsCollapsibleBannerShowingOnStart = false;
-
-          public override void InitCollapsibleBannerAds(UnityAction loadedSuccessCallback,
-               UnityAction loadedFailCallback,
-               UnityAction collapsedCallback, UnityAction expandedCallback,
-               UnityAction destroyedCallback, UnityAction hideCallback)
-          {
-               base.InitCollapsibleBannerAds(loadedSuccessCallback, loadedFailCallback,
-                    collapsedCallback, expandedCallback, destroyedCallback,
-                    hideCallback);
-               DebugAds.Log("Init Admob Collapsible Banner");
-          }
-
-          private BannerView CreateCollapsibleBannerView()
-          {
-               DebugAds.Log("Creating Collapsible Banner view");
-               string adUnitId = GetCollapsibleBannerID();
-               // Create a 320x50 banner at top of the screen
-               AdSize adaptiveSize =
-                    AdSize.GetCurrentOrientationAnchoredAdaptiveBannerAdSizeWithWidth(AdSize.FullWidth);
-               BannerView bannerView = new BannerView(adUnitId, adaptiveSize, m_CollapsibleBannerPosition);
-               RegisterCollapsibleBannerEvents(bannerView);
-               return bannerView;
-          }
-
-          private void LoadCollapsibleBannerAds(BannerView collapsibleBannerView)
-          {
-               DebugAds.Log("Call Load Collapsible Banner Ads");
-               AdRequest adRequest = new AdRequest();
-               adRequest.Extras.Add("collapsible", "bottom");
-               collapsibleBannerView?.LoadAd(adRequest);
-          }
-
-          public override void RefreshCollapsibleBannerAds()
-          {
-               DebugAds.Log("Call Refresh Collapsible Banner Ads");
-               DestroyCollapsibleBannerAds();
-               CollapsibleBanner = CreateCollapsibleBannerView();
-               AdRequest adRequest = new AdRequest();
-               adRequest.Extras.Add("collapsible_request_id", UUID.Generate());
-
-               CollapsibleBanner?.LoadAd(adRequest);
-          }
-
-          public override void RequestCollapsibleBannerAds(bool isOpenOnStart)
-          {
-               base.RequestCollapsibleBannerAds(isOpenOnStart);
-               CollapsibleBanner = CreateCollapsibleBannerView();
-               LoadCollapsibleBannerAds(CollapsibleBanner);
-          }
-
-          private void RegisterCollapsibleBannerEvents(BannerView bannerView)
-          {
-               bannerView.OnBannerAdLoaded += () => { OnAdCollapsibleBannerLoaded(bannerView); };
-               bannerView.OnBannerAdLoadFailed += OnAdCollapsibleBannerFailedToLoad;
-               bannerView.OnAdFullScreenContentOpened += () => { OnAdCollapsibleBannerOpened(bannerView); };
-               bannerView.OnAdFullScreenContentClosed += OnAdCollapsibleBannerClosed;
-               bannerView.OnAdPaid += OnAdCollapsibleBannerPaid;
-          }
-
-          public override void ShowCollapsibleBannerAds()
-          {
-               base.ShowCollapsibleBannerAds();
-               DestroyCollapsibleBannerAds();
-
-               if (CollapsibleBanner != null)
-               {
-                    DebugAds.Log("Start show collapsible banner ads");
-                    CollapsibleBanner.Show();
-               }
-               else
-               {
-                    DebugAds.Log("Collapsible Banner is not loaded yet");
-                    RequestCollapsibleBannerAds(true);
-               }
-          }
-
-          public override void HideCollapsibleBannerAds()
-          {
-               base.HideCollapsibleBannerAds();
-               CollapsibleBanner?.Hide();
-               CollapsibleCallbacks.Hided?.Invoke();
-          }
-
-          public override bool IsCollapsibleBannerLoaded()
-          {
-               return CollapsibleBanner != null;
-          }
-
-          private void OnAdCollapsibleBannerLoaded(BannerView bannerView)
-          {
-               DebugAds.Log("Admob Collapsible Banner Loaded");
-               m_AdmobAdSetup.CollapsibleBannerAdUnitID.Refresh();
-               CollapsibleCallbacks.LoadedSuccess?.Invoke();
-               if (IsCollapsibleBannerShowingOnStart)
-               {
-                    IsCollapsibleBannerShowingOnStart = false;
-                    ShowCollapsibleBannerAds();
-               }
-          }
-
-          private void OnAdCollapsibleBannerFailedToLoad(LoadAdError args)
-          {
-               DebugAds.Log("Admob Collapsible Banner Fail: " + args.GetMessage());
-               m_AdmobAdSetup.CollapsibleBannerAdUnitID.ChangeID();
-               CollapsibleCallbacks.LoadedFail?.Invoke();
-          }
-
-          private void ReloadCollapsibleBannerAds()
-          {
-               CollapsibleBanner = CreateCollapsibleBannerView();
-               LoadCollapsibleBannerAds(CollapsibleBanner);
-          }
-
-          private void OnAdCollapsibleBannerOpened(BannerView bannerView)
-          {
-               DebugAds.Log("Admob Collapsible Banner Opened");
-               CollapsibleCallbacks.Displayed?.Invoke();
-          }
-
-          private void OnAdCollapsibleBannerClosed()
-          {
-               DebugAds.Log("Admob Collapsible Banner Closed");
-               CollapsibleCallbacks.Closed?.Invoke(true);
-          }
-
-          private void OnAdCollapsibleBannerPaid(AdValue adValue)
-          {
-               DebugAds.Log("Admob Collapsible Banner Paid");
-               HandleAdPaidEvent("collapsible", adValue, CollapsibleBanner.GetResponseInfo());
-          }
-
-          /// <summary>
-          /// Destroys the ad.
-          /// </summary>
-          public override void DestroyCollapsibleBannerAds()
-          {
-               base.DestroyCollapsibleBannerAds();
-               if (CollapsibleBanner != null)
-               {
-                    DebugAds.Log("Destroying banner ad.");
-                    CollapsibleBanner.Destroy();
-                    CollapsibleBanner = null;
-                    CollapsibleCallbacks.Destroyed?.Invoke();
-               }
-               else
-               {
-                    DebugAds.Log("Don't have any banner to destroy.");
-               }
-          }
-
-          public string GetCollapsibleBannerID()
-          {
-               return m_AdmobAdSetup.CollapsibleBannerAdUnitID.ID;
           }
 
           #endregion
@@ -699,123 +478,6 @@ namespace JisSDKAds.Ads
 
           #endregion
 
-          #region MREC Ads
-
-          public AdPosition m_MRecPosition { get; set; }
-
-          public override void InitRMecAds(UnityAction adLoadedCallback, UnityAction adLoadFailedCallback,
-               UnityAction adClickedCallback,
-               UnityAction adExpandedCallback, UnityAction adCollapsedCallback)
-          {
-               base.InitRMecAds(adLoadedCallback, adLoadFailedCallback, adClickedCallback, adExpandedCallback,
-                    adCollapsedCallback);
-               DebugAds.Log("Init Admob MREC");
-               RequestMRecAds();
-               HideMRecAds();
-          }
-
-          public void CreateMRecAdsView()
-          {
-               DebugAds.Log("Creating MREC view");
-               if (MRecAds != null)
-               {
-                    DestroyMRecAds();
-               }
-
-               string adUnitId = GetMRECAdID();
-               // Create a 320x50 banner at top of the screen
-               MRecAds = new BannerView(adUnitId, AdSize.MediumRectangle, m_MRecPosition);
-               RegisterMRECAdsEvents(MRecAds);
-          }
-
-          public override void RequestMRecAds()
-          {
-               base.RequestMRecAds();
-               if (MRecAds == null)
-               {
-                    CreateMRecAdsView();
-               }
-
-               AdRequest adRequest = new AdRequest();
-               adRequest.Keywords.Add("unity-admob-sample");
-
-               // Load the banner with the request.
-               MRecAds.LoadAd(adRequest);
-          }
-
-          private void RegisterMRECAdsEvents(BannerView mrecBannerView)
-          {
-               mrecBannerView.OnBannerAdLoaded += MRecAdsOnOnBannerAdLoaded;
-               mrecBannerView.OnBannerAdLoadFailed += MRecAdsOnOnBannerAdLoadFailed;
-               mrecBannerView.OnAdFullScreenContentOpened += MRecAdsOnOnAdFullScreenContentOpened;
-               mrecBannerView.OnAdFullScreenContentClosed += MRecAdsOnOnAdFullScreenContentClosed;
-               mrecBannerView.OnAdPaid += MRecAdsOnOnAdPaid;
-          }
-
-          public override void ShowMRecAds()
-          {
-               DebugAds.Log("Show Admob MREC Ads");
-               base.ShowMRecAds();
-               MRecAds.Show();
-          }
-
-          public override void HideMRecAds()
-          {
-               DebugAds.Log("Hide Admob MREC Ads");
-               base.HideMRecAds();
-               MRecAds.Hide();
-          }
-
-          private void MRecAdsOnOnBannerAdLoaded()
-          {
-               DebugAds.Log("Admob MRec Ads Loaded");
-               MRecCallbacks.LoadedSuccess?.Invoke();
-          }
-          private void MRecAdsOnOnBannerAdLoadFailed(LoadAdError obj)
-          {
-               DebugAds.Log("Admob MRec Ads Failed to load the ad. (reason: {0})" + obj.GetMessage());
-               MRecCallbacks.LoadedFail?.Invoke();
-          }
-          private void MRecAdsOnOnAdPaid(AdValue adValue)
-          {
-               DebugAds.Log("Admob MRec Ads Paid");
-               HandleAdPaidEvent("mrec", adValue, MRecAds.GetResponseInfo());
-          }
-
-          private void MRecAdsOnOnAdFullScreenContentClosed()
-          {
-               DebugAds.Log("Admob MRec Ads Closed");
-               MRecCallbacks.Closed?.Invoke(true);
-          }
-
-          private void MRecAdsOnOnAdFullScreenContentOpened()
-          {
-               DebugAds.Log("Admob MRec Ads Opened");
-               MRecCallbacks.Displayed?.Invoke();
-          }
-
-          private void DestroyMRecAds()
-          {
-               if (MRecAds != null)
-               {
-                    DebugAds.Log("Destroying MREC Ad.");
-                    MRecAds.Destroy();
-                    MRecAds = null;
-               }
-          }
-
-          public override bool IsMRecLoaded()
-          {
-               return MRecAds != null;
-          }
-
-          private string GetMRECAdID()
-          {
-               return m_AdmobAdSetup.MrecAdUnitID.ID;
-          }
-
-          #endregion
-
           #region App Open Ads
 
           public override void InitAppOpenAds(UnityAction adLoadedCallback, UnityAction adLoadFailedCallback,
@@ -995,7 +657,6 @@ namespace JisSDKAds.Ads
                     AdsType.BANNER => m_AdmobAdSetup.BannerAdUnitID.IsActive(),
                     AdsType.INTERSTITIAL => m_AdmobAdSetup.InterstitialAdUnitID.IsActive(),
                     AdsType.REWARDED => m_AdmobAdSetup.RewardedAdUnitID.IsActive(),
-                    AdsType.MREC => m_AdmobAdSetup.MrecAdUnitID.IsActive(),
                     AdsType.APP_OPEN => m_AdmobAdSetup.AppOpenAdUnitID.IsActive(),
                     _ => false
                };

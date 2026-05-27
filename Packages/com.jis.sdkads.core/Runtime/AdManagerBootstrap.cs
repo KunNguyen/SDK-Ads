@@ -7,7 +7,7 @@ namespace JisSDKAds.Core
 {
     /// <summary>
     /// Registers IAdService providers from configs and initializes AdManager.
-    /// For full ads (App Open, MREC, …) use SdkAdsBootstrap + JisSDKAdsSettings in the ads package.
+    /// For full ads (App Open, Resume, …) use SdkAdsBootstrap + JisSDKAdsSettings in the ads package.
     /// </summary>
     public class AdManagerBootstrap : MonoBehaviour
     {

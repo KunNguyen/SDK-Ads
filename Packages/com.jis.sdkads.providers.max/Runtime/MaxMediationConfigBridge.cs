@@ -45,15 +45,6 @@ namespace JisSDKAds.Providers.Max
 
             maxMediationController.m_BannerPosition = setup.maxBannerAdsPosition;
 
-            maxMediationController.m_MaxAdConfig.CollapsibleBannerAdUnitID =
-                setup.collapsibleBannerAdsMediationType == adsMediationType
-                    ? setup.maxAdsSetup.CollapsibleBannerAdUnitID
-                    : "";
-
-            maxMediationController.m_MaxAdConfig.MrecAdUnitID = setup.mrecAdsMediationType == adsMediationType
-                ? setup.maxAdsSetup.MrecAdUnitID
-                : "";
-
             maxMediationController.m_MaxAdConfig.AppOpenAdUnitID =
                 setup.appOpenAdsMediationType == adsMediationType ? setup.maxAdsSetup.AppOpenAdUnitID : "";
 

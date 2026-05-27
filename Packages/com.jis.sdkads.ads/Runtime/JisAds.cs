@@ -1,4 +1,8 @@
+using System.Collections;
 using System.Threading.Tasks;
+using JisSDKAds.Ads.AppOpen;
+using JisSDKAds.Ads.Integration;
+using JisSDKAds.Ads.Resume;
 using JisSDKAds.Ads.Settings;
 using JisSDKAds.Common;
 using JisSDKAds.Ads.Tiered;
@@ -11,56 +15,51 @@ using JisSDKAds.Core.Tiered.Models;
 using JisSDKAds.Firebase;
 using UnityEngine;
 using UnityEngine.Events;
-
 namespace JisSDKAds.Ads
 {
     /// <summary>
-    /// Unified ads entry point (Phase 4). Standard formats can use Core <see cref="AdManager"/>;
-    /// App Open, MREC, Collapsible, Resume, and RC-driven rules stay on legacy <see cref="AdsManager"/>.
+    /// Unified ads entry point: Core <see cref="AdManager"/> + tiered inventory;
+    /// App Open and Resume-on-foreground policies live here (not legacy unit managers).
     /// </summary>
     [DefaultExecutionOrder(-110)]
     public class JisAds : MonoBehaviour
     {
         public static JisAds Instance { get; private set; }
-
         [SerializeField] private JisSDKAdsSettings settings;
         [SerializeField] private bool useCoreForStandardFormats = true;
         [SerializeField] private bool autoInitializeOnStart = true;
-        [SerializeField] private AdsManager.AdsInitializationMode legacyInitMode =
-            AdsManager.AdsInitializationMode.AutoOnStart;
-
+        [SerializeField] private ResumeAdCoordinator resumeCoordinator;
+        [SerializeField] private bool showAppOpenOnColdStart;
+        [SerializeField] private float appOpenFirstShowDelayMs = 600f;
+        [SerializeField] private float appOpenFirstShowWaitLoadTimeoutSec = 2.5f;
+        [SerializeField] private float appOpenMinIntervalBetweenShowsSec = 20f;
         private AdsManager _legacy;
         private AdManager _core;
         private TieredAdsExtension _tiered;
+        private AppOpenAdService _appOpen;
         private bool _isReady;
-
         public bool IsReady => _isReady;
         public bool UseCoreForStandardFormats => useCoreForStandardFormats && _core != null && _core.IsInitialized;
-
         public bool UseTieredInterstitial =>
             _tiered != null && _tiered.IsTieredForInterstitial;
-
         public bool UseTieredRewarded =>
             _tiered != null && _tiered.IsTieredForRewarded;
-
-        public bool UseCoreForAppOpen =>
-            useCoreForStandardFormats &&
-            _core != null &&
-            _core.IsInitialized &&
-            _core.PrimaryProvider?.AppOpen is not NullAppOpenAd;
+        public bool HasAppOpenSupport =>
+            _core != null
+            && _core.IsInitialized
+            && _core.PrimaryProvider?.AppOpen is not NullAppOpenAd;
         public JisSDKAdsSettings Settings => settings;
         public AdsManager Legacy => _legacy;
         public AdManager Core => _core;
         public TieredAdsExtension Tiered => _tiered;
-
-        /// <summary>Called from <see cref="Settings.SdkAdsBootstrap"/> or tests.</summary>
+        public AppOpenAdService AppOpen => _appOpen;
+        public ResumeAdCoordinator Resume => resumeCoordinator;
         public void Configure(JisSDKAdsSettings adsSettings, bool useCore, bool autoInit)
         {
             settings = adsSettings;
             useCoreForStandardFormats = useCore;
             autoInitializeOnStart = autoInit;
         }
-
         private void Awake()
         {
             if (Instance != null && Instance != this)
@@ -68,63 +67,83 @@ namespace JisSDKAds.Ads
                 Destroy(gameObject);
                 return;
             }
-
             Instance = this;
             JisSDKPersistence.DontDestroyUnlessUnderPersistentRoot(gameObject);
-
             if (settings == null)
             {
                 Debug.LogError("[JisAds] JisSDKAdsSettings is not assigned.");
                 return;
             }
-
             settings.ApplyRuntimeDebugSettings();
             ResolveLegacy();
+            EnsureResumeCoordinator();
+            _appOpen = new AppOpenAdService(this, this);
+            _appOpen.ConfigureColdStart(
+                showAppOpenOnColdStart,
+                appOpenFirstShowDelayMs,
+                appOpenFirstShowWaitLoadTimeoutSec,
+                appOpenMinIntervalBetweenShowsSec);
             if (_legacy != null)
                 _legacy.InitializationMode = AdsManager.AdsInitializationMode.Manual;
             settings.ApplyToAdsManager(_legacy);
         }
-
         private void OnApplicationPause(bool pauseStatus)
         {
             _tiered?.OnApplicationPause(pauseStatus);
+            resumeCoordinator?.OnApplicationPause(pauseStatus);
         }
-
         private void OnDestroy()
         {
             if (Instance == this)
                 _tiered?.Shutdown();
         }
-
         private void Start()
         {
             if (autoInitializeOnStart)
                 _ = InitializeAsync();
         }
-
         public async Task InitializeAsync(bool fetchRemoteConfig = true)
         {
             settings?.ApplyRuntimeDebugSettings();
             DebugAds.LogSdkInit("JisAds", "InitializeAsync", true, $"fetchRemoteConfig={fetchRemoteConfig}");
-
+            AdMobSdkEarlyInitBridge.TryWarmUpFromSettings(settings);
             await InitializeFirebaseAsync(fetchRemoteConfig);
             InitializeLegacyFlow();
-            if (useCoreForStandardFormats)
-                InitializeCoreFlow();
-            else
+            InitializeCoreFlow();
+            if (!useCoreForStandardFormats && _tiered != null && (_core == null || !_core.IsInitialized))
                 InitializeTieredOnlyFlow();
-
             if (_legacy != null)
                 await _legacy.WaitUntilReadyAsync();
-
             _isReady = _legacy != null && _legacy.IsReady;
             if (!_isReady)
                 _legacy?.LogInitDiagnosticsIfNotReady();
-
+            else
+                StartCoroutine(CoInitializeAppOpenAndResume());
             DebugAds.LogSdkInit("JisAds", "InitializeAsync complete", _isReady,
                 _isReady ? null : "AdsManager not ready — check mediation init logs above.");
         }
+        IEnumerator CoInitializeAppOpenAndResume()
+        {
+            if (_core != null)
+            {
+                var waited = 0f;
+                const float timeout = 15f;
+                while (!_core.IsInitialized && waited < timeout)
+                {
+                    waited += Time.unscaledDeltaTime;
+                    yield return null;
+                }
+            }
 
+            resumeCoordinator?.Bind(this, _appOpen);
+            resumeCoordinator?.ApplyRemoteConfig();
+            _appOpen?.BeginAfterSdkReady();
+        }
+        public void RefreshAppOpenAndResumeRemoteConfig()
+        {
+            _appOpen?.ApplyRemoteConfig();
+            resumeCoordinator?.ApplyRemoteConfig();
+        }
         public async Task InitializeFirebaseAsync(bool fetchRemoteConfig = true)
         {
             _legacy ??= FindFirstObjectByType<AdsManager>();
@@ -133,33 +152,34 @@ namespace JisSDKAds.Ads
                 Debug.LogError("[JisAds] AdsManager not found in scene.");
                 return;
             }
-
             await _legacy.InitializeFirebaseAsync(fetchRemoteConfig);
         }
-
         void ResolveLegacy()
         {
             _legacy = FindFirstObjectByType<AdsManager>();
             if (_legacy == null)
                 Debug.LogError("[JisAds] AdsManager not found. Add AdsManager to the scene.");
         }
-
+        void EnsureResumeCoordinator()
+        {
+            if (resumeCoordinator != null)
+                return;
+            resumeCoordinator = GetComponent<ResumeAdCoordinator>();
+            if (resumeCoordinator == null)
+                resumeCoordinator = gameObject.AddComponent<ResumeAdCoordinator>();
+        }
         void InitializeLegacyFlow()
         {
             if (_legacy == null) return;
-
             _legacy.InitializationMode = AdsManager.AdsInitializationMode.Manual;
             _legacy.InitializeAdsFlow();
         }
-
         void InitializeCoreFlow()
         {
             var profile = settings.GetActiveProfile();
             if (profile == null) return;
-
             var tieredConfig = ResolveTieredConfig(profile);
             TryInitializeTieredExtension(profile, tieredConfig);
-
             _core = FindFirstObjectByType<AdManager>();
             if (_core == null)
             {
@@ -167,25 +187,21 @@ namespace JisSDKAds.Ads
                 go.transform.SetParent(transform);
                 _core = go.AddComponent<AdManager>();
             }
-
             var providerId = profile.ProviderId;
             _core.ConfigureSingleMediation(providerId, settings.singleMediationOnly);
-
             var providerConfig = ProviderConfigFactory.CreateFromSdkSetup(profile);
             if (providerConfig == null)
             {
                 if (_tiered == null)
                 {
-                    Debug.LogWarning($"[JisAds] No Core provider for {profile.mediation}. Standard formats will use legacy AdsManager.");
+                    Debug.LogWarning($"[JisAds] No Core provider for {profile.mediation}.");
                     useCoreForStandardFormats = false;
                 }
                 return;
             }
-
             var provider = providerConfig.CreateProvider();
             if (_tiered != null && tieredConfig != null && tieredConfig.EnableTieredInventory)
                 provider = new TieredAdServiceWrapper(provider, tieredConfig, _tiered.Manager);
-
             _core.RegisterProvider(providerConfig.ProviderId, provider);
             _core.Initialize(
                 onSuccess: () => DebugAds.LogSdkInit("JisAds", "Core AdManager", true),
@@ -196,60 +212,57 @@ namespace JisSDKAds.Ads
                         useCoreForStandardFormats = false;
                 });
         }
-
         void TryInitializeTieredExtension(PlatformAdsProfile profile, TieredAdsConfig tieredConfig)
         {
             if (tieredConfig == null || !tieredConfig.EnableTieredInventory)
                 return;
-
             var backend = TieredAdBackendFactory.Create(profile);
             if (backend == null)
             {
                 Debug.LogWarning("[JisAds] Tiered inventory enabled but no ITieredAdBackend for current mediation.");
                 return;
             }
-
             TieredAdsConfigFactory.ApplyLegacyFallbackFromSdkSetup(profile, tieredConfig);
             _tiered = TieredAdsBootstrap.CreateExtension(tieredConfig, backend, transform);
             if (_tiered != null)
                 Debug.Log("[JisAds] Tiered inventory extension ready.");
         }
-
-        static TieredAdsConfig ResolveTieredConfig(PlatformAdsProfile profile)
-        {
-            return profile?.tieredAdsConfig;
-        }
-
+        static TieredAdsConfig ResolveTieredConfig(PlatformAdsProfile profile) =>
+            profile?.tieredAdsConfig;
         void InitializeTieredOnlyFlow()
         {
             var profile = settings.GetActiveProfile();
             if (profile == null) return;
-
             var tieredConfig = ResolveTieredConfig(profile);
             TryInitializeTieredExtension(profile, tieredConfig);
-
             if (_tiered == null)
                 return;
-
             var providerConfig = ProviderConfigFactory.CreateFromSdkSetup(profile);
             if (providerConfig == null)
             {
-                Debug.LogWarning("[JisAds] Tiered inventory requires a provider config to initialize the ad SDK.");
+                Debug.LogWarning("[JisAds] Tiered inventory requires a provider config.");
                 return;
             }
-
             var provider = providerConfig.CreateProvider();
             provider.Initialize(
                 onSuccess: () =>
                 {
                     _tiered.Manager.SetProviderReady(true);
-                    Debug.Log("[JisAds] Tiered provider SDK ready (legacy path).");
+                    Debug.Log("[JisAds] Tiered provider SDK ready.");
                 },
                 onFailure: err => Debug.LogWarning($"[JisAds] Tiered provider init failed: {err}"));
         }
-
-        #region Standard formats (Core or legacy)
-
+        #region State helpers
+        public bool CanShowAds() =>
+            _legacy != null && !_legacy.IsRemoveAds && !_legacy.isCheatAds;
+        public bool IsShowingAnyAd() =>
+            _legacy != null && _legacy.IsShowingAds();
+        public void SetAdsShowingState(bool isShowing) =>
+            _legacy?.SetAdsShowingState(isShowing);
+        public void SetRemoveAds(bool isRemove) => _legacy?.SetRemoveAds(isRemove);
+        public bool IsRemoveAds => _legacy != null && _legacy.IsRemoveAds;
+        #endregion
+        #region Standard formats
         public void ShowInterstitial(
             UnityAction closedCallback = null,
             UnityAction showSuccessCallback = null,
@@ -257,7 +270,6 @@ namespace JisSDKAds.Ads
             bool isTracking = true,
             bool isSkipCapping = false) =>
             ShowInterstitial("", closedCallback, showSuccessCallback, showFailCallback, isTracking, isSkipCapping);
-
         public void ShowInterstitial(
             string interstitialPlacement,
             UnityAction closedCallback = null,
@@ -266,14 +278,13 @@ namespace JisSDKAds.Ads
             bool isTracking = true,
             bool isSkipCapping = false)
         {
-            if (UseTieredInterstitial && !UseCoreForStandardFormats)
+            if (UseTieredInterstitial)
             {
-                if (_legacy != null && (_legacy.IsRemoveAds || _legacy.isCheatAds))
+                if (!CanShowAds())
                 {
                     showFailCallback?.Invoke();
                     return;
                 }
-
                 _tiered.Manager.ShowInterstitial(
                     onClosed: () =>
                     {
@@ -287,7 +298,6 @@ namespace JisSDKAds.Ads
                     });
                 return;
             }
-
             if (UseCoreForStandardFormats)
             {
                 _core.ShowInterstitial(
@@ -299,7 +309,6 @@ namespace JisSDKAds.Ads
                     });
                 return;
             }
-
             _legacy?.ShowInterstitial(
                 interstitialPlacement,
                 closedCallback,
@@ -308,21 +317,45 @@ namespace JisSDKAds.Ads
                 isTracking,
                 isSkipCapping);
         }
-
+        /// <summary>Interstitial for foreground resume — bypasses legacy gameplay cooldown.</summary>
+        public void ShowInterstitialForResume(System.Action onClosed = null, System.Action<string> onFailed = null)
+        {
+            if (UseTieredInterstitial)
+            {
+                if (!CanShowAds())
+                {
+                    onFailed?.Invoke("Ads blocked");
+                    return;
+                }
+                _tiered.Manager.ShowInterstitial(onClosed, onFailed);
+                return;
+            }
+            if (UseCoreForStandardFormats)
+            {
+                _core.ShowInterstitial(onClosed, onFailed);
+                return;
+            }
+            _legacy?.ShowInterstitial(
+                "resume",
+                () => onClosed?.Invoke(),
+                () => onClosed?.Invoke(),
+                () => onFailed?.Invoke("Resume interstitial failed"),
+                isTracking: true,
+                isSkipCapping: true);
+        }
         public void ShowRewardVideo(
             string rewardedPlacement,
             UnityAction successCallback,
             UnityAction<bool> closedCallback = null,
             UnityAction failedCallback = null)
         {
-            if (UseTieredRewarded && !UseCoreForStandardFormats)
+            if (UseTieredRewarded)
             {
-                if (_legacy != null && (_legacy.IsRemoveAds || _legacy.isCheatAds))
+                if (!CanShowAds())
                 {
                     failedCallback?.Invoke();
                     return;
                 }
-
                 _tiered.Manager.ShowRewarded(
                     onRewardEarned: () => successCallback?.Invoke(),
                     onClosed: () => closedCallback?.Invoke(true),
@@ -333,7 +366,6 @@ namespace JisSDKAds.Ads
                     });
                 return;
             }
-
             if (UseCoreForStandardFormats)
             {
                 _core.ShowRewarded(
@@ -346,10 +378,8 @@ namespace JisSDKAds.Ads
                     });
                 return;
             }
-
             _legacy?.ShowRewardVideo(rewardedPlacement, successCallback, closedCallback, failedCallback);
         }
-
         public void ShowBannerAds()
         {
             if (UseCoreForStandardFormats)
@@ -357,10 +387,8 @@ namespace JisSDKAds.Ads
                 _core.ShowBanner();
                 return;
             }
-
             _legacy?.ShowBannerAds();
         }
-
         public void HideBannerAds()
         {
             if (UseCoreForStandardFormats)
@@ -368,10 +396,8 @@ namespace JisSDKAds.Ads
                 _core.HideBanner();
                 return;
             }
-
             _legacy?.HideBannerAds();
         }
-
         public bool IsInterstitialAdLoaded()
         {
             if (UseTieredInterstitial)
@@ -380,16 +406,7 @@ namespace JisSDKAds.Ads
                 ? _core.PrimaryProvider?.Interstitial.IsLoaded ?? false
                 : _legacy != null && _legacy.IsInterstitialAdLoaded();
         }
-
-        public bool CanShowInterstitialAd()
-        {
-            if (UseTieredInterstitial)
-                return IsInterstitialAdLoaded();
-            return UseCoreForStandardFormats
-                ? _core.PrimaryProvider?.Interstitial.IsLoaded ?? false
-                : _legacy != null && _legacy.CanShowInterstitialAd();
-        }
-
+        public bool CanShowInterstitialAd() => IsInterstitialAdLoaded();
         public bool IsRewardedVideoLoaded()
         {
             if (UseTieredRewarded)
@@ -398,46 +415,12 @@ namespace JisSDKAds.Ads
                 ? _core.PrimaryProvider?.Rewarded.IsLoaded ?? false
                 : _legacy != null && _legacy.IsRewardedVideoLoaded();
         }
-
-        public bool CanShowRewardedVideo()
-        {
-            if (UseTieredRewarded)
-                return IsRewardedVideoLoaded();
-            return UseCoreForStandardFormats
-                ? _core.PrimaryProvider?.Rewarded.IsLoaded ?? false
-                : _legacy != null && _legacy.CanShowRewardedVideo();
-        }
-
+        public bool CanShowRewardedVideo() => IsRewardedVideoLoaded();
         #endregion
-
-        #region Legacy-only (delegate)
-
-        public void ShowAppOpenAd()
-        {
-            if (UseCoreForAppOpen)
-            {
-                _core.ShowAppOpen(
-                    onClosed: null,
-                    onFailed: err => Debug.LogWarning($"[JisAds] Core app open failed, try legacy: {err}"));
-                return;
-            }
-
-            _legacy?.ShowAppOpenAd();
-        }
-
-        public bool IsAppOpenAdLoaded() =>
-            UseCoreForAppOpen
-                ? _core.IsAppOpenLoaded()
-                : _legacy != null && _legacy.IsAppOpenAdLoaded();
-        public void ShowMRecAds() => _legacy?.ShowMRecAds();
-        public void HideMRecAds() => _legacy?.HideMRecAds();
-        public void ShowCollapsibleBannerAds(UnityAction closeCallback = null) =>
-            _legacy?.ShowCollapsibleBannerAds(closeCallback);
-        public void HideCollapsibleBannerAds() => _legacy?.HideCollapsibleBannerAds();
-        public void InitResumeAdManager() => _legacy?.InitResumeAdManager();
-        public void SetRemoveAds(bool isRemove) => _legacy?.SetRemoveAds(isRemove);
-        public bool IsRemoveAds => _legacy != null && _legacy.IsRemoveAds;
-
+        #region App Open
+        public void ShowAppOpenAd() => _appOpen?.Show();
+        public bool IsAppOpenAdLoaded() => _appOpen != null && _appOpen.IsLoaded();
+        public void PreloadAppOpenAd() => _appOpen?.Preload();
         #endregion
     }
 }

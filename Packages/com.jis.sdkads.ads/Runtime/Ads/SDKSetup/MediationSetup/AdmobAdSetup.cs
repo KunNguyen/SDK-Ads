@@ -10,8 +10,6 @@ public class AdmobAdSetup
     [SerializeField]private AdScheduleUnitID interstitialAdUnitID;
     [SerializeField]private AdScheduleUnitID rewardedAdUnitID;
     [SerializeField]private AdScheduleUnitID bannerAdUnitID;
-    [SerializeField]private AdScheduleUnitID collapsibleBannerAdUnitID;
-    [SerializeField]private AdScheduleUnitID mrecAdUnitID;
     [SerializeField]private AdScheduleUnitID appOpenAdUnitID;
     [SerializeField] private AdScheduleUnitID rewardedInterstitialAdUnitID;
 
@@ -34,18 +32,6 @@ public class AdmobAdSetup
     {
         get => bannerAdUnitID;
         set => bannerAdUnitID = value;
-    }
-
-    public AdScheduleUnitID CollapsibleBannerAdUnitID
-    {
-        get => collapsibleBannerAdUnitID;
-        set => collapsibleBannerAdUnitID = value;
-    }
-    
-    public AdScheduleUnitID MrecAdUnitID
-    {
-        get => mrecAdUnitID;
-        set => mrecAdUnitID = value;
     }
 
     public AdScheduleUnitID AppOpenAdUnitID
@@ -99,16 +85,7 @@ public class AdmobAdSetup
         get => bannerAdUnitID.CurrentPlatformID;
         set => bannerAdUnitID.CurrentPlatformID = value;
     }
-    public List<string> CollapsibleBannerAdUnitIDList
-    {
-        get => collapsibleBannerAdUnitID.CurrentPlatformID;
-        set => collapsibleBannerAdUnitID.CurrentPlatformID = value;
-    }
-    public List<string> MrecAdUnitIDList
-    {
-        get => mrecAdUnitID.CurrentPlatformID;
-        set => mrecAdUnitID.CurrentPlatformID = value;
-    }
+
     public List<string> AppOpenAdUnitIDList {
         get => appOpenAdUnitID.CurrentPlatformID;
         set => appOpenAdUnitID.CurrentPlatformID = value;
@@ -128,8 +105,6 @@ public class AdmobAdSetup
         interstitialAdUnitID ??= new AdScheduleUnitID();
         rewardedAdUnitID ??= new AdScheduleUnitID();
         bannerAdUnitID ??= new AdScheduleUnitID();
-        collapsibleBannerAdUnitID ??= new AdScheduleUnitID();
-        mrecAdUnitID ??= new AdScheduleUnitID();
         appOpenAdUnitID ??= new AdScheduleUnitID();
         rewardedInterstitialAdUnitID ??= new AdScheduleUnitID();
         _ = InterstitialTierConfig;

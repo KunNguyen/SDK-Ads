@@ -31,8 +31,7 @@ namespace JisSDKAds.Analytics.SolarEngineIntegration
             Other = 0,
             RewardedVideo = 1,
             Interstitial = 3,
-            Banner = 5,
-            MRec = 10
+            Banner = 5
         }
 
         private void Awake()
@@ -151,7 +150,6 @@ namespace JisSDKAds.Analytics.SolarEngineIntegration
                 case "rewarded":
                     return AdType.RewardedVideo;
                 case "mrec":
-                    return AdType.MRec;
                 case "collapsible":
                 case "app_open_ad":
                 default:
@@ -169,10 +167,7 @@ namespace JisSDKAds.Analytics.SolarEngineIntegration
                     return AdType.Interstitial;
                 case AdsType.REWARDED:
                     return AdType.RewardedVideo;
-                case AdsType.MREC:
-                    return AdType.MRec;
                 case AdsType.APP_OPEN:
-                case AdsType.COLLAPSIBLE_BANNER:
                 default:
                     return AdType.Other;
             }

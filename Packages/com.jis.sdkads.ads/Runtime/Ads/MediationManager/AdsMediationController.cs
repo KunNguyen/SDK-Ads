@@ -68,37 +68,6 @@ namespace JisSDKAds.Ads {
         }
         #endregion
 
-        #region  Collapsible Banner
-        protected CollapsibleBannerCallbacks CollapsibleCallbacks { get; set; } = new CollapsibleBannerCallbacks();
-
-        
-        public virtual void InitCollapsibleBannerAds(UnityAction loadedSuccessCallback, UnityAction loadedFailCallback, UnityAction collapsedCallback, UnityAction expandedCallback, UnityAction destroyedCallback, UnityAction hideCallback) {
-            CollapsibleCallbacks = new CollapsibleBannerCallbacks
-            {
-                LoadedSuccess = loadedSuccessCallback,
-                LoadedFail = loadedFailCallback,
-                Collapsed = collapsedCallback,
-                Expanded = expandedCallback,
-                Destroyed = destroyedCallback,
-                Hided = hideCallback
-            };
-        }
-        public virtual void RequestCollapsibleBannerAds(bool isOpenOnStart) {
-        }
-        public virtual void RefreshCollapsibleBannerAds() {
-        }
-        public virtual void ShowCollapsibleBannerAds() {
-        }
-        public virtual void HideCollapsibleBannerAds() {
-        }
-        public virtual void DestroyCollapsibleBannerAds() {
-        }
-        public virtual bool IsCollapsibleBannerLoaded() {
-            return false;
-        }
-
-        #endregion
-
         #region Interstitial Ads
         
         protected InterstitialCallbacks InterstitialCallbacks { get; set; } = new InterstitialCallbacks();
@@ -152,30 +121,6 @@ namespace JisSDKAds.Ads {
             return false;
         }
 
-        #endregion
-
-        #region MRec Ads
-        protected MRecCallbacks MRecCallbacks { get; set; } = new MRecCallbacks();
-        
-        public virtual void InitRMecAds(UnityAction adLoadedCallback, UnityAction adLoadFailedCallback, UnityAction adClickedCallback, UnityAction adExpandedCallback, UnityAction adCollapsedCallback) {
-            MRecCallbacks = new MRecCallbacks
-            {
-                LoadedSuccess = adLoadedCallback,
-                LoadedFail = adLoadFailedCallback,
-                Clicked = adClickedCallback,
-                Expanded = adExpandedCallback,
-                Collapsed = adCollapsedCallback
-            };
-        }
-        public virtual void RequestMRecAds() {
-        }
-        public virtual void ShowMRecAds() {
-        }
-        public virtual void HideMRecAds() {
-        }
-        public virtual bool IsMRecLoaded() {
-            return false;
-        }
         #endregion
 
         #region App Open Ads

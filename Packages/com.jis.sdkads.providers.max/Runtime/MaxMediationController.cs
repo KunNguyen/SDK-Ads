@@ -275,66 +275,6 @@ namespace JisSDKAds.Ads {
         }
         #endregion
         
-        #region MREC
-        private bool m_IsMRecLoaded = false;
-        public override void InitRMecAds(UnityAction adLoadedCallback, UnityAction adLoadFailedCallback, UnityAction adClickedCallback, UnityAction adExpandedCallback, UnityAction adCollapsedCallback)
-        {
-            base.InitRMecAds(adLoadedCallback, adLoadFailedCallback, adClickedCallback, adExpandedCallback, adCollapsedCallback);
-            DebugAds.Log("MAX Start Init MREC");
-            MaxSdkCallbacks.MRec.OnAdLoadedEvent      += OnMRecAdLoadedEvent;
-            MaxSdkCallbacks.MRec.OnAdLoadFailedEvent  += OnMRecAdLoadFailedEvent;
-            MaxSdkCallbacks.MRec.OnAdClickedEvent     += OnMRecAdClickedEvent;
-            MaxSdkCallbacks.MRec.OnAdExpandedEvent    += OnMRecAdExpandedEvent;
-            MaxSdkCallbacks.MRec.OnAdCollapsedEvent   += OnMRecAdCollapsedEvent;
-            MaxSdkCallbacks.MRec.OnAdRevenuePaidEvent += (adUnitID, adInfo) => { OnAdRevenuePaidEvent(AdsType.MREC, adUnitID, adInfo);};
-            MaxSdk.CreateMRec(m_MaxAdConfig.MrecAdUnitID, MaxSdkBase.AdViewPosition.BottomCenter);
-        }
-        public override void RequestMRecAds()
-        {
-            base.RequestMRecAds();
-            DebugAds.Log("MAX Mediation MREC Call Request");
-            MaxSdk.LoadMRec(m_MaxAdConfig.MrecAdUnitID);
-        }
-        public override bool IsMRecLoaded()
-        {
-            return m_IsMRecLoaded;
-        }
-        private void OnMRecAdLoadedEvent(string adUnitId, MaxSdkBase.AdInfo adInfo)
-        {
-            DebugAds.Log("MAX Mediation MREC Loaded Success");
-            m_IsMRecLoaded = true;
-            MRecCallbacks.LoadedSuccess?.Invoke();
-        }
-        private void OnMRecAdLoadFailedEvent(string adUnitId, MaxSdkBase.ErrorInfo error)
-        {
-            DebugAds.Log("MAX Mediation MREC Loaded Fail");
-            m_IsMRecLoaded = false;
-            MRecCallbacks.LoadedFail?.Invoke();
-        }
-        private void OnMRecAdClickedEvent(string adUnitId, MaxSdkBase.AdInfo adInfo)
-        {
-            MRecCallbacks.Clicked?.Invoke();
-        }
-        private void OnMRecAdExpandedEvent(string adUnitId, MaxSdkBase.AdInfo adInfo)
-        {
-            MRecCallbacks.Expanded?.Invoke();
-        }
-        private void OnMRecAdCollapsedEvent(string adUnitId, MaxSdkBase.AdInfo adInfo)
-        {
-            MRecCallbacks.Collapsed?.Invoke();
-        }
-        public override void ShowMRecAds()
-        {
-            base.ShowMRecAds();
-            MaxSdk.ShowMRec(m_MaxAdConfig.MrecAdUnitID);
-        }
-        public override void HideMRecAds()
-        {
-            base.HideMRecAds();
-            MaxSdk.HideMRec(m_MaxAdConfig.MrecAdUnitID);
-        }
-        #endregion
-        
         #region App Open Ads
 
         public override void InitAppOpenAds(UnityAction adLoadedCallback, UnityAction adLoadFailedCallback, 

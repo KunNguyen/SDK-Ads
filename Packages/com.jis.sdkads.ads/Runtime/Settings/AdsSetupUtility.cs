@@ -28,9 +28,7 @@ namespace JisSDKAds.Ads.Settings
             AdsType.BANNER,
             AdsType.INTERSTITIAL,
             AdsType.REWARDED,
-            AdsType.APP_OPEN,
-            AdsType.MREC,
-            AdsType.COLLAPSIBLE_BANNER
+            AdsType.APP_OPEN
         };
 
         public static IReadOnlyList<FormatStatus> GetFormatStatuses(SDKSetup setup)

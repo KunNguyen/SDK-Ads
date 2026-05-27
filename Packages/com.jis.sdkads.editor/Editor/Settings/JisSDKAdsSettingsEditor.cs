@@ -154,13 +154,6 @@ namespace JisSDKAds.Editor
                 DrawSingleFormatSection("App Open", () =>
                     JisSDKAdsSetupFieldDrawer.DrawAppOpenSingle(setup, primaryMediation, _selectedPlatform));
 
-                EditorGUILayout.Space(6);
-                DrawSingleFormatSection("MREC", () =>
-                    JisSDKAdsSetupFieldDrawer.DrawMrecSingle(setup, primaryMediation, _selectedPlatform));
-
-                EditorGUILayout.Space(6);
-                DrawSingleFormatSection("Collapsible Banner", () =>
-                    JisSDKAdsSetupFieldDrawer.DrawCollapsibleBannerSingle(setup, primaryMediation, _selectedPlatform));
             }
         }
 

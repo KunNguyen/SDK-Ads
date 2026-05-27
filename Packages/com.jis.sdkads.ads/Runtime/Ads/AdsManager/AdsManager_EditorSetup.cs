@@ -1,7 +1,6 @@
 ﻿using System.Collections.Generic;
 using JisSDKAds.Ads.Settings;
 using JisSDKAds.Ads.UnitAdManagers;
-using JisSDKAds.Ads.UnitAdManagers.Interface;
 using JisSDKAds.Ads.Integration;
 using JisSDKAds.Common;
 #if UNITY_EDITOR
@@ -62,9 +61,6 @@ namespace JisSDKAds.Ads
                AddAdsConfig(AdsType.INTERSTITIAL);
                AddAdsConfig(AdsType.REWARDED);
                AddAdsConfig(AdsType.BANNER);
-               AddAdsConfig(AdsType.COLLAPSIBLE_BANNER);
-               AddAdsConfig(AdsType.MREC);
-               AddAdsConfig(AdsType.APP_OPEN);
 #if UNITY_EDITOR
                EnsureEditorSubManagersWired();
 #endif
@@ -115,11 +111,6 @@ namespace JisSDKAds.Ads
                BannerAdManager ??= GetComponentInChildren<BannerAdManager>(true);
                InterstitialAdManager ??= GetComponentInChildren<InterstitialAdManager>(true);
                RewardAdManager ??= GetComponentInChildren<RewardAdManager>(true);
-               MRecAdManager ??= GetComponentInChildren<MRecAdManager>(true);
-               AppOpenAdManager ??= GetComponentInChildren<AppOpenAdManager>(true);
-               CollapsibleBannerAdManager ??= GetComponentInChildren<CollapsibleBannerAdManager>(true);
-               ResumeAdManager ??= GetComponentInChildren<ResumeAdManager>(true);
-
                if (AdsMediationControllers == null || AdsMediationControllers.Count == 0)
                {
                     AdsMediationControllers = new List<AdsMediationController>(

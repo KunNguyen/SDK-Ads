@@ -26,7 +26,6 @@ namespace JisSDKAds.Firebase
                         { Keys.key_remote_interstitial_capping_time, 30 },
                         { Keys.key_remote_inter_reward_interspersed, false },
                         { Keys.key_remote_inter_reward_interspersed_time, 10 },
-                        { Keys.key_remote_mrec_active, false },
                         { Keys.key_remote_free_ads, 1 },
                         { Keys.key_remote_banner_auto_refresh, false},
                         { Keys.key_remote_banner_auto_refresh_time, 15},

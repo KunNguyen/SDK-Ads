@@ -10,8 +10,6 @@ public class MaxAdSetup
     [SerializeField]private AdUnitID interstitialAdUnitID;
     [SerializeField]private AdUnitID rewardedAdUnitID;
     [SerializeField]private AdUnitID bannerAdUnitID;
-    [SerializeField]private AdUnitID collapsibleBannerAdUnitID;
-    [SerializeField]private AdUnitID mrecAdUnitID;
     [SerializeField]private AdUnitID appOpenAdUnitID;
 
     public string SDKKey
@@ -35,18 +33,6 @@ public class MaxAdSetup
     {
         get => bannerAdUnitID.ID;
         set => bannerAdUnitID.ID = value;
-    }
-    
-    public string CollapsibleBannerAdUnitID
-    {
-        get => collapsibleBannerAdUnitID.ID;
-        set => collapsibleBannerAdUnitID.ID = value;
-    }
-    
-    public string MrecAdUnitID
-    {
-        get => mrecAdUnitID.ID;
-        set => mrecAdUnitID.ID = value;
     }
 
     public string AppOpenAdUnitID
