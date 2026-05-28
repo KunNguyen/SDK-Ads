@@ -306,6 +306,7 @@ namespace JisSDKAds.Ads
                 return;
             }
             var provider = providerConfig.CreateProvider();
+            provider = DecorateSequentialTierInterstitialIfEnabled(provider, profile);
             if (_tiered != null && tieredConfig != null && tieredConfig.EnableTieredInventory)
                 provider = new TieredAdServiceWrapper(provider, tieredConfig, _tiered.Manager);
             _core.RegisterProvider(providerConfig.ProviderId, provider);
@@ -337,6 +338,25 @@ namespace JisSDKAds.Ads
         }
         static TieredAdsConfig ResolveTieredConfig(PlatformAdsProfile profile) =>
             profile?.tieredAdsConfig;
+
+        IAdService DecorateSequentialTierInterstitialIfEnabled(IAdService provider, PlatformAdsProfile profile)
+        {
+#if UNITY_AD_ADMOB
+            if (profile?.mediation != AdsMediationType.ADMOB)
+                return provider;
+
+            var tierConfig = profile.sdkSetup?.admobAdsSetup?.InterstitialTierConfig;
+            if (tierConfig == null || !tierConfig.enableSequentialLadder)
+                return provider;
+
+            var decorated = AdMobSequentialTierReflection.TryDecorateInterstitial(provider, this, tierConfig);
+            if (!ReferenceEquals(decorated, provider))
+                DebugAds.Log("[JisAds] Interstitial uses SequentialTier ladder (Premium→Fill) via Core.");
+            return decorated;
+#else
+            return provider;
+#endif
+        }
         void InitializeTieredOnlyFlow()
         {
             var profile = settings.GetActiveProfile();

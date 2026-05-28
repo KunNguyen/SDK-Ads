@@ -21,17 +21,19 @@ namespace JisSDKAds.IAP
         }
         public void LogFetchedProducts(List<Product> products)
         {
+            string log = "Fetched Products:\n";
             if (products.Count > 0)
             {
                 foreach (var product in products)
                 {
-                    LogConsole($"Fetched {product.definition.id}");
+                    log += $"- {product.definition.id}\n";
                 }
             }
             else
             {
-                LogConsole("No Products Fetched.");
+                log += "No Products Fetched.\n";
             }
+            LogConsole(log);
         }
 
         public void LogConfirmedOrder(Product product, IOrderInfo orderInfo)
