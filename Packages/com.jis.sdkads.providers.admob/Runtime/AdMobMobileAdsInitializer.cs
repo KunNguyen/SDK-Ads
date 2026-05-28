@@ -25,8 +25,11 @@ namespace JisSDKAds.Providers.AdMob
             Failed
         }
 
+        static readonly object InitGate = new object();
         static InitState _state = InitState.NotStarted;
         static readonly List<Action<bool>> _pendingCallbacks = new List<Action<bool>>();
+        static bool _initFinished;
+        static bool _initSuccess;
 
         public static bool IsReady => _state == InitState.Ready;
         public static bool IsFailed => _state == InitState.Failed;
@@ -48,14 +51,25 @@ namespace JisSDKAds.Providers.AdMob
 
             if (_state == InitState.Failed)
             {
-                FlushCallbacks(false);
-                return;
+                DebugAds.LogWarning("[AdMob] Retrying MobileAds.Initialize after a previous failure.");
+                lock (InitGate)
+                {
+                    _initFinished = false;
+                    _initSuccess = false;
+                }
+                _state = InitState.NotStarted;
             }
 
             if (_state == InitState.Initializing)
                 return;
 
             _state = InitState.Initializing;
+            lock (InitGate)
+            {
+                _initFinished = false;
+                _initSuccess = false;
+            }
+
             AdMobInitRunner.Instance.StartCoroutine(CoInitialize(requestConsent));
         }
 
@@ -84,58 +98,81 @@ namespace JisSDKAds.Providers.AdMob
                 DebugAds.LogWarning($"[AdMob] UMP not available. {AdmobUmpConsent.PluginHint}");
             }
 
-            var initFinished = false;
-            var initSuccess = false;
+            if (_state != InitState.Initializing)
+                yield break;
+
+            MobileAds.Initialize(OnMobileAdsInitializationComplete);
+
+            while (true)
+            {
+                var finished = false;
+                lock (InitGate)
+                    finished = _initFinished;
+
+                if (finished || _state != InitState.Initializing)
+                    break;
+
+                yield return null;
+            }
 
             if (_state != InitState.Initializing)
                 yield break;
 
-            MobileAds.Initialize(initStatus =>
-            {
-                initFinished = true;
-                if (initStatus == null)
-                {
-                    DebugAds.LogSdkInit("AdMob", "MobileAds.Initialize", false, "initStatus is null");
-                    return;
-                }
+            var success = false;
+            lock (InitGate)
+                success = _initSuccess;
 
+            if (success)
+                MarkReady();
+            else
+                MarkFailed("MobileAds.Initialize callback reported failure");
+        }
+
+        static void OnMobileAdsInitializationComplete(InitializationStatus initStatus)
+        {
+            var success = false;
+
+            if (initStatus == null)
+            {
+                DebugAds.LogSdkInit("AdMob", "MobileAds.Initialize", false, "initStatus is null");
+            }
+            else
+            {
                 var adapterStatusMap = initStatus.getAdapterStatusMap();
                 if (adapterStatusMap == null)
                 {
                     DebugAds.LogSdkInit("AdMob", "MobileAds.Initialize", false, "adapterStatusMap is null");
-                    return;
                 }
-
-                foreach (var keyValuePair in adapterStatusMap)
+                else
                 {
-                    var className = keyValuePair.Key;
-                    var status = keyValuePair.Value;
-                    switch (status.InitializationState)
+                    var readyCount = 0;
+                    foreach (var keyValuePair in adapterStatusMap)
                     {
-                        case AdapterState.NotReady:
-                            DebugAds.Log($"[AdMob] Adapter not ready: {className}");
-                            break;
-                        case AdapterState.Ready:
-                            DebugAds.Log($"[AdMob] Adapter ready: {className}");
-                            break;
+                        var className = keyValuePair.Key;
+                        var status = keyValuePair.Value;
+                        switch (status.InitializationState)
+                        {
+                            case AdapterState.NotReady:
+                                DebugAds.Log($"[AdMob] Adapter not ready: {className}");
+                                break;
+                            case AdapterState.Ready:
+                                readyCount++;
+                                DebugAds.Log($"[AdMob] Adapter ready: {className}");
+                                break;
+                        }
                     }
+
+                    success = readyCount > 0;
+                    DebugAds.LogSdkInit("AdMob", "MobileAds.Initialize", success,
+                        $"adapters={adapterStatusMap.Count} ready={readyCount}");
                 }
+            }
 
-                DebugAds.LogSdkInit("AdMob", "MobileAds.Initialize", true,
-                    $"adapters={adapterStatusMap.Count}");
-                initSuccess = true;
-            });
-
-            while (!initFinished && _state == InitState.Initializing)
-                yield return null;
-
-            if (_state != InitState.Initializing)
-                yield break;
-
-            if (initSuccess)
-                MarkReady();
-            else
-                MarkFailed("MobileAds.Initialize callback reported failure");
+            lock (InitGate)
+            {
+                _initSuccess = success;
+                _initFinished = true;
+            }
         }
 
         static IEnumerator CoWatchTimeout()

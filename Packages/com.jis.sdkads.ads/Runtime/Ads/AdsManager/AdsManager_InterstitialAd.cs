@@ -41,6 +41,9 @@ namespace JisSDKAds.Ads
                bool isTracking = true,
                bool isSkipCapping = false)
           {
+               if (TryShowInterstitialViaJisAds(interstitialPlacement, closedCallback, showSuccessCallback, showFailCallback))
+                    return;
+
                InterstitialAdManager.CallToShowAd(
                     interstitialPlacement,
                     closedCallback,
@@ -57,6 +60,8 @@ namespace JisSDKAds.Ads
 
           public bool IsInterstitialAdLoaded()
           {
+               if (TryQueryInterstitialLoadedFromJisAds(out var loaded))
+                    return loaded;
                return InterstitialAdManager.IsLoaded();
           }
 
@@ -72,6 +77,8 @@ namespace JisSDKAds.Ads
 
           public bool CanShowInterstitialAd()
           {
+               if (TryQueryInterstitialLoadedFromJisAds(out var loaded))
+                    return loaded;
                return InterstitialAdManager.IsAdReady();
           }
 

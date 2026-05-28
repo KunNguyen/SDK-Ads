@@ -15,9 +15,11 @@ namespace JisSDKAds.Providers.AdMob
         public string rewardedAdUnitId;
         public string bannerAdUnitId;
         public string appOpenAdUnitId;
+        public AdPosition bannerPosition = AdPosition.Bottom;
 
         public AdProviderId ProviderId => AdProviderId.AdMob;
-        public IAdService CreateProvider() => new AdMobProvider(appId, interstitialAdUnitId, rewardedAdUnitId, bannerAdUnitId, appOpenAdUnitId);
+        public IAdService CreateProvider() =>
+            new AdMobProvider(appId, interstitialAdUnitId, rewardedAdUnitId, bannerAdUnitId, appOpenAdUnitId, bannerPosition);
     }
 
     /// <summary>
@@ -39,7 +41,13 @@ namespace JisSDKAds.Providers.AdMob
         public IBannerAd Banner { get; }
         public IAppOpenAd AppOpen { get; }
 
-        public AdMobProvider(string appId, string interstitialAdUnitId, string rewardedAdUnitId, string bannerAdUnitId, string appOpenAdUnitId = null)
+        public AdMobProvider(
+            string appId,
+            string interstitialAdUnitId,
+            string rewardedAdUnitId,
+            string bannerAdUnitId,
+            string appOpenAdUnitId = null,
+            AdPosition bannerPosition = AdPosition.Bottom)
         {
             _appId = appId;
             _interstitialAdUnitId = interstitialAdUnitId;
@@ -48,7 +56,7 @@ namespace JisSDKAds.Providers.AdMob
 
             Interstitial = new AdMobInterstitialAd(_interstitialAdUnitId);
             Rewarded = new AdMobRewardedAd(_rewardedAdUnitId);
-            Banner = new AdMobBannerAd(_bannerAdUnitId);
+            Banner = new AdMobBannerAd(_bannerAdUnitId, bannerPosition);
             AppOpen = string.IsNullOrEmpty(appOpenAdUnitId)
                 ? NullAppOpenAd.Instance
                 : new AdMobAppOpenAd(appOpenAdUnitId);
@@ -264,24 +272,48 @@ namespace JisSDKAds.Providers.AdMob
     internal class AdMobBannerAd : IBannerAd
     {
         private readonly string _adUnitId;
+        private readonly AdPosition _position;
         private BannerView _banner;
         private bool _isVisible;
+        private bool _isAdLoaded;
 
-        public AdMobBannerAd(string adUnitId) => _adUnitId = adUnitId;
-        public bool IsLoaded => _banner != null;
+        public AdMobBannerAd(string adUnitId, AdPosition position = AdPosition.Bottom)
+        {
+            _adUnitId = adUnitId;
+            _position = position;
+        }
+
+        public bool IsLoaded => _isAdLoaded && _banner != null;
         public bool IsVisible => _isVisible;
 
         public void Load(Action onLoaded = null, Action<string> onFailed = null)
         {
+            if (string.IsNullOrWhiteSpace(_adUnitId))
+            {
+                onFailed?.Invoke("Banner ad unit id is empty");
+                return;
+            }
+
             if (_banner != null)
             {
                 _banner.Destroy();
                 _banner = null;
             }
 
-            _banner = new BannerView(_adUnitId, AdSize.Banner, AdPosition.Bottom);
-            _banner.OnBannerAdLoaded += () => onLoaded?.Invoke();
-            _banner.OnBannerAdLoadFailed += err => onFailed?.Invoke(err.GetMessage());
+            _isAdLoaded = false;
+            _isVisible = false;
+
+            _banner = new BannerView(_adUnitId.Trim(), AdSize.Banner, _position);
+            _banner.OnBannerAdLoaded += () =>
+            {
+                _isAdLoaded = true;
+                onLoaded?.Invoke();
+            };
+            _banner.OnBannerAdLoadFailed += err =>
+            {
+                _isAdLoaded = false;
+                onFailed?.Invoke(err.GetMessage());
+            };
             _banner.LoadAd(new AdRequest());
         }
 

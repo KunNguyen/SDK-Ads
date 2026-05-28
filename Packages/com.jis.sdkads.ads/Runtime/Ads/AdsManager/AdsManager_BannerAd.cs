@@ -24,6 +24,9 @@ namespace JisSDKAds.Ads
 
           public void RequestBannerAds()
           {
+               if (TryRequestBannerViaJisAds())
+                    return;
+
                if (!IsReady)
                {
                     DebugAds.LogWarning("[AdsManager] RequestBannerAds ignored — ads not ready (wait for JisAds/AdsManager init).");
@@ -39,6 +42,9 @@ namespace JisSDKAds.Ads
           public void ShowBannerAds()
           {
                DebugAds.Log(("Call Show Banner Ads"));
+               if (TryRequestBannerViaJisAds())
+                    return;
+
                if (!IsReady || BannerAdManager == null)
                     return;
                BannerAdManager.Show();
@@ -56,6 +62,8 @@ namespace JisSDKAds.Ads
           }
           public bool CanShowBannerAd()
           {
+               if (TryQueryBannerLoadedFromJisAds(out var loaded))
+                    return loaded;
                return BannerAdManager.IsAdReady();
           }
      }

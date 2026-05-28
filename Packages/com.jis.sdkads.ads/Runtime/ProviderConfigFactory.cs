@@ -3,8 +3,12 @@ using System.Reflection;
 using JisSDKAds.Ads.Tiered;
 using JisSDKAds.Ads.Settings;
 using JisSDKAds.Ads.SequentialTier;
+using JisSDKAds.Common;
 using JisSDKAds.Core.Interfaces;
 using UnityEngine;
+#if UNITY_AD_ADMOB
+using GoogleMobileAds.Api;
+#endif
 
 namespace JisSDKAds.Ads
 {
@@ -75,10 +79,19 @@ namespace JisSDKAds.Ads
                     var interId = FirstNonEmpty(interList0, interTierPremium, interTierHigh, fallbackInter) ?? "";
                     var rewardId = FirstNonEmpty(rewardList0, rewardTierPremium, rewardTierHigh, fallbackReward) ?? "";
 
+                    admob?.EnsureInitialized();
+                    string bannerList0 = banner != null && banner.Count > 0 ? banner[0] : null;
+                    string bannerScheduleId = admob?.BannerAdUnitID?.ID;
+                    var bannerId = FirstNonEmpty(bannerList0, bannerScheduleId) ?? "";
+
                     SetField(setup, "interstitialAdUnitId", interId);
                     SetField(setup, "rewardedAdUnitId", rewardId);
-                    SetField(setup, "bannerAdUnitId", banner != null && banner.Count > 0 ? banner[0] : "");
+                    SetField(setup, "bannerAdUnitId", bannerId);
                     SetField(setup, "appOpenAdUnitId", appOpen != null && appOpen.Count > 0 ? appOpen[0] : "");
+#if UNITY_AD_ADMOB
+                    SetField(setup, "bannerPosition", profile.sdkSetup.admobBannerAdsPosition);
+#endif
+                    DebugAds.Log($"[ProviderConfig] AdMob banner unitId={(string.IsNullOrEmpty(bannerId) ? "(empty)" : bannerId)}");
                 }),
 #endif
                 _ => null

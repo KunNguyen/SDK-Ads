@@ -125,6 +125,7 @@ namespace JisSDKAds.Ads
             if (_isReady)
             {
                 PreloadStandardFormatsAfterRemoteConfig();
+                TryShowBannerOnStartIfConfigured();
                 StartCoroutine(CoInitializeAppOpenAndResume());
             }
 
@@ -133,6 +134,9 @@ namespace JisSDKAds.Ads
                 "InitializeAsync complete",
                 _isReady,
                 _isReady ? null : "Core AdManager not initialized — check provider init logs above.");
+
+            if (_isReady)
+                AdsManager.Instance?.NotifyJisAdsCoreReady();
         }
 
         void PreloadStandardFormatsAfterRemoteConfig()
@@ -159,7 +163,11 @@ namespace JisSDKAds.Ads
             if (!_isRemoveAds)
             {
                 provider.Banner?.Load(
-                    onLoaded: () => DebugAds.Log("[JisAds] Preload Banner: loaded"),
+                    onLoaded: () =>
+                    {
+                        DebugAds.Log("[JisAds] Preload Banner: loaded");
+                        TryShowBannerOnStartIfConfigured();
+                    },
                     onFailed: err =>
                     {
                         DebugAds.LogWarning($"[JisAds] Preload Banner failed: {err}");
@@ -470,14 +478,33 @@ namespace JisSDKAds.Ads
         public void ShowBannerAds()
         {
             if (!CanShowAds())
+            {
+                DebugAds.Log("[JisAds] ShowBannerAds skipped — remove ads active.");
                 return;
+            }
 
             if (UseCoreForStandardFormats)
             {
-                _core.ShowBanner();
+                _core.ShowBanner(
+                    onShown: () => DebugAds.Log("[JisAds] Banner shown"),
+                    onFailed: err => Debug.LogWarning($"[JisAds] Banner show failed: {err}"));
                 return;
             }
-            Debug.LogWarning("[JisAds] Legacy banner is removed. Enable Core or Tiered inventory.");
+
+            Debug.LogWarning("[JisAds] Banner unavailable — Core AdManager not initialized. Check AdMob init logs.");
+        }
+
+        void TryShowBannerOnStartIfConfigured()
+        {
+            var setup = settings?.GetActiveProfile()?.sdkSetup;
+            if (setup == null || !setup.isBannerShowingOnStart)
+                return;
+
+            if (!CanShowAds() || !UseCoreForStandardFormats)
+                return;
+
+            DebugAds.Log("[JisAds] isBannerShowingOnStart=true — showing banner");
+            ShowBannerAds();
         }
         public void HideBannerAds()
         {
@@ -505,6 +532,11 @@ namespace JisSDKAds.Ads
                 : false;
         }
         public bool CanShowRewardedVideo() => IsRewardedVideoLoaded();
+
+        public bool IsBannerAdLoaded() =>
+            UseCoreForStandardFormats && (_core.PrimaryProvider?.Banner?.IsLoaded ?? false);
+
+        public bool CanShowBannerAd() => IsBannerAdLoaded();
         #endregion
         #region App Open
         public void ShowAppOpenAd() => _appOpen?.Show();

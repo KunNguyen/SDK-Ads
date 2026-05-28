@@ -4,6 +4,7 @@ using JisSDKAds.Common;
 using JisSDKAds.Firebase;
 using UnityEngine;
 using UnityEngine.Events;
+using JisAdsEntry = JisSDKAds.Ads.JisAds;
 
 namespace JisSDKAds.Ads.UnitAdManagers
 {
@@ -85,7 +86,33 @@ namespace JisSDKAds.Ads.UnitAdManagers
           {
                IsWatchedSuccess = false;
                AdRewardClosedCallback = closedCallback;
+               if (TryShowViaJisAdsCore(placementName, closedCallback, showSuccessCallback, showFailCallback))
+                    return;
                CallToShowAd(placementName, null, showSuccessCallback, showFailCallback, isTracking, isSkipCapping);
+          }
+
+          static bool UsesJisAdsCore() =>
+               JisAdsEntry.Instance != null && JisAdsEntry.Instance.UseCoreForStandardFormats;
+
+          bool TryShowViaJisAdsCore(
+               string placementName,
+               UnityAction<bool> closedCallback,
+               UnityAction showSuccessCallback,
+               UnityAction showFailCallback)
+          {
+               if (!UsesJisAdsCore())
+                    return false;
+
+               var jis = JisAdsEntry.Instance;
+               if (!jis.IsRewardedVideoLoaded())
+               {
+                    DebugAds.Log("Reward Ad is not ready");
+                    showFailCallback?.Invoke();
+                    return true;
+               }
+
+               jis.ShowRewardVideo(placementName, showSuccessCallback, closedCallback, showFailCallback);
+               return true;
           }
 
           public override void CallToShowAd(string placementName = "", UnityAction closedCallback = null, 
@@ -93,10 +120,16 @@ namespace JisSDKAds.Ads.UnitAdManagers
                bool isTracking = true, bool isSkipCapping = false)
           {
                base.CallToShowAd(placementName, closedCallback, showSuccessCallback, showFailCallback, isTracking, isSkipCapping);
-               if(!IsReady)
+               if (!IsReady && !UsesJisAdsCore())
                {
                     DebugAds.Log("Reward Ad is not ready");
                     closedCallback?.Invoke();
+                    return;
+               }
+               if (!IsReady && UsesJisAdsCore())
+               {
+                    DebugAds.Log("Reward Ad is not ready");
+                    showFailCallback?.Invoke();
                     return;
                }
                if (IsCheatAds())
@@ -184,15 +217,24 @@ namespace JisSDKAds.Ads.UnitAdManagers
 
           public override bool IsLoaded()
           {
+               if (UsesJisAdsCore())
+                    return JisAdsEntry.Instance.IsRewardedVideoLoaded();
                return MediationController != null && MediationController.IsRewardVideoLoaded();
           }
 
           public override bool IsAdReady()
           {
-               if (IsActive && IsReady)
+               if (!IsActive)
+                    return false;
+
+               if (UsesJisAdsCore())
                {
-                    return (IsLinkRewardWithRemoveAds && IsRemoveAds()) || IsLoaded();     
+                    return (IsLinkRewardWithRemoveAds && IsRemoveAds())
+                           || JisAdsEntry.Instance.IsRewardedVideoLoaded();
                }
+
+               if (IsReady)
+                    return (IsLinkRewardWithRemoveAds && IsRemoveAds()) || IsLoaded();
                return false;
           }
 

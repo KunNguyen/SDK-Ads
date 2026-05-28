@@ -22,6 +22,12 @@ namespace JisSDKAds.Ads
           public void ShowRewardVideo(string rewardedPlacement, UnityAction successCallback,
                UnityAction<bool> closedCallback = null, UnityAction failedCallback = null)
           {
+               if (TryShowRewardVideoViaJisAds(rewardedPlacement, successCallback, closedCallback, failedCallback))
+               {
+                    InterstitialAdManager?.ResetCooldown();
+                    return;
+               }
+
                RewardAdManager.CallToShowRewardAd(rewardedPlacement, (isCompleted) =>
                {
                     closedCallback?.Invoke(isCompleted);
@@ -30,10 +36,14 @@ namespace JisSDKAds.Ads
           }
           public bool IsRewardedVideoLoaded()
           {
+               if (TryQueryRewardedLoadedFromJisAds(out var loaded))
+                    return loaded;
                return RewardAdManager.IsLoaded();
           }
           public bool CanShowRewardedVideo()
           {
+               if (TryQueryRewardedLoadedFromJisAds(out var loaded))
+                    return loaded;
                return RewardAdManager.IsAdReady();
           }
      }
