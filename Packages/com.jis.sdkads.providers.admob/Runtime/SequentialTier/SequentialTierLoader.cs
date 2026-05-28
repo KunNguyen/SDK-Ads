@@ -96,7 +96,11 @@ namespace JisSDKAds.Providers.AdMob.SequentialTier
             cache.Adapter.RegisterShowCallbacks(new SequentialTierShowHooks
             {
                 onClosed = hooks.onClosed,
-                onOpened = hooks.onOpened,
+                onOpened = () =>
+                {
+                    SequentialTierAnalytics.LogShowSuccess(_format, cache.AdUnitId, cache.Tier);
+                    hooks.onOpened?.Invoke();
+                },
                 onRewardGranted = hooks.onRewardGranted,
                 onPaid = hooks.onPaid,
                 onFailed = error =>
