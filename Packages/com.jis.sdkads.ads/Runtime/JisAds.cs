@@ -44,6 +44,20 @@ namespace JisSDKAds.Ads
         private bool _isRemoveAds;
         private float _appOpenUnscaledTime;
         private float _interstitialNextAllowedUnscaledTime;
+        private bool _pendingInterstitialWasShown;
+        private UnityAction _pendingInterstitialClosedCallback;
+        private UnityAction _pendingInterstitialShowSuccessCallback;
+        private UnityAction _pendingInterstitialShowFailCallback;
+        private bool _interstitialCallbacksInFlight;
+        private int _interstitialShowAttemptId;
+
+        private bool _pendingRewardedWasShown;
+        private bool _pendingRewardedRewardGranted;
+        private UnityAction<bool> _pendingRewardedClosedCallback;
+        private UnityAction _pendingRewardedRewardCallback;
+        private UnityAction _pendingRewardedFailCallback;
+        private bool _rewardedCallbacksInFlight;
+        private int _rewardedShowAttemptId;
         private bool _standardFormatsPreloadedAfterRemoteConfig;
         private int _preloadRetryAttempt;
         private const int PreloadMaxRetries = 3;
@@ -410,32 +424,45 @@ namespace JisSDKAds.Ads
             bool isTracking = true,
             bool isSkipCapping = false)
         {
+            if (_interstitialCallbacksInFlight)
+            {
+                DebugAds.LogWarning("[JisAds] Interstitial show blocked: previous interstitial still in-flight.");
+                showFailCallback?.Invoke();
+                return;
+            }
+
             if (!isSkipCapping && ShouldBlockInterstitialByCapping(out var remainingSeconds, out var reason))
             {
-                // Match legacy InterstitialAdManager behavior: skip due to cooldown but still invoke callbacks.
                 DebugAds.Log($"[JisAds] Interstitial skipped due to capping ({reason}). Remaining={remainingSeconds:0.##}s");
-                showSuccessCallback?.Invoke();
                 closedCallback?.Invoke();
                 return;
             }
+
+            // For platforms that pause the game loop during interstitial, only mark "show success"
+            // after we know the ad actually opened; then invoke success together with close.
+            _interstitialCallbacksInFlight = true;
+            _interstitialShowAttemptId++;
+            _pendingInterstitialWasShown = false;
+            _pendingInterstitialClosedCallback = closedCallback;
+            _pendingInterstitialShowSuccessCallback = showSuccessCallback;
+            _pendingInterstitialShowFailCallback = showFailCallback;
 
             if (UseTieredInterstitial)
             {
                 if (!CanShowAds())
                 {
-                    showFailCallback?.Invoke();
+                    ConsumePendingInterstitialCallbacksOnFail();
                     return;
                 }
                 _tiered.Manager.ShowInterstitial(
                     onClosed: () =>
                     {
-                        showSuccessCallback?.Invoke();
-                        closedCallback?.Invoke();
+                        ConsumePendingInterstitialCallbacksOnClose();
                     },
                     onFailed: err =>
                     {
                         Debug.LogWarning($"[JisAds] Tiered interstitial failed: {err}");
-                        showFailCallback?.Invoke();
+                        ConsumePendingInterstitialCallbacksOnFail();
                     });
                 return;
             }
@@ -444,17 +471,51 @@ namespace JisSDKAds.Ads
                 _core.ShowInterstitial(
                     onClosed: () =>
                     {
-                        closedCallback?.Invoke();
+                        ConsumePendingInterstitialCallbacksOnClose();
                     },
                     onFailed: err =>
                     {
                         Debug.LogWarning($"[JisAds] Core interstitial failed: {err}");
-                        showFailCallback?.Invoke();
+                        ConsumePendingInterstitialCallbacksOnFail();
                     });
                 return;
             }
             Debug.LogWarning("[JisAds] Legacy interstitial is removed. Enable Core or Tiered inventory.");
-            showFailCallback?.Invoke();
+            ConsumePendingInterstitialCallbacksOnFail();
+        }
+
+        void ConsumePendingInterstitialCallbacksOnClose()
+        {
+            if (!_interstitialCallbacksInFlight)
+                return;
+
+            var didShow = _pendingInterstitialWasShown;
+            var onSuccess = _pendingInterstitialShowSuccessCallback;
+            var onClosed = _pendingInterstitialClosedCallback;
+            ClearPendingInterstitialCallbacks();
+
+            if (didShow)
+                onSuccess?.Invoke();
+            onClosed?.Invoke();
+        }
+
+        void ConsumePendingInterstitialCallbacksOnFail()
+        {
+            if (!_interstitialCallbacksInFlight)
+                return;
+
+            var onFail = _pendingInterstitialShowFailCallback;
+            ClearPendingInterstitialCallbacks();
+            onFail?.Invoke();
+        }
+
+        void ClearPendingInterstitialCallbacks()
+        {
+            _pendingInterstitialWasShown = false;
+            _pendingInterstitialClosedCallback = null;
+            _pendingInterstitialShowSuccessCallback = null;
+            _pendingInterstitialShowFailCallback = null;
+            _interstitialCallbacksInFlight = false;
         }
 
         bool ShouldBlockInterstitialByCapping(out float remainingSeconds, out string reason)
@@ -531,6 +592,9 @@ namespace JisSDKAds.Ads
         {
             if (format != AdFormat.Interstitial)
                 return;
+            // Only mark "shown" for the current in-flight show attempt.
+            if (_interstitialCallbacksInFlight)
+                _pendingInterstitialWasShown = true;
             ResetCoreInterstitialBetweenShowsCooldown();
         }
 
@@ -567,37 +631,90 @@ namespace JisSDKAds.Ads
             UnityAction<bool> closedCallback = null,
             UnityAction failedCallback = null)
         {
+            if (_rewardedCallbacksInFlight)
+            {
+                DebugAds.LogWarning("[JisAds] Rewarded show blocked: previous rewarded still in-flight.");
+                failedCallback?.Invoke();
+                return;
+            }
+
+            _rewardedCallbacksInFlight = true;
+            _rewardedShowAttemptId++;
+            _pendingRewardedWasShown = false;
+            _pendingRewardedRewardGranted = false;
+            _pendingRewardedRewardCallback = successCallback;
+            _pendingRewardedClosedCallback = closedCallback;
+            _pendingRewardedFailCallback = failedCallback;
+
             if (UseTieredRewarded)
             {
                 if (!CanShowAds())
                 {
-                    failedCallback?.Invoke();
+                    ConsumePendingRewardedCallbacksOnFail();
                     return;
                 }
                 _tiered.Manager.ShowRewarded(
-                    onRewardEarned: () => successCallback?.Invoke(),
-                    onClosed: () => closedCallback?.Invoke(true),
+                    onRewardEarned: ConsumePendingRewardedCallbacksOnRewardGranted,
+                    onClosed: () => ConsumePendingRewardedCallbacksOnClose(true),
                     onFailed: err =>
                     {
                         Debug.LogWarning($"[JisAds] Tiered rewarded failed: {err}");
-                        failedCallback?.Invoke();
+                        ConsumePendingRewardedCallbacksOnFail();
                     });
                 return;
             }
             if (UseCoreForStandardFormats)
             {
                 _core.ShowRewarded(
-                    onRewardEarned: () => successCallback?.Invoke(),
-                    onClosed: () => closedCallback?.Invoke(true),
+                    onRewardEarned: ConsumePendingRewardedCallbacksOnRewardGranted,
+                    onClosed: () => ConsumePendingRewardedCallbacksOnClose(true),
                     onFailed: err =>
                     {
                         Debug.LogWarning($"[JisAds] Core rewarded failed: {err}");
-                        failedCallback?.Invoke();
+                        ConsumePendingRewardedCallbacksOnFail();
                     });
                 return;
             }
             Debug.LogWarning("[JisAds] Legacy rewarded is removed. Enable Core or Tiered inventory.");
-            failedCallback?.Invoke();
+            ConsumePendingRewardedCallbacksOnFail();
+        }
+
+        void ConsumePendingRewardedCallbacksOnRewardGranted()
+        {
+            if (!_rewardedCallbacksInFlight || _pendingRewardedRewardGranted)
+                return;
+            _pendingRewardedRewardGranted = true;
+            _pendingRewardedRewardCallback?.Invoke();
+        }
+
+        void ConsumePendingRewardedCallbacksOnClose(bool closedOk)
+        {
+            if (!_rewardedCallbacksInFlight)
+                return;
+
+            var onClosed = _pendingRewardedClosedCallback;
+            ClearPendingRewardedCallbacks();
+            onClosed?.Invoke(closedOk);
+        }
+
+        void ConsumePendingRewardedCallbacksOnFail()
+        {
+            if (!_rewardedCallbacksInFlight)
+                return;
+
+            var onFail = _pendingRewardedFailCallback;
+            ClearPendingRewardedCallbacks();
+            onFail?.Invoke();
+        }
+
+        void ClearPendingRewardedCallbacks()
+        {
+            _pendingRewardedWasShown = false;
+            _pendingRewardedRewardGranted = false;
+            _pendingRewardedClosedCallback = null;
+            _pendingRewardedRewardCallback = null;
+            _pendingRewardedFailCallback = null;
+            _rewardedCallbacksInFlight = false;
         }
         public void ShowBannerAds()
         {
