@@ -15,6 +15,12 @@ namespace JisSDKAds.Common {
 
           public static readonly string key_remote_interstitial_level = "level_show_inter";
           public static readonly string key_remote_interstitial_capping_time = "ads_interval";
+          
+          // Interstitial capping v2:
+          // - type1: block interstitial until X seconds after app open
+          // - type2: minimum seconds between successful interstitial shows (also reset when rewarded watched)
+          public static readonly string key_remote_interstitial_capping_from_app_open_seconds = "inter_capping_from_app_open_seconds";
+          public static readonly string key_remote_interstitial_capping_between_shows_seconds = "inter_capping_between_shows_seconds";
 
           public static readonly string key_remote_inter_reward_interspersed = "inter_reward_interspersed";
           public static readonly string key_remote_inter_reward_interspersed_time = "inter_reward_interspersed_time";

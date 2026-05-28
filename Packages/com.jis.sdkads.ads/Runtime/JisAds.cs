@@ -9,6 +9,8 @@ using JisSDKAds.Common;
 using JisSDKAds.Ads.Tiered;
 using JisSDKAds.Core;
 using JisSDKAds.Core.Interfaces;
+using JisSDKAds.Core.Events;
+using JisSDKAds.Core.Models;
 using JisSDKAds.Core.Tiered;
 using JisSDKAds.Core.Tiered.Ads;
 using JisSDKAds.Core.Tiered.Config;
@@ -40,6 +42,8 @@ namespace JisSDKAds.Ads
         private bool _isReady;
         private bool _isShowingAd;
         private bool _isRemoveAds;
+        private float _appOpenUnscaledTime;
+        private float _interstitialNextAllowedUnscaledTime;
         private bool _standardFormatsPreloadedAfterRemoteConfig;
         private int _preloadRetryAttempt;
         private const int PreloadMaxRetries = 3;
@@ -82,6 +86,8 @@ namespace JisSDKAds.Ads
             settings.ApplyRuntimeDebugSettings();
             EnsureResumeCoordinator();
             _appOpen = new AppOpenAdService(this, this);
+            _appOpenUnscaledTime = Time.unscaledTime;
+            BindCoreCappingEvents();
             _appOpen.ConfigureColdStart(
                 showAppOpenOnColdStart,
                 appOpenFirstShowDelayMs,
@@ -97,6 +103,7 @@ namespace JisSDKAds.Ads
         {
             if (Instance == this)
                 _tiered?.Shutdown();
+            UnbindCoreCappingEvents();
         }
         private void Start()
         {
@@ -403,6 +410,15 @@ namespace JisSDKAds.Ads
             bool isTracking = true,
             bool isSkipCapping = false)
         {
+            if (!isSkipCapping && ShouldBlockInterstitialByCapping(out var remainingSeconds, out var reason))
+            {
+                // Match legacy InterstitialAdManager behavior: skip due to cooldown but still invoke callbacks.
+                DebugAds.Log($"[JisAds] Interstitial skipped due to capping ({reason}). Remaining={remainingSeconds:0.##}s");
+                showSuccessCallback?.Invoke();
+                closedCallback?.Invoke();
+                return;
+            }
+
             if (UseTieredInterstitial)
             {
                 if (!CanShowAds())
@@ -426,7 +442,10 @@ namespace JisSDKAds.Ads
             if (UseCoreForStandardFormats)
             {
                 _core.ShowInterstitial(
-                    onClosed: () => closedCallback?.Invoke(),
+                    onClosed: () =>
+                    {
+                        closedCallback?.Invoke();
+                    },
                     onFailed: err =>
                     {
                         Debug.LogWarning($"[JisAds] Core interstitial failed: {err}");
@@ -436,6 +455,91 @@ namespace JisSDKAds.Ads
             }
             Debug.LogWarning("[JisAds] Legacy interstitial is removed. Enable Core or Tiered inventory.");
             showFailCallback?.Invoke();
+        }
+
+        bool ShouldBlockInterstitialByCapping(out float remainingSeconds, out string reason)
+        {
+            remainingSeconds = 0f;
+            reason = "none";
+
+            // Type 1: time since app open
+            var fromOpen = GetCappingFromAppOpenSeconds();
+            if (fromOpen > 0f)
+            {
+                var elapsed = Time.unscaledTime - _appOpenUnscaledTime;
+                if (elapsed < fromOpen)
+                {
+                    remainingSeconds = Mathf.Max(0f, fromOpen - elapsed);
+                    reason = "from_app_open";
+                    return true;
+                }
+            }
+
+            // Type 2: time between successful interstitial shows (also reset by rewarded watch)
+            var between = GetCappingBetweenShowsSeconds();
+            if (between > 0f && !IsCoreInterstitialCooldownFinished())
+            {
+                remainingSeconds = GetCoreInterstitialCooldownRemainingSeconds();
+                reason = "between_shows";
+                return true;
+            }
+
+            return false;
+        }
+
+        float GetCappingFromAppOpenSeconds()
+        {
+            if (FirebaseManager.Instance == null)
+                return 0f;
+            return (float)FirebaseManager.Instance.GetConfigDouble(Keys.key_remote_interstitial_capping_from_app_open_seconds);
+        }
+
+        float GetCappingBetweenShowsSeconds()
+        {
+            if (FirebaseManager.Instance == null)
+                return 0f;
+            return (float)FirebaseManager.Instance.GetConfigDouble(Keys.key_remote_interstitial_capping_between_shows_seconds);
+        }
+
+        bool IsCoreInterstitialCooldownFinished() =>
+            Time.unscaledTime >= _interstitialNextAllowedUnscaledTime;
+
+        float GetCoreInterstitialCooldownRemainingSeconds() =>
+            Mathf.Max(0f, _interstitialNextAllowedUnscaledTime - Time.unscaledTime);
+
+        void ResetCoreInterstitialBetweenShowsCooldown()
+        {
+            var seconds = GetCappingBetweenShowsSeconds();
+            if (seconds <= 0f)
+                return;
+            _interstitialNextAllowedUnscaledTime = Time.unscaledTime + seconds;
+        }
+
+        void BindCoreCappingEvents()
+        {
+            AdEvents.OnInterstitialShown += OnCoreInterstitialShown;
+            AdEvents.OnRewardEarned += OnCoreRewardEarned;
+        }
+
+        void UnbindCoreCappingEvents()
+        {
+            AdEvents.OnInterstitialShown -= OnCoreInterstitialShown;
+            AdEvents.OnRewardEarned -= OnCoreRewardEarned;
+        }
+
+        void OnCoreInterstitialShown(AdFormat format)
+        {
+            if (format != AdFormat.Interstitial)
+                return;
+            ResetCoreInterstitialBetweenShowsCooldown();
+        }
+
+        void OnCoreRewardEarned(AdFormat format)
+        {
+            if (format != AdFormat.Rewarded)
+                return;
+            // Requirement: watching a rewarded ad resets type-2 timer as well.
+            ResetCoreInterstitialBetweenShowsCooldown();
         }
         /// <summary>Interstitial for foreground resume — bypasses legacy gameplay cooldown.</summary>
         public void ShowInterstitialForResume(System.Action onClosed = null, System.Action<string> onFailed = null)

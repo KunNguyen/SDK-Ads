@@ -150,7 +150,18 @@ namespace JisSDKAds.Core
                 if (attempt < maxRetries)
                 {
                     provider.Interstitial.Load(
-                        onLoaded: () => provider.Interstitial.Show(onShown: null, onClosed, onFailed),
+                        onLoaded: () => provider.Interstitial.Show(
+                            onShown: () => AdEvents.RaiseInterstitialShown(AdFormat.Interstitial),
+                            onClosed: () =>
+                            {
+                                AdEvents.RaiseInterstitialClosed(AdFormat.Interstitial);
+                                onClosed?.Invoke();
+                            },
+                            onFailed: err =>
+                            {
+                                AdEvents.RaiseInterstitialFailed(AdFormat.Interstitial, err);
+                                TryFallbackOrRetryInterstitial(attempt, primary, fallback, onClosed, onFailed);
+                            }),
                         onFailed: _ => TryFallbackOrRetryInterstitial(attempt, primary, fallback, onClosed, onFailed)
                     );
                     return;
@@ -196,7 +207,22 @@ namespace JisSDKAds.Core
                 if (attempt < maxRetries)
                 {
                     provider?.Rewarded.Load(
-                        onLoaded: () => provider.Rewarded.Show(onRewardEarned, onClosed, onFailed),
+                        onLoaded: () => provider.Rewarded.Show(
+                            onRewardEarned: () =>
+                            {
+                                AdEvents.RaiseRewardEarned(AdFormat.Rewarded);
+                                onRewardEarned?.Invoke();
+                            },
+                            onClosed: () =>
+                            {
+                                AdEvents.RaiseRewardedClosed(AdFormat.Rewarded);
+                                onClosed?.Invoke();
+                            },
+                            onFailed: err =>
+                            {
+                                AdEvents.RaiseRewardedFailed(AdFormat.Rewarded, err);
+                                TryFallbackOrRetryRewarded(attempt, primary, fallback, onRewardEarned, onClosed, onFailed);
+                            }),
                         onFailed: _ => TryFallbackOrRetryRewarded(attempt, primary, fallback, onRewardEarned, onClosed, onFailed)
                     );
                     return;
