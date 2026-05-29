@@ -803,12 +803,13 @@ namespace JisSDKAds.Ads
             _pendingRewardedRewardCallback = successCallback;
             _pendingRewardedClosedCallback = closedCallback;
             _pendingRewardedFailCallback = failedCallback;
+            SetAdsShowingState(true);
 
             if (UseCoreForStandardFormats)
             {
                 _core.ShowRewarded(
                     onRewardEarned: ConsumePendingRewardedCallbacksOnRewardGranted,
-                    onClosed: () => ConsumePendingRewardedCallbacksOnClose(true),
+                    onClosed: () => ConsumePendingRewardedCallbacksOnClose(_pendingRewardedRewardGranted),
                     onFailed: err =>
                     {
                         Debug.LogWarning($"[JisAds] Core rewarded failed: {err}");
@@ -856,6 +857,7 @@ namespace JisSDKAds.Ads
             _pendingRewardedRewardCallback = null;
             _pendingRewardedFailCallback = null;
             _rewardedCallbacksInFlight = false;
+            SetAdsShowingState(false);
         }
         public void ShowBannerAds()
         {

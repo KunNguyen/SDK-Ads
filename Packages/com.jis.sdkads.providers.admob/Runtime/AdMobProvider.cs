@@ -201,6 +201,7 @@ namespace JisSDKAds.Providers.AdMob
         Action _pendingOnRewardEarned;
         Action _pendingOnClosed;
         Action<string> _pendingOnFailed;
+        RewardedShowCompletionTracker _showCompletion = new RewardedShowCompletionTracker();
 
         public AdMobRewardedAd(string adUnitId) => _adUnitId = adUnitId;
         public bool IsLoaded => _ad != null && _ad.CanShowAd();
@@ -247,9 +248,14 @@ namespace JisSDKAds.Providers.AdMob
             _pendingOnRewardEarned = onRewardEarned;
             _pendingOnClosed = onClosed;
             _pendingOnFailed = onFailed;
+            _showCompletion.Reset();
 
             DebugAds.Log($"[AdMob][Rewarded] show_call adUnitId={_adUnitId}");
-            _ad.Show(_ => _pendingOnRewardEarned?.Invoke());
+            _ad.Show(_ => _showCompletion.NotifyRewardGranted(() =>
+            {
+                DebugAds.Log($"[AdMob][Rewarded] reward_granted adUnitId={_adUnitId}");
+                _pendingOnRewardEarned?.Invoke();
+            }));
         }
 
         void RegisterEvents()
@@ -264,13 +270,27 @@ namespace JisSDKAds.Providers.AdMob
             _ad.OnAdFullScreenContentClosed += () =>
             {
                 DebugAds.Log($"[AdMob][Rewarded] show_closed adUnitId={_adUnitId}");
-                _pendingOnClosed?.Invoke();
-                DestroyAndWarmReload();
+                _showCompletion.NotifyFullscreenClosed(() =>
+                {
+                    if (!_showCompletion.RewardGranted)
+                        DebugAds.Log($"[AdMob][Rewarded] show_closed_without_reward adUnitId={_adUnitId}");
+
+                    var onClosed = _pendingOnClosed;
+                    _pendingOnClosed = null;
+                    _pendingOnRewardEarned = null;
+                    _pendingOnFailed = null;
+                    onClosed?.Invoke();
+                    DestroyAndWarmReload();
+                });
             };
             _ad.OnAdFullScreenContentFailed += err =>
             {
                 DebugAds.LogWarning($"[AdMob][Rewarded] show_failed adUnitId={_adUnitId} error={err.GetMessage()}");
+                _showCompletion.Reset();
                 _pendingOnFailed?.Invoke(err.GetMessage());
+                _pendingOnFailed = null;
+                _pendingOnRewardEarned = null;
+                _pendingOnClosed = null;
                 DestroyAndWarmReload();
             };
         }

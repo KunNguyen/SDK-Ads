@@ -1,0 +1,84 @@
+#if UNITY_AD_ADMOB
+using System;
+using JisSDKAds.Common;
+
+namespace JisSDKAds.Providers.AdMob
+{
+    /// <summary>
+    /// Click-out ads (Play Store / browser) may deliver the reward callback after fullscreen close.
+    /// Keep the <see cref="GoogleMobileAds.Api.RewardedAd"/> alive until close is known and a short grace window ends.
+    /// </summary>
+    internal sealed class RewardedShowCompletionTracker
+    {
+        const float LateRewardGraceSeconds = 1.5f;
+
+        bool _fullscreenClosed;
+        bool _rewardGranted;
+        bool _finished;
+        bool _graceScheduled;
+
+        public bool RewardGranted => _rewardGranted;
+
+        public void Reset()
+        {
+            _fullscreenClosed = false;
+            _rewardGranted = false;
+            _finished = false;
+            _graceScheduled = false;
+        }
+
+        public void NotifyRewardGranted(Action deliverReward)
+        {
+            if (_finished || _rewardGranted)
+                return;
+
+            _rewardGranted = true;
+            deliverReward?.Invoke();
+            TryCompleteShow();
+        }
+
+        public void NotifyFullscreenClosed(Action deliverClosed)
+        {
+            if (_finished)
+                return;
+
+            _fullscreenClosed = true;
+            TryCompleteShow(deliverClosed);
+        }
+
+        void TryCompleteShow(Action deliverClosed = null)
+        {
+            if (_finished || !_fullscreenClosed)
+                return;
+
+            if (_rewardGranted)
+            {
+                CompleteShow(deliverClosed);
+                return;
+            }
+
+            if (_graceScheduled)
+                return;
+
+            _graceScheduled = true;
+            EventManager.InvokeDelayed(() =>
+            {
+                _graceScheduled = false;
+                if (_finished)
+                    return;
+
+                CompleteShow(deliverClosed);
+            }, LateRewardGraceSeconds);
+        }
+
+        void CompleteShow(Action deliverClosed)
+        {
+            if (_finished)
+                return;
+
+            _finished = true;
+            deliverClosed?.Invoke();
+        }
+    }
+}
+#endif
