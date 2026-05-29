@@ -1,7 +1,6 @@
 #if UNITY_EDITOR
 using JisSDKAds.Ads;
 using JisSDKAds.Ads.Settings;
-using JisSDKAds.Core.Tiered.Config;
 using UnityEditor;
 using UnityEngine;
 
@@ -60,28 +59,6 @@ namespace JisSDKAds.Editor
             }
 
             JisSDKAdsSettingsApplier.Apply(settings, "Menu Apply");
-        }
-
-        [MenuItem(JisSDKMenuPaths.AdsCreateTieredConfig, false, 110)]
-        public static void CreateTieredConfigAsset()
-        {
-            EnsureFolders();
-
-            const string path = DefaultFolder + "/TieredAdsConfig.asset";
-            var existing = AssetDatabase.LoadAssetAtPath<TieredAdsConfig>(path);
-            if (existing != null)
-            {
-                Selection.activeObject = existing;
-                EditorGUIUtility.PingObject(existing);
-                return;
-            }
-
-            var asset = ScriptableObject.CreateInstance<TieredAdsConfig>();
-            AssetDatabase.CreateAsset(asset, path);
-            AssetDatabase.SaveAssets();
-            Selection.activeObject = asset;
-            EditorGUIUtility.PingObject(asset);
-            Debug.Log("[JIS SDK] Created TieredAdsConfig — assign on PlatformAdsProfile in JisSDKAdsSettings.");
         }
 
         static void EnsureFolders()

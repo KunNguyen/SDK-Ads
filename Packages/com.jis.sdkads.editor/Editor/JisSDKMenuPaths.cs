@@ -10,7 +10,6 @@ namespace JisSDKAds.Editor
         public const string AdsCreateSettings = AdsRoot + "Create/Open Settings Asset";
         public const string AdsApplyToScene = AdsRoot + "Apply Settings to Scene";
         public const string AdsCreateRewardPlacements = AdsRoot + "Create/Open Reward Placements Config";
-        public const string AdsCreateTieredConfig = AdsRoot + "Create/Open Tiered Ads Config";
 
         public const string AdsSceneRoot = AdsRoot + "Scene/";
         public const string AdsSceneAddManager = AdsSceneRoot + "Add JisSDK Manager Prefab";

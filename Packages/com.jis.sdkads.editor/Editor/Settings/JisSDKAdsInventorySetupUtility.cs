@@ -69,25 +69,7 @@ namespace JisSDKAds.Editor
                 tierConfig.enableSequentialLadder = false;
             }
 
-            ClearLegacyCoreTieredFlags(settings.GetProfile(platform), isInterstitial);
             EditorUtility.SetDirty(setup);
-        }
-
-        static void ClearLegacyCoreTieredFlags(PlatformAdsProfile profile, bool isInterstitial)
-        {
-            var tiered = profile?.tieredAdsConfig;
-            if (tiered == null) return;
-
-            if (isInterstitial)
-                tiered.EnableTieredInventoryForInterstitial = false;
-            else
-                tiered.EnableTieredInventoryForRewarded = false;
-
-            tiered.EnableTieredInventory =
-                tiered.EnableTieredInventoryForInterstitial
-                || tiered.EnableTieredInventoryForRewarded;
-
-            EditorUtility.SetDirty(tiered);
         }
 
         public static SDKSetup EnsureSdkSetup(JisSDKAdsSettings settings, BuildTargetPlatform platform)

@@ -1,6 +1,5 @@
 ﻿using JisSDKAds.Core.Interfaces;
 using JisSDKAds.Core.Models;
-using JisSDKAds.Core.Tiered.Config;
 using UnityEngine;
 using JisSDKAds.Ads;
 
@@ -17,10 +16,6 @@ namespace JisSDKAds.Ads.Settings
         public ScriptableObject maxProviderConfig;
 
         public ScriptableObject admobProviderConfig;
-
-        [Tooltip("When assigned and EnableTieredInventory=true, interstitial/rewarded use tiered inventory.")]
-        [HideInInspector]
-        public TieredAdsConfig tieredAdsConfig;
 
         public AdProviderId ProviderId => mediation switch
         {

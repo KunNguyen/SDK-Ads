@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using JisSDKAds.Ads.Settings;
-using JisSDKAds.Ads.Tiered;
 using JisSDKAds.Common;
 using JisSDKAds.Firebase;
 using UnityEngine;
@@ -32,7 +31,7 @@ namespace JisSDKAds.Ads.SequentialTier
             out Dictionary<AdTier, string> tierIds)
         {
             if (profile != null)
-                return TieredAdsConfigFactory.TryBuildSequentialTierIds(format, profile, out tierIds);
+                return SequentialTierUnitIdResolver.TryBuildTierIds(format, profile, out tierIds);
 
             tierIds = new Dictionary<AdTier, string>();
             if (FirebaseManager.Instance == null || !FirebaseManager.Instance.IsRemoteConfigReady)

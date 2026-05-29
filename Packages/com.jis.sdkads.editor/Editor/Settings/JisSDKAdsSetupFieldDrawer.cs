@@ -6,9 +6,7 @@ using JisSDKAds.Ads;
 using JisSDKAds.Ads.SequentialTier;
 using JisSDKAds.Ads.Settings;
 using JisSDKAds.Common;
-using JisSDKAds.Core.Tiered.Config;
 using SequentialAdTier = JisSDKAds.Ads.SequentialTier.AdTier;
-using JisSDKAds.Core.Tiered.Models;
 using UnityEditor;
 using UnityEngine;
 
@@ -207,37 +205,6 @@ namespace JisSDKAds.Editor
                         setup.sdkKey_MAX ?? string.Empty);
                 }
             });
-        }
-
-        public static void DrawTierUnit(TierUnit unit, TieredAdsConfig owner, string label)
-        {
-            if (unit == null || owner == null) return;
-
-            EditorGUILayout.LabelField(label, EditorStyles.miniBoldLabel);
-            EditorGUI.BeginChangeCheck();
-            unit.High = EditorGUILayout.TextField("High tier", unit.High ?? string.Empty);
-            unit.Mid = EditorGUILayout.TextField("Mid tier", unit.Mid ?? string.Empty);
-            unit.Low = EditorGUILayout.TextField("Low tier", unit.Low ?? string.Empty);
-            if (EditorGUI.EndChangeCheck())
-                EditorUtility.SetDirty(owner);
-        }
-
-        public static void DrawTierScheduler(TieredAdsConfig tiered)
-        {
-            if (tiered == null) return;
-
-            var so = new SerializedObject(tiered);
-            so.Update();
-
-            DrawProperty(so, "EnableDynamicPromotion");
-            DrawProperty(so, "PreferLastSuccessfulTier");
-            DrawProperty(so, "DelayBetweenLoads");
-            DrawProperty(so, "MaxParallelLoads");
-            DrawProperty(so, "TierDisableDuration");
-            DrawProperty(so, "PromotionLockDuration");
-            DrawProperty(so, "RollingWindowSize");
-
-            so.ApplyModifiedProperties();
         }
 
         static void DrawSetupFields(SDKSetup setup, Action draw)

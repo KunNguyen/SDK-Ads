@@ -1,6 +1,5 @@
 using System;
 using System.Reflection;
-using JisSDKAds.Ads.Tiered;
 using JisSDKAds.Ads.Settings;
 using JisSDKAds.Ads.SequentialTier;
 using JisSDKAds.Common;
@@ -53,8 +52,8 @@ namespace JisSDKAds.Ads
                     // - Remote Config applied to SequentialTierConfig (Premium first; then High)
                     // - SequentialTier default fallback from settings
                     // This ensures Core preload uses the same RC-driven inventory as SequentialTier loader.
-                    var fallbackInter = TieredAdsConfigFactory.ResolveDefaultFallbackUnitId(SequentialTierAdFormat.Interstitial, profile);
-                    var fallbackReward = TieredAdsConfigFactory.ResolveDefaultFallbackUnitId(SequentialTierAdFormat.Rewarded, profile);
+                    var fallbackInter = SequentialTierUnitIdResolver.ResolveDefaultFallbackUnitId(SequentialTierAdFormat.Interstitial, profile);
+                    var fallbackReward = SequentialTierUnitIdResolver.ResolveDefaultFallbackUnitId(SequentialTierAdFormat.Rewarded, profile);
 
                     static string FirstNonEmpty(params string[] values)
                     {

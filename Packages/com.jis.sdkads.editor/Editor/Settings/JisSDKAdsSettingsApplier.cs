@@ -4,7 +4,6 @@ using JisSDKAds.Ads;
 using JisSDKAds.Ads.Settings;
 using JisSDKAds.Ads.SequentialTier;
 using JisSDKAds.Common;
-using JisSDKAds.Core.Tiered.Config;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
