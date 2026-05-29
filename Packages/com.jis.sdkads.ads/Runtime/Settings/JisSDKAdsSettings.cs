@@ -23,6 +23,12 @@ namespace JisSDKAds.Ads.Settings
         [Tooltip("When enabled, ads SDK logs init steps, load success/fail with ad unit IDs, and mediation errors to the Unity Console.")]
         public bool enableAdsDebugLogging = false;
 
+        [Tooltip("After SDK init + Remote Config, preload banner, interstitial, rewarded, and app open.")]
+        public bool preloadAdsOnGameStart = true;
+
+        [Tooltip("When the player owns Remove Ads, skip all startup ad loads (no banner/interstitial/rewarded/app-open preload).")]
+        public bool skipStartupAdLoadWhenRemoveAds = true;
+
         public PlatformAdsProfile GetProfile(BuildTargetPlatform platform) =>
             platform == BuildTargetPlatform.iOS ? ios : android;
 

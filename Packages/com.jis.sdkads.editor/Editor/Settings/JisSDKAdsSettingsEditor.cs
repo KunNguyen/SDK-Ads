@@ -62,6 +62,12 @@ namespace JisSDKAds.Editor
                 EditorGUILayout.PropertyField(serializedObject.FindProperty("enableAdsDebugLogging"),
                     new GUIContent("Ads debug logging",
                         "Logs init steps, ad load/show with unit IDs, and errors. Applied on Play and Apply to Scene."));
+                EditorGUILayout.PropertyField(serializedObject.FindProperty("preloadAdsOnGameStart"),
+                    new GUIContent("Preload ads on game start",
+                        "Load standard formats after init when Remote Config is ready."));
+                EditorGUILayout.PropertyField(serializedObject.FindProperty("skipStartupAdLoadWhenRemoveAds"),
+                    new GUIContent("Skip preload if Remove Ads",
+                        "No startup loads for paying remove-ads players (banner, interstitial, rewarded, app open)."));
 
                 var debugOn = serializedObject.FindProperty("enableAdsDebugLogging").boolValue;
                 if (debugOn)

@@ -98,6 +98,7 @@ namespace JisSDKAds.Ads
                 return;
             }
             settings.ApplyRuntimeDebugSettings();
+            RefreshRemoveAdsFromPersistence();
             EnsureResumeCoordinator();
             _appOpen = new AppOpenAdService(this, this);
             _appOpenUnscaledTime = Time.unscaledTime;
@@ -127,6 +128,7 @@ namespace JisSDKAds.Ads
         public async Task InitializeAsync(bool fetchRemoteConfig = true)
         {
             settings?.ApplyRuntimeDebugSettings();
+            RefreshRemoveAdsFromPersistence();
             DebugAds.LogSdkInit("JisAds", "InitializeAsync", true, $"fetchRemoteConfig={fetchRemoteConfig}");
             AdMobSdkEarlyInitBridge.TryWarmUpFromSettings(settings);
             await InitializeFirebaseAsync(fetchRemoteConfig);
@@ -145,9 +147,14 @@ namespace JisSDKAds.Ads
             _isReady = _core != null && _core.IsInitialized;
             if (_isReady)
             {
-                PreloadStandardFormatsAfterRemoteConfig();
-                TryShowBannerOnStartIfConfigured();
-                StartCoroutine(CoInitializeAppOpenAndResume());
+                if (ShouldPreloadAdsOnGameStart())
+                {
+                    PreloadStandardFormatsAfterRemoteConfig();
+                    TryShowBannerOnStartIfConfigured();
+                    StartCoroutine(CoInitializeAppOpenAndResume());
+                }
+                else
+                    DebugAds.Log("[JisAds] Startup ad preload skipped (settings or Remove Ads).");
             }
 
             DebugAds.LogSdkInit(
@@ -166,6 +173,11 @@ namespace JisSDKAds.Ads
                 return;
             if (_standardFormatsPreloadedAfterRemoteConfig)
                 return;
+            if (!ShouldPreloadAdsOnGameStart())
+            {
+                _standardFormatsPreloadedAfterRemoteConfig = true;
+                return;
+            }
 
             // Only preload when Remote Config has been fetched+activated.
             if (FirebaseManager.Instance == null || !FirebaseManager.Instance.IsRemoteConfigReady)
@@ -180,31 +192,26 @@ namespace JisSDKAds.Ads
 
             _standardFormatsPreloadedAfterRemoteConfig = true;
 
-            // Banner + Interstitial are typically disabled by "remove ads".
-            if (!_isRemoveAds)
-            {
-                provider.Banner?.Load(
-                    onLoaded: () =>
-                    {
-                        DebugAds.Log("[JisAds] Preload Banner: loaded");
-                        TryShowBannerOnStartIfConfigured();
-                    },
-                    onFailed: err =>
-                    {
-                        DebugAds.LogWarning($"[JisAds] Preload Banner failed: {err}");
-                        SchedulePreloadRetry();
-                    });
+            provider.Banner?.Load(
+                onLoaded: () =>
+                {
+                    DebugAds.Log("[JisAds] Preload Banner: loaded");
+                    TryShowBannerOnStartIfConfigured();
+                },
+                onFailed: err =>
+                {
+                    DebugAds.LogWarning($"[JisAds] Preload Banner failed: {err}");
+                    SchedulePreloadRetry();
+                });
 
-                provider.Interstitial?.Load(
-                    onLoaded: () => DebugAds.Log("[JisAds] Preload Interstitial: loaded"),
-                    onFailed: err =>
-                    {
-                        DebugAds.LogWarning($"[JisAds] Preload Interstitial failed: {err}");
-                        SchedulePreloadRetry();
-                    });
-            }
+            provider.Interstitial?.Load(
+                onLoaded: () => DebugAds.Log("[JisAds] Preload Interstitial: loaded"),
+                onFailed: err =>
+                {
+                    DebugAds.LogWarning($"[JisAds] Preload Interstitial failed: {err}");
+                    SchedulePreloadRetry();
+                });
 
-            // Rewarded should remain available even if remove-ads is enabled.
             provider.Rewarded?.Load(
                 onLoaded: () => DebugAds.Log("[JisAds] Preload Rewarded: loaded"),
                 onFailed: err =>
@@ -216,6 +223,9 @@ namespace JisSDKAds.Ads
 
         void SchedulePreloadRetry()
         {
+            if (!ShouldPreloadAdsOnGameStart())
+                return;
+
             if (_preloadRetryScheduled)
                 return;
 
@@ -239,6 +249,9 @@ namespace JisSDKAds.Ads
 
             yield return new WaitForSecondsRealtime(delay);
             _preloadRetryScheduled = false;
+
+            if (!ShouldPreloadAdsOnGameStart())
+                yield break;
 
             // Allow re-attempts by resetting the one-shot flag.
             _standardFormatsPreloadedAfterRemoteConfig = false;
@@ -416,8 +429,45 @@ namespace JisSDKAds.Ads
         public bool CanShowAds() => !_isRemoveAds;
         public bool IsShowingAnyAd() => _isShowingAd;
         public void SetAdsShowingState(bool isShowing) => _isShowingAd = isShowing;
-        public void SetRemoveAds(bool isRemove) => _isRemoveAds = isRemove;
+
+        public void SetRemoveAds(bool isRemove)
+        {
+            if (_isRemoveAds == isRemove)
+                return;
+
+            _isRemoveAds = isRemove;
+            PlayerPrefs.SetInt(Keys.key_local_remove_ads, isRemove ? 1 : 0);
+            PlayerPrefs.Save();
+
+            if (_isRemoveAds)
+                ApplyRemoveAdsSideEffects();
+
+            var legacy = AdsManager.Instance;
+            if (legacy != null && legacy.IsRemoveAds != isRemove)
+                legacy.SetRemoveAds(isRemove);
+        }
+
         public bool IsRemoveAds => _isRemoveAds;
+
+        void RefreshRemoveAdsFromPersistence() =>
+            _isRemoveAds = PlayerPrefs.GetInt(Keys.key_local_remove_ads, 0) == 1;
+
+        bool ShouldPreloadAdsOnGameStart()
+        {
+            if (settings != null && !settings.preloadAdsOnGameStart)
+                return false;
+            if (settings != null && settings.skipStartupAdLoadWhenRemoveAds && _isRemoveAds)
+                return false;
+            return true;
+        }
+
+        void ApplyRemoveAdsSideEffects()
+        {
+            _standardFormatsPreloadedAfterRemoteConfig = true;
+            _preloadRetryScheduled = false;
+            HideBannerAds();
+            DebugAds.Log("[JisAds] Remove Ads active — startup loads suppressed; banner/interstitial show blocked.");
+        }
         #endregion
         #region Standard formats
         public void ShowInterstitial(
@@ -659,11 +709,6 @@ namespace JisSDKAds.Ads
 
             if (UseTieredRewarded)
             {
-                if (!CanShowAds())
-                {
-                    ConsumePendingRewardedCallbacksOnFail();
-                    return;
-                }
                 _tiered.Manager.ShowRewarded(
                     onRewardEarned: ConsumePendingRewardedCallbacksOnRewardGranted,
                     onClosed: () => ConsumePendingRewardedCallbacksOnClose(true),

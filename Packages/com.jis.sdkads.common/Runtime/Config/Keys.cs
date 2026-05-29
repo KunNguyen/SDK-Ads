@@ -4,7 +4,8 @@ using UnityEngine;
 
 namespace JisSDKAds.Common {
      public static class Keys {
-          
+          public const string key_local_remove_ads = "key_local_remove_ads";
+
           public static readonly string key_remote_aoa_active = "show_open_ads";
           public static readonly string key_remote_aoa_show_first_time_active = "show_open_ads_first_open";
 

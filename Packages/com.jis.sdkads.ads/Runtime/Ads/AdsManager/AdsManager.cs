@@ -93,7 +93,6 @@ namespace JisSDKAds.Ads
 
         private readonly UnityEvent onRemoveAdsEvent = new();
 
-        private const string key_local_remove_ads = "key_local_remove_ads";
         private const string key_first_open = "first_open";
         private const float initialization_timeout = 8f;
         private const float showing_ads_done_cooldown = 2f;
@@ -652,17 +651,20 @@ namespace JisSDKAds.Ads
         public void SetRemoveAds(bool isRemove)
         {
             IsRemoveAds = isRemove;
-            PlayerPrefs.SetInt(key_local_remove_ads, isRemove ? 1 : 0);
-            
+            PlayerPrefs.SetInt(Keys.key_local_remove_ads, isRemove ? 1 : 0);
+            PlayerPrefs.Save();
+
             if (IsRemoveAds)
-            {
                 onRemoveAdsEvent.Invoke();
-            }
+
+            var jis = JisAds.Instance;
+            if (jis != null && jis.IsRemoveAds != isRemove)
+                jis.SetRemoveAds(isRemove);
         }
 
         private void LoadRemoveAds()
         {
-            SetRemoveAds(PlayerPrefs.GetInt(key_local_remove_ads, 0) == 1);
+            SetRemoveAds(PlayerPrefs.GetInt(Keys.key_local_remove_ads, 0) == 1);
         }
 
         public void SetAdsShowingState(bool isShowing) => MarkShowingAds(isShowing);
