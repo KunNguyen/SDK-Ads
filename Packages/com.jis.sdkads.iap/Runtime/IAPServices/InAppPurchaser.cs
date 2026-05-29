@@ -298,6 +298,8 @@ namespace JisSDKAds.IAP
             _awaitingEntitlementsReplay = true;
         }
 
+        internal bool IsAwaitingEntitlementsReplay => _awaitingEntitlementsReplay;
+
         #endregion
 
         #region Command Methods
@@ -393,8 +395,6 @@ namespace JisSDKAds.IAP
         {
             if (CrossPlatformValidator == null)
             {
-                if (product != null)
-                    return TryFulfillOrder(product.definition.id, orderInfo, product, isRestore);
                 IAPLogger.LogConsole("Cannot validate purchase: CrossPlatformValidator not configured.");
                 return false;
             }
@@ -440,7 +440,10 @@ namespace JisSDKAds.IAP
                 return true;
             }
 
-            if (CanCrossPlatformValidate() && productReceipt == null && orderInfo != null)
+            // Only enter receipt validation when a validator exists; otherwise TryValidateAndFulfill
+            // would recurse back into TryFulfillOrder and freeze the main thread.
+            if (CrossPlatformValidator != null && CanCrossPlatformValidate() && productReceipt == null &&
+                orderInfo != null)
                 return TryValidateAndFulfill(orderInfo, product, isRestore);
 
             FulfillPurchase(productId, orderInfo, product, productReceipt, isRestore, transactionId);
@@ -539,6 +542,7 @@ namespace JisSDKAds.IAP
             IapIntegration.NotifyPurchaseCompleted(notification);
             EventManager.Trigger(IapEvents.BuySuccess, notification);
             EventManager.Trigger(IapEvents.BuySuccess);
+            EventManager.Trigger(IapEvents.TurnOffLoading);
         }
 
         static bool ShouldPersistEntitlement(IAPPackage pack)

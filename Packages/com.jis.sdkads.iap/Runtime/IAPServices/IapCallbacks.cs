@@ -28,6 +28,13 @@ namespace JisSDKAds.IAP
             LogSectionHeader();
             var reason = failure?.FailureReason.ToString() ?? "unknown";
             inAppPurchaser.IAPLogger.LogConsole($"OnInitialProductsFetchFailed: {reason}");
+            if (inAppPurchaser.IsAwaitingEntitlementsReplay)
+            {
+                inAppPurchaser.IAPLogger.LogConsole(
+                    "Ignoring product subset fetch failure — entitlements replay already in progress.");
+                return;
+            }
+
             inAppPurchaser.CompleteStoreReady(false, $"Product fetch failed: {reason}");
         }
 
