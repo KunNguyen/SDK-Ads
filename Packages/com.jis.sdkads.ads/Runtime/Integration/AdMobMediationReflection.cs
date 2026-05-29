@@ -41,7 +41,6 @@ namespace JisSDKAds.Ads.Integration
 
             var interMode = AdInventoryRemoteConfigResolver.ReadInterstitialMode();
             var rewardMode = AdInventoryRemoteConfigResolver.ReadRewardedMode();
-            AdInventoryRemoteConfigResolver.LogResolvedModes(interMode, rewardMode);
 
             bridge.GetMethod("ApplyInventoryModesFromRemoteConfig", BindingFlags.Public | BindingFlags.Static)
                 ?.Invoke(null, new object[] { manager, setup, interMode, rewardMode });

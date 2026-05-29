@@ -1,3 +1,4 @@
+using JisSDKAds.Ads.Settings;
 using JisSDKAds.Common;
 using JisSDKAds.Firebase;
 using UnityEngine;
@@ -58,6 +59,66 @@ namespace JisSDKAds.Ads.SequentialTier
         {
             DebugAds.Log(
                 $"[RemoteConfig] Inventory mode — interstitial: {interstitial}, rewarded: {rewarded}");
+        }
+
+        /// <summary>
+        /// Applies RC inventory mode to <see cref="SDKSetup"/> before Core / mediation init (JisAds + AdsManager).
+        /// </summary>
+        public static void ApplyInventoryModesToSdkSetup(
+            SDKSetup setup,
+            AdInventorySetupMode interstitialMode,
+            AdInventorySetupMode rewardedMode)
+        {
+            if (setup?.admobAdsSetup == null)
+                return;
+
+            var admob = setup.admobAdsSetup;
+            ApplyInventoryMode(setup, admob, isInterstitial: true, interstitialMode);
+            ApplyInventoryMode(setup, admob, isInterstitial: false, rewardedMode);
+            LogResolvedModes(interstitialMode, rewardedMode);
+        }
+
+        /// <summary>Reads RC when ready; otherwise keeps editor defaults on <paramref name="setup"/>.</summary>
+        public static void ApplyInventoryModesFromRemoteConfig(SDKSetup setup)
+        {
+            if (setup == null)
+                return;
+
+            if (FirebaseManager.Instance == null || !FirebaseManager.Instance.IsRemoteConfigReady)
+            {
+                DebugAds.LogWarning(
+                    "[RemoteConfig] Inventory mode not ready — using editor defaults on SDKSetup.");
+                return;
+            }
+
+            ApplyInventoryModesToSdkSetup(
+                setup,
+                ReadInterstitialMode(),
+                ReadRewardedMode());
+        }
+
+        static void ApplyInventoryMode(
+            SDKSetup setup,
+            AdmobAdSetup admob,
+            bool isInterstitial,
+            AdInventorySetupMode mode)
+        {
+            var tierConfig = isInterstitial
+                ? admob.InterstitialTierConfig
+                : admob.RewardedTierConfig;
+            if (tierConfig == null)
+                return;
+
+            var tiered = mode == AdInventorySetupMode.Tiered;
+            tierConfig.enableSequentialLadder = tiered;
+
+            if (!tiered)
+                return;
+
+            if (isInterstitial)
+                setup.interstitialAdsMediationType = AdsMediationType.ADMOB;
+            else
+                setup.rewardedAdsMediationType = AdsMediationType.ADMOB;
         }
     }
 }

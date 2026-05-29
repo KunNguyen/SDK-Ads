@@ -70,13 +70,15 @@ namespace JisSDKAds.Ads.SequentialTier
             if (FirebaseManager.Instance == null || !FirebaseManager.Instance.IsRemoteConfigReady)
                 return;
 
-            if (TryReadTierIds(SequentialTierAdFormat.Interstitial, profile, out var interIds))
+            if (admob.InterstitialTierConfig.enableSequentialLadder
+                && TryReadTierIds(SequentialTierAdFormat.Interstitial, profile, out var interIds))
             {
                 ApplyToConfig(admob.InterstitialTierConfig, interIds);
                 LogAppliedIds(SequentialTierAdFormat.Interstitial, admob.InterstitialTierConfig);
             }
 
-            if (TryReadTierIds(SequentialTierAdFormat.Rewarded, profile, out var rewardIds))
+            if (admob.RewardedTierConfig.enableSequentialLadder
+                && TryReadTierIds(SequentialTierAdFormat.Rewarded, profile, out var rewardIds))
             {
                 ApplyToConfig(admob.RewardedTierConfig, rewardIds);
                 LogAppliedIds(SequentialTierAdFormat.Rewarded, admob.RewardedTierConfig);

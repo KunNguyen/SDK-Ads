@@ -105,16 +105,12 @@ namespace JisSDKAds.Providers.AdMob
             var controller = manager.GetAdsMediationController(AdsMediationType.ADMOB) as AdmobMediationController;
             if (controller?.m_AdmobAdSetup == null) return;
 
-            ApplyInventoryModeToRuntime(
+            AdInventoryRemoteConfigResolver.ApplyInventoryModesToSdkSetup(
                 setup,
-                controller.m_AdmobAdSetup,
-                isInterstitial: true,
-                interstitialMode);
-            ApplyInventoryModeToRuntime(
-                setup,
-                controller.m_AdmobAdSetup,
-                isInterstitial: false,
+                interstitialMode,
                 rewardedMode);
+
+            SyncInventoryModeToControllerAdmob(setup.admobAdsSetup, controller.m_AdmobAdSetup);
 
             controller.ResetSequentialTierLoadersAfterRemoteConfig();
             DebugAds.Log(
@@ -122,26 +118,15 @@ namespace JisSDKAds.Providers.AdMob
 #endif
         }
 
-        static void ApplyInventoryModeToRuntime(
-            SDKSetup setup,
-            AdmobAdSetup admob,
-            bool isInterstitial,
-            AdInventorySetupMode mode)
+        static void SyncInventoryModeToControllerAdmob(AdmobAdSetup sdkAdmob, AdmobAdSetup controllerAdmob)
         {
-            var tierConfig = isInterstitial
-                ? admob.InterstitialTierConfig
-                : admob.RewardedTierConfig;
-            if (tierConfig == null) return;
+            if (sdkAdmob == null || controllerAdmob == null || ReferenceEquals(sdkAdmob, controllerAdmob))
+                return;
 
-            var tiered = mode == AdInventorySetupMode.Tiered;
-            tierConfig.enableSequentialLadder = tiered;
-
-            if (!tiered) return;
-
-            if (isInterstitial)
-                setup.interstitialAdsMediationType = AdsMediationType.ADMOB;
-            else
-                setup.rewardedAdsMediationType = AdsMediationType.ADMOB;
+            controllerAdmob.InterstitialTierConfig.enableSequentialLadder =
+                sdkAdmob.InterstitialTierConfig.enableSequentialLadder;
+            controllerAdmob.RewardedTierConfig.enableSequentialLadder =
+                sdkAdmob.RewardedTierConfig.enableSequentialLadder;
         }
 
         public static void ApplyTierRemoteUnitIds(

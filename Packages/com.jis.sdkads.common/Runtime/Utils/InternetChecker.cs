@@ -86,7 +86,7 @@ namespace JisSDKAds.Common
                     }
 
                     IsChecking = false;
-                    yield return new WaitForSeconds(30);
+                    yield return new WaitForSeconds(120);
                }
           }
 

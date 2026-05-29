@@ -134,7 +134,7 @@ namespace JisSDKAds.Ads
             DebugAds.LogSdkInit("JisAds", "InitializeAsync", true, $"fetchRemoteConfig={fetchRemoteConfig}");
             AdMobSdkEarlyInitBridge.TryWarmUpFromSettings(settings);
             await InitializeFirebaseAsync(fetchRemoteConfig);
-            ApplyRemoteTierInventoryFromSettings();
+            ApplyRemoteAdInventoryFromConfig();
             InitializeCoreFlow();
 
             // Core-only readiness: wait a bit for Core to finish initializing.
@@ -475,12 +475,16 @@ namespace JisSDKAds.Ads
             if (resumeCoordinator == null)
                 resumeCoordinator = gameObject.AddComponent<ResumeAdCoordinator>();
         }
-        void ApplyRemoteTierInventoryFromSettings()
+        void ApplyRemoteAdInventoryFromConfig()
         {
-            if (settings == null) return;
-            var profile = settings.GetActiveProfile();
-            if (profile == null) return;
+            if (settings == null)
+                return;
 
+            var profile = settings.GetActiveProfile();
+            if (profile?.sdkSetup == null)
+                return;
+
+            AdInventoryRemoteConfigResolver.ApplyInventoryModesFromRemoteConfig(profile.sdkSetup);
             SequentialTierRemoteConfigResolver.ApplyResolvedIdsToAdmobSetup(profile);
         }
 
