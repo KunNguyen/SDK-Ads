@@ -11,22 +11,30 @@ namespace JisSDKAds.Ads.Integration
         const string BridgeTypeName =
             "JisSDKAds.Providers.AdMob.SequentialTier.AdMobSequentialTierBridge, JisSDKAds.Providers.AdMob";
 
-        public static IAdService TryDecorateInterstitial(
+        public static IAdService TryDecorate(
             IAdService provider,
             MonoBehaviour host,
-            SequentialTierConfig tierConfig)
+            SequentialTierConfig interstitialConfig,
+            SequentialTierConfig rewardedConfig)
         {
-            if (provider == null || host == null || tierConfig == null || !tierConfig.enableSequentialLadder)
+            if (provider == null || host == null)
+                return provider;
+
+            bool useInterstitial = interstitialConfig != null && interstitialConfig.enableSequentialLadder;
+            bool useRewarded = rewardedConfig != null && rewardedConfig.enableSequentialLadder;
+            if (!useInterstitial && !useRewarded)
                 return provider;
 
             var bridge = Type.GetType(BridgeTypeName);
             var method = bridge?.GetMethod(
-                "TryDecorateInterstitial",
+                "TryDecorate",
                 BindingFlags.Public | BindingFlags.Static);
             if (method == null)
                 return provider;
 
-            return method.Invoke(null, new object[] { provider, host, tierConfig }) as IAdService ?? provider;
+            return method.Invoke(null, new object[] { provider, host, interstitialConfig, rewardedConfig })
+                   as IAdService
+                   ?? provider;
         }
     }
 }

@@ -10,16 +10,27 @@ namespace JisSDKAds.Providers.AdMob.SequentialTier
     /// </summary>
     public static class AdMobSequentialTierBridge
     {
-        public static IAdService TryDecorateInterstitial(
+        public static IAdService TryDecorate(
             IAdService provider,
             MonoBehaviour host,
-            SequentialTierConfig tierConfig)
+            SequentialTierConfig interstitialConfig,
+            SequentialTierConfig rewardedConfig)
         {
-            if (provider == null || host == null || tierConfig == null || !tierConfig.enableSequentialLadder)
+            if (provider == null || host == null)
                 return provider;
 
-            var sequential = new SequentialTierInterstitialAd(host, tierConfig);
-            return new SequentialTierAdServiceDecorator(provider, sequential);
+            SequentialTierInterstitialAd interstitial = null;
+            if (interstitialConfig != null && interstitialConfig.enableSequentialLadder)
+                interstitial = new SequentialTierInterstitialAd(host, interstitialConfig);
+
+            SequentialTierRewardedAd rewarded = null;
+            if (rewardedConfig != null && rewardedConfig.enableSequentialLadder)
+                rewarded = new SequentialTierRewardedAd(host, rewardedConfig);
+
+            if (interstitial == null && rewarded == null)
+                return provider;
+
+            return new SequentialTierAdServiceDecorator(provider, interstitial, rewarded);
         }
     }
 }

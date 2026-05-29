@@ -25,11 +25,12 @@ namespace JisSDKAds.Ads
 
         void EnsureRewardedTierLoader()
         {
-            if (_rewardedTierLoader != null || RewardedTierConfig == null) return;
+            if (_rewardedTierLoader != null || RewardedTierConfig == null)
+                return;
 
             _rewardedTierLoader = new SequentialTierLoader(
                 this,
-                "rwd",
+                "reward",
                 "rewarded",
                 RewardedTierConfig,
                 () => new AdMobRewardedAdapter());

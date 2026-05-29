@@ -327,7 +327,7 @@ namespace JisSDKAds.Ads
                 return;
             }
             var provider = providerConfig.CreateProvider();
-            provider = DecorateSequentialTierInterstitialIfEnabled(provider, profile);
+            provider = DecorateSequentialAdsIfEnabled(provider, profile);
             if (_tiered != null && tieredConfig != null && tieredConfig.EnableTieredInventory)
                 provider = new TieredAdServiceWrapper(provider, tieredConfig, _tiered.Manager);
             _core.RegisterProvider(providerConfig.ProviderId, provider);
@@ -360,19 +360,30 @@ namespace JisSDKAds.Ads
         static TieredAdsConfig ResolveTieredConfig(PlatformAdsProfile profile) =>
             profile?.tieredAdsConfig;
 
-        IAdService DecorateSequentialTierInterstitialIfEnabled(IAdService provider, PlatformAdsProfile profile)
+        IAdService DecorateSequentialAdsIfEnabled(IAdService provider, PlatformAdsProfile profile)
         {
 #if UNITY_AD_ADMOB
             if (profile?.mediation != AdsMediationType.ADMOB)
                 return provider;
 
-            var tierConfig = profile.sdkSetup?.admobAdsSetup?.InterstitialTierConfig;
-            if (tierConfig == null || !tierConfig.enableSequentialLadder)
-                return provider;
+            var admob = profile.sdkSetup?.admobAdsSetup;
+            var interstitialConfig = admob?.InterstitialTierConfig;
+            var rewardedConfig = admob?.RewardedTierConfig;
 
-            var decorated = AdMobSequentialTierReflection.TryDecorateInterstitial(provider, this, tierConfig);
+            var decorated = AdMobSequentialTierReflection.TryDecorate(
+                provider,
+                this,
+                interstitialConfig,
+                rewardedConfig);
+
             if (!ReferenceEquals(decorated, provider))
-                DebugAds.Log("[JisAds] Interstitial uses SequentialTier ladder (Premium→Fill) via Core.");
+            {
+                if (interstitialConfig != null && interstitialConfig.enableSequentialLadder)
+                    DebugAds.Log("[JisAds] Interstitial uses SequentialTier ladder (Premium→Fill) via Core.");
+                if (rewardedConfig != null && rewardedConfig.enableSequentialLadder)
+                    DebugAds.Log("[JisAds] Rewarded uses SequentialTier ladder (Premium→Fill) via Core.");
+            }
+
             return decorated;
 #else
             return provider;
