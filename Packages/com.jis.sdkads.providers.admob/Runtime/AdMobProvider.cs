@@ -345,7 +345,7 @@ namespace JisSDKAds.Providers.AdMob
 
         public void Show(Action onShown = null, Action<string> onFailed = null)
         {
-            if (_banner == null)
+            if (_banner == null || !_isAdLoaded)
             {
                 DebugAds.LogWarning($"[AdMob][Banner] show_blocked_not_loaded adUnitId={_adUnitId}");
                 onFailed?.Invoke("Banner not loaded");

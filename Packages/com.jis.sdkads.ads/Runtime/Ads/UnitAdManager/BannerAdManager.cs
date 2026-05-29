@@ -2,7 +2,6 @@
 using System.Threading.Tasks;
 using JisSDKAds.Ads.UnitAdManagers.Interface;
 using JisSDKAds.Common;
-using JisSDKAds.Firebase;
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -10,10 +9,11 @@ namespace JisSDKAds.Ads.UnitAdManagers
 {
      public class BannerAdManager : UnitAdManager, IBannerAdUnit
      {
-          public override bool IsShowingAd { get; protected set; }    
+          public override bool IsShowingAd { get; protected set; }
           [field: SerializeField] public bool IsAutoRefreshBanner { get; set; } = false;
           [field: SerializeField] public float BannerAutoResetTime { get; set; } = 15f;
           private CancellationTokenSource AutoResetCancellationTokenSource { get; set; }
+          private bool _wantsBannerVisible;
 
           public override void Init()
           {
@@ -35,19 +35,14 @@ namespace JisSDKAds.Ads.UnitAdManagers
           protected override void UpdateRemoteConfigValue()
           {
                base.UpdateRemoteConfigValue();
-               IsAutoRefreshBanner = FirebaseManager.Instance
-                    .GetConfigValue(Keys.key_remote_banner_auto_refresh).BooleanValue;
-               DebugAds.Log($"=============== Active {IsAutoRefreshBanner}");
-               BannerAutoResetTime = (float)FirebaseManager.Instance
-                    .GetConfigValue(Keys.key_remote_banner_auto_refresh_time).DoubleValue;
+               BannerRefreshSettings.Resolve(SDKSetup, out var enabled, out var interval);
+               IsAutoRefreshBanner = enabled;
+               BannerAutoResetTime = interval;
+               DebugAds.Log($"[BannerAdManager] autoRefresh={IsAutoRefreshBanner} interval={BannerAutoResetTime:0.#}s");
                if (IsAutoRefreshBanner)
-               {
                     StartAutoReset();
-               }
                else
-               {
                     StopAutoReset();
-               }
           }
 
           public override void RequestAd()
@@ -58,28 +53,34 @@ namespace JisSDKAds.Ads.UnitAdManagers
                     return;
                mediation.RequestBannerAds();
           }
+
           private void StartAutoReset()
           {
                StopAutoReset();
                _ = WaitForBannerAutoReset();
           }
+
           private void StopAutoReset()
           {
                AutoResetCancellationTokenSource?.Cancel();
                AutoResetCancellationTokenSource?.Dispose();
                AutoResetCancellationTokenSource = new CancellationTokenSource();
           }
-          
+
           private async Task WaitForBannerAutoReset()
           {
-               while(!AutoResetCancellationTokenSource.IsCancellationRequested && !IsRemoveAds() && !IsCheatAds() && IsShowingAd)
+               var token = AutoResetCancellationTokenSource.Token;
+               while (!token.IsCancellationRequested && !IsRemoveAds() && !IsCheatAds() && _wantsBannerVisible)
                {
-                    await Task.Delay((int)(BannerAutoResetTime * 1000), AutoResetCancellationTokenSource.Token);
-                    if (IsShowingAd)
-                    {
-                         DestroyAd();
-                         RequestAd();
-                    }
+                    await Task.Delay((int)(BannerAutoResetTime * 1000), token);
+                    if (token.IsCancellationRequested || !_wantsBannerVisible)
+                         break;
+
+                    if (!TryGetMediationController(out var mediation))
+                         continue;
+
+                    mediation.DestroyBannerAds();
+                    mediation.RequestBannerAds();
                }
           }
 
@@ -87,52 +88,74 @@ namespace JisSDKAds.Ads.UnitAdManagers
                UnityAction showFailCallback = null, bool isTracking = true, bool isSkipCapping = false)
           {
                base.CallToShowAd(placementName, closedCallback, showSuccessCallback, showFailCallback, isTracking, isSkipCapping);
-               Debug.Log("Banner CallToShowAd");
-               if (IsCheatAds() || IsRemoveAds())return;
+               if (IsCheatAds() || IsRemoveAds()) return;
                Show();
           }
+
           public override void Show()
           {
                if (!TryGetMediationController(out var mediation))
                     return;
-               Debug.Log("Banner ShowAd");
+               _wantsBannerVisible = true;
                IsShowingAd = true;
                mediation.ShowBannerAds();
+               if (IsAutoRefreshBanner)
+                    StartAutoReset();
           }
 
           public override void Hide()
           {
                if (!TryGetMediationController(out var mediation))
                     return;
-               Debug.Log("Banner HideAd");
+               _wantsBannerVisible = false;
                IsShowingAd = false;
+               StopAutoReset();
                mediation.HideBannerAds();
           }
-          
+
+          public override void OnAdLoadSuccess()
+          {
+               AdLoadSuccessCallback?.Invoke();
+               if (_wantsBannerVisible)
+               {
+                    IsShowingAd = true;
+                    if (TryGetMediationController(out var mediation))
+                         mediation.ShowBannerAds();
+               }
+          }
+
+          public override void OnAdLoadFail()
+          {
+               AdLoadFailCallback?.Invoke();
+          }
+
           public override void OnAdShowSuccess()
           {
                IsShowingAd = true;
           }
+
           public override void OnAdShowFailed()
           {
           }
 
           public void OnAdCollapsed()
           {
-               Debug.Log("Banner OnAdCollapsed");
+               DebugAds.Log("Banner OnAdCollapsed");
           }
+
           public void OnAdExpanded()
           {
-               Debug.Log("Banner OnAdExpanded");
+               DebugAds.Log("Banner OnAdExpanded");
           }
+
           public override void DestroyAd()
           {
                base.DestroyAd();
                if (!TryGetMediationController(out var mediation))
                     return;
-               Debug.Log("Banner DestroyAd");
-               IsShowingAd = false;
                mediation.DestroyBannerAds();
+               if (!_wantsBannerVisible)
+                    IsShowingAd = false;
           }
 
           public override bool IsLoaded()

@@ -135,8 +135,19 @@ namespace JisSDKAds.Editor
                     "Show on start",
                     setup.isBannerShowingOnStart);
                 setup.isAutoRefreshBannerByCode = EditorGUILayout.Toggle(
-                    "Auto refresh by code",
+                    "Auto refresh (local default)",
                     setup.isAutoRefreshBannerByCode);
+                if (setup.isAutoRefreshBannerByCode)
+                {
+                    setup.bannerAutoRefreshIntervalSeconds = EditorGUILayout.FloatField(
+                        "Refresh interval (seconds)",
+                        setup.bannerAutoRefreshIntervalSeconds);
+                }
+
+                EditorGUILayout.HelpBox(
+                    "Banner uses a single ad unit (no tiered inventory). " +
+                    "When Firebase RC is active, banner_auto_refresh and banner_auto_refresh_time override local values.",
+                    MessageType.None);
 
                 DrawUnitIds(
                     setup.bannerAdsMediationType,
@@ -144,7 +155,8 @@ namespace JisSDKAds.Editor
                     "Banner ad unit ID",
                     () => setup.bannerAdUnitID_MAX,
                     v => setup.bannerAdUnitID_MAX = v,
-                    setup.admobAdsSetup.BannerAdUnitID);
+                    setup.admobAdsSetup.BannerAdUnitID,
+                    singleIdOnly: true);
             });
         }
 
@@ -265,7 +277,8 @@ namespace JisSDKAds.Editor
             string maxLabel,
             Func<string> getMaxId,
             Action<string> setMaxId,
-            AdScheduleUnitID adMobSchedule)
+            AdScheduleUnitID adMobSchedule,
+            bool singleIdOnly = false)
         {
             switch (mediation)
             {
@@ -274,12 +287,25 @@ namespace JisSDKAds.Editor
                     break;
 
                 case AdsMediationType.ADMOB:
-                    DrawAdMobUnitIdList(platform, adMobSchedule);
+                    if (singleIdOnly)
+                        DrawAdMobSingleUnitId(platform, adMobSchedule, maxLabel);
+                    else
+                        DrawAdMobUnitIdList(platform, adMobSchedule);
                     break;
 
                 case AdsMediationType.NONE:
                     break;
             }
+        }
+
+        static void DrawAdMobSingleUnitId(BuildTargetPlatform platform, AdScheduleUnitID schedule, string label)
+        {
+            if (schedule == null) return;
+
+            var ids = schedule.GetPlatformList(platform) ?? new List<string>();
+            var current = ids.Count > 0 ? ids[0] : string.Empty;
+            var next = EditorGUILayout.TextField(label, current ?? string.Empty);
+            schedule.SetPlatformList(platform, new List<string> { next ?? string.Empty });
         }
 
         static void DrawAdMobUnitIdList(BuildTargetPlatform platform, AdScheduleUnitID schedule)

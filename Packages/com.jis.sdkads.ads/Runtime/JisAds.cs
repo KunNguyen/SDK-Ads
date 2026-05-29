@@ -62,6 +62,16 @@ namespace JisSDKAds.Ads
         private int _preloadRetryAttempt;
         private const int PreloadMaxRetries = 3;
         private bool _preloadRetryScheduled;
+        private bool _bannerWantsVisible;
+        private bool _bannerAutoRefreshEnabled;
+        private float _bannerAutoRefreshIntervalSec = BannerRefreshSettings.DefaultIntervalSeconds;
+        private Coroutine _bannerAutoRefreshCoroutine;
+        enum StandardAdPreloadFormat
+        {
+            Banner,
+            Interstitial,
+            Rewarded
+        }
         public bool IsReady => _isReady;
         public bool UseCoreForStandardFormats => useCoreForStandardFormats && _core != null && _core.IsInitialized;
         public bool UseTieredInterstitial =>
@@ -118,6 +128,7 @@ namespace JisSDKAds.Ads
         {
             if (Instance == this)
                 _tiered?.Shutdown();
+            StopBannerAutoRefresh();
             UnbindCoreCappingEvents();
         }
         private void Start()
@@ -147,10 +158,10 @@ namespace JisSDKAds.Ads
             _isReady = _core != null && _core.IsInitialized;
             if (_isReady)
             {
+                ApplyBannerRemoteConfig();
                 if (ShouldPreloadAdsOnGameStart())
                 {
                     PreloadStandardFormatsAfterRemoteConfig();
-                    TryShowBannerOnStartIfConfigured();
                     StartCoroutine(CoInitializeAppOpenAndResume());
                 }
                 else
@@ -179,49 +190,69 @@ namespace JisSDKAds.Ads
                 return;
             }
 
-            // Only preload when Remote Config has been fetched+activated.
             if (FirebaseManager.Instance == null || !FirebaseManager.Instance.IsRemoteConfigReady)
                 return;
 
             if (_core == null || !_core.IsInitialized)
                 return;
 
-            var provider = _core.PrimaryProvider;
-            if (provider == null)
+            _standardFormatsPreloadedAfterRemoteConfig = true;
+            PreloadBannerAd(isStartup: true);
+            PreloadInterstitialAd();
+            PreloadRewardedAd();
+        }
+
+        void PreloadBannerAd(bool isStartup = false)
+        {
+            if (!UseCoreForStandardFormats || _core?.PrimaryProvider?.Banner == null)
                 return;
 
-            _standardFormatsPreloadedAfterRemoteConfig = true;
-
-            provider.Banner?.Load(
+            var preserveVisible = _bannerWantsVisible;
+            _core.PrimaryProvider.Banner.Load(
                 onLoaded: () =>
                 {
                     DebugAds.Log("[JisAds] Preload Banner: loaded");
-                    TryShowBannerOnStartIfConfigured();
+                    if (isStartup)
+                        TryShowBannerOnStartIfConfigured();
+                    else if (preserveVisible)
+                        ShowBannerAds();
                 },
                 onFailed: err =>
                 {
                     DebugAds.LogWarning($"[JisAds] Preload Banner failed: {err}");
-                    SchedulePreloadRetry();
+                    SchedulePreloadRetry(StandardAdPreloadFormat.Banner);
                 });
+        }
 
-            provider.Interstitial?.Load(
+        void PreloadInterstitialAd()
+        {
+            if (!UseCoreForStandardFormats || _core?.PrimaryProvider?.Interstitial == null)
+                return;
+
+            _core.PrimaryProvider.Interstitial.Load(
                 onLoaded: () => DebugAds.Log("[JisAds] Preload Interstitial: loaded"),
                 onFailed: err =>
                 {
                     DebugAds.LogWarning($"[JisAds] Preload Interstitial failed: {err}");
-                    SchedulePreloadRetry();
+                    SchedulePreloadRetry(StandardAdPreloadFormat.Interstitial);
                 });
+        }
 
-            provider.Rewarded?.Load(
+        void PreloadRewardedAd()
+        {
+            if (!UseCoreForStandardFormats || _core?.PrimaryProvider?.Rewarded == null)
+                return;
+
+            _core.PrimaryProvider.Rewarded.Load(
                 onLoaded: () => DebugAds.Log("[JisAds] Preload Rewarded: loaded"),
                 onFailed: err =>
                 {
                     DebugAds.LogWarning($"[JisAds] Preload Rewarded failed: {err}");
-                    SchedulePreloadRetry();
+                    SchedulePreloadRetry(StandardAdPreloadFormat.Rewarded);
                 });
         }
 
-        void SchedulePreloadRetry()
+        void SchedulePreloadRetry(StandardAdPreloadFormat format)
         {
             if (!ShouldPreloadAdsOnGameStart())
                 return;
@@ -233,12 +264,11 @@ namespace JisSDKAds.Ads
                 return;
 
             _preloadRetryScheduled = true;
-            StartCoroutine(CoRetryPreloadStandardFormats());
+            StartCoroutine(CoRetryPreload(format));
         }
 
-        IEnumerator CoRetryPreloadStandardFormats()
+        IEnumerator CoRetryPreload(StandardAdPreloadFormat format)
         {
-            // simple backoff: 2s, 5s, 10s
             _preloadRetryAttempt++;
             var delay = _preloadRetryAttempt switch
             {
@@ -253,9 +283,77 @@ namespace JisSDKAds.Ads
             if (!ShouldPreloadAdsOnGameStart())
                 yield break;
 
-            // Allow re-attempts by resetting the one-shot flag.
-            _standardFormatsPreloadedAfterRemoteConfig = false;
-            PreloadStandardFormatsAfterRemoteConfig();
+            switch (format)
+            {
+                case StandardAdPreloadFormat.Banner:
+                    PreloadBannerAd();
+                    break;
+                case StandardAdPreloadFormat.Interstitial:
+                    PreloadInterstitialAd();
+                    break;
+                case StandardAdPreloadFormat.Rewarded:
+                    PreloadRewardedAd();
+                    break;
+            }
+        }
+
+        public void ApplyBannerRemoteConfig()
+        {
+            var setup = settings?.GetActiveProfile()?.sdkSetup;
+            BannerRefreshSettings.Resolve(setup, out _bannerAutoRefreshEnabled, out _bannerAutoRefreshIntervalSec);
+            DebugAds.Log(
+                $"[JisAds] Banner auto-refresh={_bannerAutoRefreshEnabled} interval={_bannerAutoRefreshIntervalSec:0.#}s");
+            RestartBannerAutoRefresh();
+        }
+
+        void RestartBannerAutoRefresh()
+        {
+            StopBannerAutoRefresh();
+            if (!_bannerAutoRefreshEnabled || !CanShowAds() || !UseCoreForStandardFormats)
+                return;
+
+            _bannerAutoRefreshCoroutine = StartCoroutine(CoBannerAutoRefresh());
+        }
+
+        void StopBannerAutoRefresh()
+        {
+            if (_bannerAutoRefreshCoroutine != null)
+            {
+                StopCoroutine(_bannerAutoRefreshCoroutine);
+                _bannerAutoRefreshCoroutine = null;
+            }
+        }
+
+        IEnumerator CoBannerAutoRefresh()
+        {
+            while (_bannerAutoRefreshEnabled && CanShowAds() && UseCoreForStandardFormats)
+            {
+                yield return new WaitForSecondsRealtime(_bannerAutoRefreshIntervalSec);
+                if (!_bannerAutoRefreshEnabled || !CanShowAds())
+                    yield break;
+
+                if (!_bannerWantsVisible)
+                    continue;
+
+                RefreshVisibleBanner();
+            }
+        }
+
+        void RefreshVisibleBanner()
+        {
+            if (!UseCoreForStandardFormats || _core?.PrimaryProvider?.Banner == null)
+                return;
+
+            DebugAds.Log("[JisAds] Banner auto-refresh reload");
+            _core.PrimaryProvider.Banner.Load(
+                onLoaded: () =>
+                {
+                    if (_bannerWantsVisible)
+                        _core.ShowBanner(
+                            onShown: () => DebugAds.Log("[JisAds] Banner auto-refresh shown"),
+                            onFailed: err => DebugAds.LogWarning($"[JisAds] Banner auto-refresh show failed: {err}"));
+                },
+                onFailed: err => DebugAds.LogWarning($"[JisAds] Banner auto-refresh load failed: {err}"));
         }
         IEnumerator CoInitializeAppOpenAndResume()
         {
@@ -278,6 +376,7 @@ namespace JisSDKAds.Ads
         {
             _appOpen?.ApplyRemoteConfig();
             resumeCoordinator?.ApplyRemoteConfig();
+            ApplyBannerRemoteConfig();
         }
         public async Task InitializeFirebaseAsync(bool fetchRemoteConfig = true)
         {
@@ -465,6 +564,8 @@ namespace JisSDKAds.Ads
         {
             _standardFormatsPreloadedAfterRemoteConfig = true;
             _preloadRetryScheduled = false;
+            _bannerWantsVisible = false;
+            StopBannerAutoRefresh();
             HideBannerAds();
             DebugAds.Log("[JisAds] Remove Ads active — startup loads suppressed; banner/interstitial show blocked.");
         }
@@ -782,9 +883,11 @@ namespace JisSDKAds.Ads
 
             if (UseCoreForStandardFormats)
             {
+                _bannerWantsVisible = true;
                 _core.ShowBanner(
                     onShown: () => DebugAds.Log("[JisAds] Banner shown"),
                     onFailed: err => Debug.LogWarning($"[JisAds] Banner show failed: {err}"));
+                RestartBannerAutoRefresh();
                 return;
             }
 
@@ -803,11 +906,14 @@ namespace JisSDKAds.Ads
             DebugAds.Log("[JisAds] isBannerShowingOnStart=true — showing banner");
             ShowBannerAds();
         }
+
         public void HideBannerAds()
         {
+            _bannerWantsVisible = false;
             if (UseCoreForStandardFormats)
             {
                 _core.HideBanner();
+                StopBannerAutoRefresh();
                 return;
             }
         }

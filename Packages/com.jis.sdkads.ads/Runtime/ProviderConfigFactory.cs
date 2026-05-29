@@ -80,9 +80,10 @@ namespace JisSDKAds.Ads
                     var rewardId = FirstNonEmpty(rewardList0, rewardTierPremium, rewardTierHigh, fallbackReward) ?? "";
 
                     admob?.EnsureInitialized();
-                    string bannerList0 = banner != null && banner.Count > 0 ? banner[0] : null;
-                    string bannerScheduleId = admob?.BannerAdUnitID?.ID;
-                    var bannerId = FirstNonEmpty(bannerList0, bannerScheduleId) ?? "";
+                    // Banner is always single-inventory (first unit id only; no tiered rotation).
+                    var bannerId = BannerRefreshSettings.ResolveSingleBannerUnitId(profile.sdkSetup);
+                    if (string.IsNullOrEmpty(bannerId))
+                        bannerId = banner != null && banner.Count > 0 ? banner[0]?.Trim() : null ?? "";
 
                     SetField(setup, "interstitialAdUnitId", interId);
                     SetField(setup, "rewardedAdUnitId", rewardId);

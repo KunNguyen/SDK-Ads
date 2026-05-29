@@ -26,6 +26,7 @@ namespace JisSDKAds.Common {
           public static readonly string key_remote_inter_reward_interspersed = "inter_reward_interspersed";
           public static readonly string key_remote_inter_reward_interspersed_time = "inter_reward_interspersed_time";
           public static readonly string key_remote_free_ads = "time_free_ads";
+          // Banner: single unit only (not tiered). Auto-refresh defaults to false.
           public static readonly string key_remote_banner_auto_refresh = "banner_auto_refresh";
           public static readonly string key_remote_banner_auto_refresh_time = "banner_auto_refresh_time";
 

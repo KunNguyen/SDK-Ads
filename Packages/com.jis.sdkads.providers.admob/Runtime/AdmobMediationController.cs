@@ -78,6 +78,7 @@ namespace JisSDKAds.Ads
           private BannerView BannerViewAds { get; set; }
           public AdPosition m_BannerPosition;
           public bool IsBannerShowingOnStart = false;
+          private bool _bannerAdLoaded;
           private int retryTemp = 0;
 
           public override void InitBannerAds(
@@ -121,7 +122,8 @@ namespace JisSDKAds.Ads
           {
                base.RequestBannerAds();
                DestroyBannerAds();
-               BannerViewAds ??= CreateBannerView();
+               BannerViewAds = CreateBannerView();
+               _bannerAdLoaded = false;
                LoadBannerAds(BannerViewAds);
           }
 
@@ -160,20 +162,20 @@ namespace JisSDKAds.Ads
 
           public override bool IsBannerLoaded()
           {
-               return BannerViewAds != null;
+               return BannerViewAds != null && _bannerAdLoaded;
           }
 
           private void OnAdBannerLoaded(BannerView bannerView)
           {
                DebugAds.Log("HandleAdLoaded event received");
-               m_AdmobAdSetup.BannerAdUnitID.Refresh();
+               _bannerAdLoaded = true;
                BannerCallbacks.LoadedSuccess?.Invoke();
           }
 
           private void OnAdBannerFailedToLoad(LoadAdError args)
           {
                DebugAds.Log("AdmobBanner Fail: " + args.GetMessage());
-               m_AdmobAdSetup.BannerAdUnitID.ChangeID();
+               _bannerAdLoaded = false;
                BannerCallbacks.LoadedFail?.Invoke();
           }
           private void OnAdBannerOpened(BannerView bannerView)
@@ -205,6 +207,7 @@ namespace JisSDKAds.Ads
           public override void DestroyBannerAds()
           {
                base.DestroyBannerAds();
+               _bannerAdLoaded = false;
                if (BannerViewAds != null)
                {
                     DebugAds.Log("Destroying banner ad.");
