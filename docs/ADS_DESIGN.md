@@ -2,7 +2,7 @@
 
 > Tài liệu mô tả kiến trúc và thiết kế hệ thống quảng cáo trong monorepo **SDK-Ads** (Unity UPM).  
 > Cập nhật theo cấu trúc v4 — dual stack: **JisAds** (facade) + **Legacy AdsManager** + **Core AdManager**.  
-> **Tiered Inventory (optional):** [TIERED_INVENTORY.md](TIERED_INVENTORY.md)
+> **Sequential tier (inter/reward):** [TIERED_INTERSTITIAL.md](TIERED_INTERSTITIAL.md)
 
 ---
 
@@ -644,7 +644,7 @@ Abstract base `AdsMediationController` định nghĩa: `Init*`, `Request*`, `Sho
 | [MIGRATION_V4.md](MIGRATION_V4.md) | Migration từ v3 |
 | [ADS_EDITOR_SETUP.md](ADS_EDITOR_SETUP.md) | Editor setup Ads |
 | [IAP_EDITOR_SETUP.md](IAP_EDITOR_SETUP.md) | Editor setup IAP |
-| [TIERED_INVENTORY.md](TIERED_INVENTORY.md) | Tiered ad inventory (optional) |
+| [TIERED_INTERSTITIAL.md](TIERED_INTERSTITIAL.md) | Sequential 5-tier inter/reward (AdMob) |
 | [NAMESPACES.md](NAMESPACES.md) | Namespace mapping |
 | [UPM_INSTALL.md](UPM_INSTALL.md) | Cài UPM packages |
 

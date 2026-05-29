@@ -247,7 +247,7 @@ Routing:
 
 - `useCoreForStandardFormats = true` → **Core `AdManager`** (MAX/AdMob provider)
 - `false` → **legacy `AdsManager`**
-- Tiered inventory (nếu bật config) → có nhánh riêng — xem [TIERED_INVENTORY.md](TIERED_INVENTORY.md)
+- Sequential tier (RC `*_inventory_mode = tiered`) → Premium→Fill ladder — xem [TIERED_INTERSTITIAL.md](TIERED_INTERSTITIAL.md)
 
 ### 6.2 Format chỉ legacy
 

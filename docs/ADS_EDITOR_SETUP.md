@@ -27,7 +27,7 @@ JisSDKAdsSettings.asset
 │   ├── mediation (MAX | ADMOB)
 │   ├── sdkSetup → AndroidSDKSetup.asset
 │   ├── maxProviderConfig / admobProviderConfig (Core, optional)
-│   └── tieredAdsConfig (optional)
+│   └── SequentialTierConfig (trong SDKSetup / AdMob)
 ├── ios: PlatformAdsProfile
 │   └── (tương tự)
 ├── adsInitializationMode
@@ -98,7 +98,7 @@ GameObject/JIS SDK/
 
 - **Apply to Scene** — gán cả 2 platform SDKSetup vào AdsManager, apply active target, `SetupSymbol()`
 - **Validate** — thiếu SDKSetup, không format nào active, tiered thiếu ID
-- **Platform toolbar** — xem overview + inline SDKSetup / TieredAdsConfig
+- **Platform toolbar** — xem overview + inline SDKSetup (Single / Sequential tier)
 
 ---
 
@@ -135,7 +135,7 @@ Khuyến nghị: gán `unifiedSettings` hoặc migrate sang chỉ dùng `JisSDKA
 2. Chọn `JisSDKAdsSettings` → tab Android / iOS
 3. Mỗi platform: chọn **primary mediation**
 4. Trong SDKSetup: set mediation từng format + ad unit IDs
-5. (Optional) Gán `TieredAdsConfig` trên profile
+5. Cấu hình inter/reward: **Single unit** hoặc **Tiered** (Sequential ladder) + Firebase RC
 6. Scene: **JIS SDK → Ads → Scene → Add Manager Prefab** (tự build `JisSDK_Manager` + lưu prefab vào `Assets/JisSDKAds/Prefabs/` lần đầu)
 7. Gán `JisSDKAdsSettings` trên `JisAds` nếu chưa auto-link
 8. **Apply to Scene**
