@@ -11,12 +11,12 @@ namespace JisSDKAds.Ads.UnitAdManagers
 
           public static bool IsRemoveAds(UnitAdManager unitAdManager)
           {
-               return unitAdManager?.IsRemoveAds() ?? false;
+               return unitAdManager != null && unitAdManager.IsRemoveAds != null && unitAdManager.IsRemoveAds.Invoke();
           }
 
           public static bool IsCheatAds(UnitAdManager unitAdManager)
           {
-               return unitAdManager?.IsCheatAds() ?? false;
+               return unitAdManager != null && unitAdManager.IsCheatAds != null && unitAdManager.IsCheatAds.Invoke();
           }
      }
 }

@@ -23,7 +23,7 @@ namespace JisSDKAds.Ads.UnitAdManagers
           public override void Init()
           {
                DebugAds.Log("Init Reward Ad Start");
-               if (!IsActive || IsRemoveAds() || IsCheatAds()) return;
+               if (!IsActive || IsRemoveAdsActive() || IsCheatAdsActive()) return;
 
                foreach (var t in AdsConfig.adsMediations)
                {
@@ -40,14 +40,22 @@ namespace JisSDKAds.Ads.UnitAdManagers
                if (!IsLinkRewardWithRemoveAds) return;
 
                IsActive = false;
-               AutoLoad.OnRemoveAds();
+               AutoLoad?.OnRemoveAds();
                InterruptCount = 0;
-               AutoLoad.StopAutoLoad();
+               AutoLoad?.StopAutoLoad();
           }
 
           protected override void UpdateRemoteConfigValue()
           {
                base.UpdateRemoteConfigValue();
+
+               if (FirebaseManager.Instance == null)
+               {
+                    DebugAds.LogWarning("[RewardAdManager] FirebaseManager.Instance is null. Using default remote config values.");
+                    IsReady = true;
+                    StartAutoLoad();
+                    return;
+               }
 
                IsActiveInterruptReward = FirebaseManager.Instance
                     .GetConfigValue(Keys.key_remote_inter_reward_interspersed).BooleanValue;
@@ -132,15 +140,18 @@ namespace JisSDKAds.Ads.UnitAdManagers
                     showFailCallback?.Invoke();
                     return;
                }
-               if (IsCheatAds())
+               if (IsCheatAdsActive())
                {
                     OnAdShowSuccess();
                     return;
                }
 
-               AdsTracker.Instance.TrackAdsReward_ClickOnButton();
+               if (AdsTracker.Instance != null)
+                    AdsTracker.Instance.TrackAdsReward_ClickOnButton();
+               else
+                    DebugAds.LogWarning("[RewardAdManager] AdsTracker.Instance is null. Skipping reward click tracking.");
 
-               if (IsRemoveAds() && IsLinkRewardWithRemoveAds)
+               if (IsRemoveAdsActive() && IsLinkRewardWithRemoveAds)
                {
                     OnRewardVideoEarnSuccess();
                }
@@ -162,14 +173,14 @@ namespace JisSDKAds.Ads.UnitAdManagers
           {
                base.OnAdLoadSuccess();
                DebugAds.Log("On RewardAdManager Load Success");
-               AutoLoad.OnLoadSuccess();
+               AutoLoad?.OnLoadSuccess();
           }
 
           public override void OnAdLoadFail()
           {
                base.OnAdLoadFail();
                DebugAds.Log("On RewardAdManager Load Failed");
-               AutoLoad.OnLoadFailed();
+               AutoLoad?.OnLoadFailed();
           }
 
           private void OnAdStartShow()
@@ -182,7 +193,8 @@ namespace JisSDKAds.Ads.UnitAdManagers
                DebugAds.Log("On RewardAdManager Earn Success");
                AdShowSuccessCallback?.Invoke();
                InterruptCount++;
-               AdsTracker.Instance.TrackAdsReward_ShowCompleted(Placement);
+               if (AdsTracker.Instance != null)
+                    AdsTracker.Instance.TrackAdsReward_ShowCompleted(Placement);
           }
 
           private void OnAdClosed(bool isWatched)
@@ -190,7 +202,7 @@ namespace JisSDKAds.Ads.UnitAdManagers
                DebugAds.Log($"On RewardAdManager Closed {isWatched}");
                IsShowingAd = false;
                MarkShowingAds(false);
-               AutoLoad.OnAdClosed();
+               AutoLoad?.OnAdClosed();
                AdRewardClosedCallback?.Invoke(isWatched);
           }
 
@@ -202,6 +214,12 @@ namespace JisSDKAds.Ads.UnitAdManagers
 
           private void ShowInterruptAd(UnityAction onSuccessCallback = null, UnityAction onFailCallback = null)
           {
+               if (InterruptAdManager == null)
+               {
+                    DebugAds.LogWarning("[RewardAdManager] InterruptAdManager is null. Skipping interrupt flow.");
+                    onFailCallback?.Invoke();
+                    return;
+               }
                InterruptAdManager.CallToShowAd(Placement, onSuccessCallback, onFailCallback);
           }
 
@@ -212,7 +230,7 @@ namespace JisSDKAds.Ads.UnitAdManagers
 
           private bool IsInterruptAdLoaded()
           {
-               return InterruptAdManager.IsLoaded();
+               return InterruptAdManager != null && InterruptAdManager.IsLoaded();
           }
 
           public override bool IsLoaded()
@@ -229,18 +247,20 @@ namespace JisSDKAds.Ads.UnitAdManagers
 
                if (UsesJisAdsCore())
                {
-                    return (IsLinkRewardWithRemoveAds && IsRemoveAds())
+                    return (IsLinkRewardWithRemoveAds && IsRemoveAdsActive())
                            || JisAdsEntry.Instance.IsRewardedVideoLoaded();
                }
 
                if (IsReady)
-                    return (IsLinkRewardWithRemoveAds && IsRemoveAds()) || IsLoaded();
+                    return (IsLinkRewardWithRemoveAds && IsRemoveAdsActive()) || IsLoaded();
                return false;
           }
 
           private bool IsReadyToShowRewardInterrupt()
           {
-               return !IsActiveInterruptReward && InterruptCount >= MaxInterruptCount;
+               return IsActiveInterruptReward
+                      && InterruptAdManager != null
+                      && InterruptCount >= MaxInterruptCount;
           }
      }
 }

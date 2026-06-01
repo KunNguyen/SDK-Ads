@@ -23,7 +23,7 @@ namespace JisSDKAds.Ads.UnitAdManagers
 
           public override void Init()
           {
-               if (!IsActive || IsRemoveAds() || IsCheatAds()) return;
+               if (!IsActive || IsRemoveAdsActive() || IsCheatAdsActive()) return;
                DebugAds.Log("Init Interstitial Start");
                foreach (AdsMediationController t in AdsConfig.adsMediations)
                {

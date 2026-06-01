@@ -17,7 +17,7 @@ namespace JisSDKAds.Ads.UnitAdManagers
 
           public override void Init()
           {
-               if (IsRemoveAds() || IsCheatAds()) return;
+               if (IsRemoveAdsActive() || IsCheatAdsActive()) return;
                foreach (AdsMediationController t in AdsConfig.adsMediations)
                {
                     t.InitBannerAds(
@@ -70,7 +70,7 @@ namespace JisSDKAds.Ads.UnitAdManagers
           private async Task WaitForBannerAutoReset()
           {
                var token = AutoResetCancellationTokenSource.Token;
-               while (!token.IsCancellationRequested && !IsRemoveAds() && !IsCheatAds() && _wantsBannerVisible)
+               while (!token.IsCancellationRequested && !IsRemoveAdsActive() && !IsCheatAdsActive() && _wantsBannerVisible)
                {
                     await Task.Delay((int)(BannerAutoResetTime * 1000), token);
                     if (token.IsCancellationRequested || !_wantsBannerVisible)
@@ -88,7 +88,7 @@ namespace JisSDKAds.Ads.UnitAdManagers
                UnityAction showFailCallback = null, bool isTracking = true, bool isSkipCapping = false)
           {
                base.CallToShowAd(placementName, closedCallback, showSuccessCallback, showFailCallback, isTracking, isSkipCapping);
-               if (IsCheatAds() || IsRemoveAds()) return;
+               if (IsCheatAdsActive() || IsRemoveAdsActive()) return;
                Show();
           }
 
@@ -165,7 +165,7 @@ namespace JisSDKAds.Ads.UnitAdManagers
 
           public override bool IsAdReady()
           {
-               return !IsCheatAds() && !IsRemoveAds() && IsLoaded();
+               return !IsCheatAdsActive() && !IsRemoveAdsActive() && IsLoaded();
           }
      }
 }

@@ -50,6 +50,9 @@ namespace JisSDKAds.Ads.UnitAdManagers
           public AdChecking IsCheatAds { get; set; }
           public AdChecking IsRemoveAds { get; set; }
 
+          public bool IsCheatAdsActive() => IsCheatAds != null && IsCheatAds.Invoke();
+          public bool IsRemoveAdsActive() => IsRemoveAds != null && IsRemoveAds.Invoke();
+
           public virtual void Setup(AdsConfig adsConfig, SDKSetup sdkSetup, AdsMediationController mediationController)
           {
                SDKSetup = sdkSetup;

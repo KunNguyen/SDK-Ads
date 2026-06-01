@@ -52,9 +52,33 @@ namespace JisSDKAds.Firebase
         void NotifySignedIn(FirebaseUser user)
         {
             if (user == null) return;
-                    NotifySignedIn(user);
-            SignedInUserId?.Invoke(user.UserId);
+
+            var userId = user.UserId;
+            if (string.IsNullOrEmpty(userId))
+                return;
+
+            // Prevent stack overflow when SignedIn / SignedInWithUserId handlers re-enter sign-in or Init.
+            if (isNotifyingSignedIn)
+                return;
+
+            if (userId == lastNotifiedUserId)
+                return;
+
+            isNotifyingSignedIn = true;
+            try
+            {
+                lastNotifiedUserId = userId;
+                SignedIn?.Invoke(user);
+                SignedInUserId?.Invoke(userId);
+            }
+            finally
+            {
+                isNotifyingSignedIn = false;
+            }
         }
+
+        /// <summary>True when the optional Google Sign-In Unity plugin is present in the build.</summary>
+        public bool IsGoogleSignInAvailable => GoogleSignInReflection.IsAvailable;
 
         void NotifySignedInFailed(string message)
         {
@@ -71,6 +95,8 @@ namespace JisSDKAds.Firebase
         public bool IsSignedIn => CurrentUser != null;
 
         private bool stateChangeSubscribed;
+        private bool isNotifyingSignedIn;
+        private string lastNotifiedUserId;
         private LoginMethod _currentLoginMethod = LoginMethod.None;
         public LoginMethod CurrentLoginMethod => _currentLoginMethod;
 
@@ -84,16 +110,14 @@ namespace JisSDKAds.Firebase
             SubscribeAuthStateChanged();
             IsInitialized = true;
 
-            // Restore session if user already signed in from previous app run.
+            // Restore login method; session notification is handled by SubscribeAuthStateChanged → OnAuthStateChanged.
             if (Auth.CurrentUser != null)
             {
                 _currentLoginMethod = (LoginMethod)PlayerPrefs.GetInt(LAST_LOGIN_METHOD_KEY, (int)LoginMethod.None);
-                NotifySignedIn(Auth.CurrentUser);
             }
             else
             {
                 _currentLoginMethod = LoginMethod.None;
-                SignedOut?.Invoke();
             }
             
             // TrySilentSignInPlayGamesAsync().Forget();
@@ -118,6 +142,7 @@ namespace JisSDKAds.Firebase
             }
             else
             {
+                lastNotifiedUserId = null;
                 SignedOut?.Invoke();
             }
         }
@@ -139,6 +164,7 @@ namespace JisSDKAds.Firebase
             PlayerPrefs.SetInt(LAST_LOGIN_METHOD_KEY, (int)LoginMethod.None);
             PlayerPrefs.Save();
 
+            lastNotifiedUserId = null;
             SignedOut?.Invoke();
             return Task.CompletedTask;
         }
@@ -355,9 +381,9 @@ namespace JisSDKAds.Firebase
             if (!GoogleSignInReflection.IsAvailable)
             {
                 var msg = GoogleSignInReflection.PluginHint;
-                Debug.LogError(msg);
+                Debug.LogWarning(msg);
                 NotifySignedInFailed(msg);
-                throw new InvalidOperationException(msg);
+                return null;
             }
 
             try
@@ -381,9 +407,9 @@ namespace JisSDKAds.Firebase
             catch (Exception e)
             {
                 var msg = e.GetBaseException().Message;
-                Debug.LogError($"[FirebaseAuth] Google Sign-In failed: {msg}");
+                Debug.LogWarning($"[FirebaseAuth] Google Sign-In failed: {msg}");
                 NotifySignedInFailed(msg);
-                throw;
+                return null;
             }
         }
 #pragma warning restore CS1998
