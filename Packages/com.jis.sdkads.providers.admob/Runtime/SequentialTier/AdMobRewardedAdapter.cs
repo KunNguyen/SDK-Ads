@@ -1,6 +1,6 @@
-#if UNITY_AD_ADMOB
 using System;
 using GoogleMobileAds.Api;
+using JisSDKAds.Ads.SequentialTier;
 using JisSDKAds.Common;
 
 namespace JisSDKAds.Providers.AdMob.SequentialTier
@@ -23,7 +23,7 @@ namespace JisSDKAds.Providers.AdMob.SequentialTier
         }
 
         public void Load(string adUnitId, int loadGeneration, int expectedGeneration,
-            Action onSuccess, Action<LoadAdError> onFail)
+            Action onSuccess, Action<int, string> onFail)
         {
             Destroy();
             var request = new AdRequest();
@@ -39,7 +39,7 @@ namespace JisSDKAds.Providers.AdMob.SequentialTier
 
                 if (error != null || ad == null)
                 {
-                    onFail?.Invoke(error);
+                    onFail?.Invoke(error?.GetCode() ?? 0, error?.GetMessage());
                     return;
                 }
 
@@ -76,8 +76,15 @@ namespace JisSDKAds.Providers.AdMob.SequentialTier
                 _hooks.onClosed?.Invoke();
             });
         void HandleOpened() => _hooks.onOpened?.Invoke();
-        void HandleFailed(AdError e) => _hooks.onFailed?.Invoke(e);
-        void HandlePaid(AdValue v) => _hooks.onPaid?.Invoke(v);
+        void HandleFailed(AdError e) => _hooks.onFailed?.Invoke(
+            new SequentialTierShowError { Code = e.GetCode(), Message = e.GetMessage() });
+        void HandlePaid(AdValue v) => _hooks.onPaid?.Invoke(new SequentialTierPaidEvent
+        {
+            Revenue = (double)v.Value / 1_000_000,
+            Currency = v.CurrencyCode,
+            Precision = (int)v.Precision,
+            AdUnitId = _ad?.GetResponseInfo()?.GetLoadedAdapterResponseInfo()?.AdSourceId ?? ""
+        });
 
         void UnregisterEvents(RewardedAd ad)
         {
@@ -88,4 +95,3 @@ namespace JisSDKAds.Providers.AdMob.SequentialTier
         }
     }
 }
-#endif

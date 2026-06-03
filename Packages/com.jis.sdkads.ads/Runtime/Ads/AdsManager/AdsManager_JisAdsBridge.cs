@@ -19,6 +19,9 @@ namespace JisSDKAds.Ads
             return jis != null && jis.UseCoreForStandardFormats;
         }
 
+        /// <summary>When true, JisAds Core owns startup preload; legacy AutoLoad is skipped.</summary>
+        public static bool UsesJisAdsCoreForStandardLoads() => ShouldRouteStandardFormatsToJisAds();
+
         /// <summary>Called by <see cref="JisAds"/> after Core is ready so legacy IsReady checks pass.</summary>
         public void NotifyJisAdsCoreReady()
         {

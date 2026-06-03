@@ -1,6 +1,7 @@
 #if UNITY_AD_ADMOB
 using GoogleMobileAds.Api;
 using JisSDKAds.Ads.SequentialTier;
+using static JisSDKAds.Ads.SequentialTier.AdLoadPipeline;
 using JisSDKAds.Common;
 using JisSDKAds.Providers.AdMob.SequentialTier;
 using UnityEngine;
@@ -31,12 +32,15 @@ namespace JisSDKAds.Ads
 
         void EnsureInterstitialTierLoader()
         {
+            if (AdsManager.UsesJisAdsCoreForStandardLoads())
+                return;
             if (_interstitialTierLoader != null || InterstitialTierConfig == null) return;
 
             _interstitialTierLoader = new SequentialTierLoader(
                 this,
                 "int",
                 "interstitial",
+                AdLoadFormat.Interstitial,
                 InterstitialTierConfig,
                 () => new AdMobInterstitialAdapter());
 
@@ -60,12 +64,15 @@ namespace JisSDKAds.Ads
 
                         OnAdInterstitialOpening();
                     },
-                    onFailed = OnAdInterstitialFailToShow,
-                    onPaid = OnAdInterstitialPaid
+                    onFailed = err => OnAdInterstitialFailToShow(null),
+                    onPaid = _ => { /* paid handled via OnAdInterstitialPaid registered on AdMob ad object */ }
                 });
         }
 
-        void RequestInterstitialLegacy()
+        void RequestInterstitialLegacy() =>
+            RunInterstitialLoad(ExecuteRequestInterstitialLegacy);
+
+        void ExecuteRequestInterstitialLegacy()
         {
             DebugAds.Log("Request interstitial ads (legacy single unit)");
 
@@ -81,6 +88,7 @@ namespace JisSDKAds.Ads
             var adUnitId = GetLegacyInterstitialAdUnit();
             if (string.IsNullOrEmpty(adUnitId))
             {
+                NotifyInterstitialFinished();
                 DebugAds.LogAdEvent("interstitial", "load_fail", null, "legacy", "no ad unit id configured");
                 OnAdInterstitialFailedToLoad();
                 return;
@@ -89,6 +97,7 @@ namespace JisSDKAds.Ads
             DebugAds.LogAdEvent("interstitial", "load_start", adUnitId, "legacy");
             InterstitialAd.Load(adUnitId, adRequest, (ad, error) =>
             {
+                NotifyInterstitialFinished();
                 if (error != null || ad == null)
                 {
                     DebugAds.LogAdEvent("interstitial", "load_fail", adUnitId, "legacy", error?.ToString() ?? "null ad");

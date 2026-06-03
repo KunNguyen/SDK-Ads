@@ -23,6 +23,7 @@ namespace JisSDKAds.Providers.AdMob.SequentialTier
                 host,
                 "reward",
                 "rewarded",
+                AdLoadFormat.Rewarded,
                 config,
                 () => new AdMobRewardedAdapter());
             RefreshLoaderCallbacks();
@@ -49,7 +50,7 @@ namespace JisSDKAds.Providers.AdMob.SequentialTier
                 return;
 
             _pendingOnShowFailed?.Invoke("Rewarded not ready");
-            _loader.Load();
+            _loader.Load(urgent: true);
         }
 
         public void Destroy() => _loader.Destroy();
@@ -103,11 +104,11 @@ namespace JisSDKAds.Providers.AdMob.SequentialTier
             _loader.Load(forceReload: true);
         }
 
-        void OnShowFailed(AdError error)
+        void OnShowFailed(SequentialTierShowError? error)
         {
             var cb = _pendingOnShowFailed;
             _pendingOnShowFailed = null;
-            cb?.Invoke(error?.GetMessage() ?? "show_failed");
+            cb?.Invoke(string.IsNullOrEmpty(error?.Message) ? "show_failed" : error.Value.Message);
             _loader.Load(forceReload: true);
         }
     }

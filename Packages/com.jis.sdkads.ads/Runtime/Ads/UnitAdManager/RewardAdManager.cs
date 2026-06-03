@@ -52,10 +52,13 @@ namespace JisSDKAds.Ads.UnitAdManagers
                if (FirebaseManager.Instance == null)
                {
                     DebugAds.LogWarning("[RewardAdManager] FirebaseManager.Instance is null. Using default remote config values.");
-                    IsReady = true;
+               IsReady = true;
+               if (!AdsManager.UsesJisAdsCoreForStandardLoads())
                     StartAutoLoad();
-                    return;
-               }
+               else
+                    DebugAds.Log("[RewardAdManager] AutoLoad skipped — JisAds Core owns preload.");
+               return;
+          }
 
                IsActiveInterruptReward = FirebaseManager.Instance
                     .GetConfigValue(Keys.key_remote_inter_reward_interspersed).BooleanValue;
@@ -65,7 +68,10 @@ namespace JisSDKAds.Ads.UnitAdManagers
                     .GetConfigValue(Keys.key_remote_inter_reward_interspersed_time).DoubleValue;
                DebugAds.Log($"=============== MAX Reward Interrupt Count {MaxInterruptCount}");
                IsReady = true;
-               StartAutoLoad();
+               if (!AdsManager.UsesJisAdsCoreForStandardLoads())
+                    StartAutoLoad();
+               else
+                    DebugAds.Log("[RewardAdManager] AutoLoad skipped — JisAds Core owns preload.");
           }
           
           private void StartAutoLoad()
@@ -81,6 +87,12 @@ namespace JisSDKAds.Ads.UnitAdManagers
           public override void RequestAd()
           {
                DebugAds.Log("Start Requesting Reward Ad");
+               if (AdsManager.UsesJisAdsCoreForStandardLoads())
+               {
+                    JisAdsEntry.Instance?.RequestRewardedLoadIfNeeded();
+                    return;
+               }
+
                if (!MediationController.IsRewardVideoLoaded())
                {
                     DebugAds.Log($"Requesting Reward Video");

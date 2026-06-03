@@ -1,6 +1,7 @@
 #if UNITY_AD_ADMOB
 using GoogleMobileAds.Api;
 using JisSDKAds.Ads.SequentialTier;
+using static JisSDKAds.Ads.SequentialTier.AdLoadPipeline;
 using JisSDKAds.Common;
 using JisSDKAds.Providers.AdMob.SequentialTier;
 using UnityEngine;
@@ -25,6 +26,8 @@ namespace JisSDKAds.Ads
 
         void EnsureRewardedTierLoader()
         {
+            if (AdsManager.UsesJisAdsCoreForStandardLoads())
+                return;
             if (_rewardedTierLoader != null || RewardedTierConfig == null)
                 return;
 
@@ -32,6 +35,7 @@ namespace JisSDKAds.Ads
                 this,
                 "reward",
                 "rewarded",
+                AdLoadFormat.Rewarded,
                 RewardedTierConfig,
                 () => new AdMobRewardedAdapter());
 
@@ -46,13 +50,16 @@ namespace JisSDKAds.Ads
                         _rewardedTierLoader?.Load();
                     },
                     onOpened = OnRewardBasedVideoOpened,
-                    onFailed = OnRewardedAdFailedToShow,
-                    onPaid = OnAdRewardedAdPaid,
+                    onFailed = err => OnRewardedAdFailedToShow(null),
+                    onPaid = _ => { /* paid handled via OnAdRewardedAdPaid registered on AdMob ad object */ },
                     onRewardGranted = OnRewardBasedVideoRewarded
                 });
         }
 
-        void RequestRewardVideoLegacy()
+        void RequestRewardVideoLegacy() =>
+            RunRewardedLoad(ExecuteRequestRewardVideoLegacy);
+
+        void ExecuteRequestRewardVideoLegacy()
         {
             if (RewardVideoAds != null)
                 DestroyRewardedAd();
@@ -61,6 +68,7 @@ namespace JisSDKAds.Ads
             DebugAds.Log("RewardedVideoAd ADMOB Reload ID " + adUnitId);
             if (string.IsNullOrEmpty(adUnitId))
             {
+                NotifyRewardedFinished();
                 OnRewardBasedVideoFailedToLoad();
                 return;
             }
@@ -68,6 +76,7 @@ namespace JisSDKAds.Ads
             var adRequest = new AdRequest();
             RewardedAd.Load(adUnitId, adRequest, (ad, error) =>
             {
+                NotifyRewardedFinished();
                 if (error != null || ad == null)
                 {
                     DebugAds.LogError("Rewarded ad failed to load: " + error);

@@ -3,6 +3,7 @@ using System.Collections;
 using System.Threading;
 using System.Threading.Tasks;
 using JisSDKAds.Ads.UnitAdManagers.Interface;
+using JisAdsEntry = JisSDKAds.Ads.JisAds;
 using JisSDKAds.Ads.UnitAdManagers.Service;
 using JisSDKAds.Common;
 using JisSDKAds.Firebase;
@@ -64,7 +65,10 @@ namespace JisSDKAds.Ads.UnitAdManagers
                     DebugAds.Log("=============== Level Pass Show Interstitial " + LevelToShowInterstitial);
                }
                IsReady = true;
-               StartAutoLoad();
+               if (!AdsManager.UsesJisAdsCoreForStandardLoads())
+                    StartAutoLoad();
+               else
+                    DebugAds.Log("[InterstitialAdManager] AutoLoad skipped — JisAds Core owns preload.");
                StartCooldown();
           }
 
@@ -94,6 +98,12 @@ namespace JisSDKAds.Ads.UnitAdManagers
 
           public override void RequestAd()
           {
+               if (AdsManager.UsesJisAdsCoreForStandardLoads())
+               {
+                    JisAdsEntry.Instance?.RequestInterstitialLoadIfNeeded();
+                    return;
+               }
+
                if(MediationController.IsInterstitialLoaded())return;
                if (!IsReady) return;
                StartRequestTime = DateTime.Now;

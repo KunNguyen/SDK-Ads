@@ -1,6 +1,7 @@
 #if UNITY_AD_ADMOB
 using System;
 using GoogleMobileAds.Api;
+using JisSDKAds.Ads.SequentialTier;
 using JisSDKAds.Common;
 using JisSDKAds.Core.Interfaces;
 using JisSDKAds.Core.Models;
@@ -111,6 +112,14 @@ namespace JisSDKAds.Providers.AdMob
             if (_isLoading)
                 return;
 
+            AdLoadPipeline.RunInterstitialLoad(() => RunLoad(onLoaded, onFailed));
+        }
+
+        void RunLoad(Action onLoaded, Action<string> onFailed)
+        {
+            if (_isLoading)
+                return;
+
             if (_ad != null)
             {
                 _ad.Destroy();
@@ -123,6 +132,7 @@ namespace JisSDKAds.Providers.AdMob
             InterstitialAd.Load(_adUnitId, request, (ad, error) =>
             {
                 _isLoading = false;
+                AdLoadPipeline.NotifyInterstitialFinished();
                 if (error != null)
                 {
                     DebugAds.LogWarning($"[AdMob][Interstitial] load_fail adUnitId={_adUnitId} error={error.GetMessage()}");
@@ -211,6 +221,14 @@ namespace JisSDKAds.Providers.AdMob
             if (_isLoading)
                 return;
 
+            AdLoadPipeline.RunRewardedLoad(() => RunLoad(onLoaded, onFailed));
+        }
+
+        void RunLoad(Action onLoaded, Action<string> onFailed)
+        {
+            if (_isLoading)
+                return;
+
             if (_ad != null)
             {
                 _ad.Destroy();
@@ -223,6 +241,7 @@ namespace JisSDKAds.Providers.AdMob
             RewardedAd.Load(_adUnitId, request, (ad, error) =>
             {
                 _isLoading = false;
+                AdLoadPipeline.NotifyRewardedFinished();
                 if (error != null)
                 {
                     DebugAds.LogWarning($"[AdMob][Rewarded] load_fail adUnitId={_adUnitId} error={error.GetMessage()}");

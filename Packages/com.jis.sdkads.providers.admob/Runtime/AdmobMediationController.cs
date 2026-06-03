@@ -10,6 +10,7 @@ namespace JisSDKAds.Ads
 {
 #if UNITY_AD_ADMOB
      using GoogleMobileAds.Api;
+     using JisSDKAds.Ads.SequentialTier;
      using JisSDKAds.Providers.AdMob;
 #endif
 
@@ -240,6 +241,9 @@ namespace JisSDKAds.Ads
           public override void RequestInterstitialAd()
           {
                base.RequestInterstitialAd();
+               if (AdsManager.UsesJisAdsCoreForStandardLoads())
+                    return;
+
                if (UseSequentialInterstitial)
                {
                     EnsureInterstitialTierLoader();
@@ -361,8 +365,6 @@ namespace JisSDKAds.Ads
           {
                _interstitialTierLoader?.Destroy();
                _interstitialTierLoader = null;
-               _rewardedTierLoader?.Destroy();
-               _rewardedTierLoader = null;
                if (InterstitialAds != null)
                {
                     DebugAds.Log("Destroying interstitial ad.");
@@ -390,6 +392,9 @@ namespace JisSDKAds.Ads
           public override void RequestRewardVideoAd()
           {
                base.RequestRewardVideoAd();
+               if (AdsManager.UsesJisAdsCoreForStandardLoads())
+                    return;
+
                if (UseSequentialRewarded)
                {
                     EnsureRewardedTierLoader();
@@ -415,6 +420,8 @@ namespace JisSDKAds.Ads
                {
                     EnsureRewardedTierLoader();
                     IsWatchSuccess = false;
+                    if (!_rewardedTierLoader.IsReady)
+                         AdLoadCoordinator.Instance.PrepareUrgentRewarded();
                     if (!_rewardedTierLoader.Show())
                          OnRewardedAdFailedToShow(null);
                     return;
@@ -494,7 +501,7 @@ namespace JisSDKAds.Ads
 
           public void OnRewardedAdFailedToShow(AdError args)
           {
-               DebugAds.Log("RewardedVideoAd ADMOB Show Fail " + args.GetMessage());
+               DebugAds.Log("RewardedVideoAd ADMOB Show Fail " + (args != null ? args.GetMessage() : "unknown"));
                RewardedVideoCallbacks.DisplayedFailed?.Invoke();
           }
 

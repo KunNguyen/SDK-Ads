@@ -1,29 +1,25 @@
 ﻿using System;
-using System.Collections;
-using System.Collections.Generic;
+using JisSDKAds.Ads.SequentialTier;
 using JisSDKAds.Common;
 using UnityEngine;
 using UnityEngine.Events;
-namespace JisSDKAds.Ads {
-    public class MaxMediationController : AdsMediationController {
+
+namespace JisSDKAds.Ads
+{
+    public partial class MaxMediationController : AdsMediationController
+    {
 #if UNITY_AD_MAX
         private bool IsWatchSuccess { get; set; } = false;
         public MaxAdSetup m_MaxAdConfig;
-
-        private void Awake() {
-        }
-        private void Start() {
-            
-        }
 
         public override void Init()
         {
             if (Status != MediationStatus.NotInited) return;
             base.Init();
-            DebugAds.Log("unity-script: MyAppStart Start called");
-            MaxSdkCallbacks.OnSdkInitializedEvent += sdkConfiguration => {
-                // AppLovin SDK is initialized, configure and start loading ads.
-                DebugAds.Log("MAX SDK Initialized");
+            DebugAds.Log("[MAX] Init");
+            MaxSdkCallbacks.OnSdkInitializedEvent += sdkConfiguration =>
+            {
+                DebugAds.Log("[MAX] SDK Initialized");
                 Status = MediationStatus.Inited;
             };
             MaxSdk.SetSdkKey(m_MaxAdConfig.SDKKey);
@@ -32,9 +28,11 @@ namespace JisSDKAds.Ads {
             MaxSdk.InitializeSdk();
         }
 
-        private void OnAdRevenuePaidEvent(AdsType adsType, string adUnitId, MaxSdkBase.AdInfo impressionData) {
+        private void OnAdRevenuePaidEvent(AdsType adsType, string adUnitId, MaxSdkBase.AdInfo impressionData)
+        {
             double revenue = impressionData.Revenue;
-            ImpressionData impression = new ImpressionData {
+            ImpressionData impression = new ImpressionData
+            {
                 ad_mediation = AdsMediationType.MAX,
                 ad_source = impressionData.NetworkName,
                 ad_unit_name = impressionData.AdUnitIdentifier,
@@ -45,312 +43,549 @@ namespace JisSDKAds.Ads {
             };
             AdRevenuePaidCallback?.Invoke(impression);
         }
+
         #region Interstitial
-        public override void InitInterstitialAd(UnityAction adClosedCallback, UnityAction adLoadSuccessCallback, UnityAction adLoadFailedCallback, UnityAction adShowSuccessCallback, UnityAction adShowFailCallback) {
-            base.InitInterstitialAd(adClosedCallback, adLoadSuccessCallback, adLoadFailedCallback, adShowSuccessCallback, adShowFailCallback);
-            DebugAds.Log("Init MAX Interstitial");
-            // Attach callbacks
-            MaxSdkCallbacks.Interstitial.OnAdLoadedEvent += OnInterstitialLoadedEvent;
-            MaxSdkCallbacks.Interstitial.OnAdLoadFailedEvent += OnInterstitialLoadFailedEvent;
-            MaxSdkCallbacks.Interstitial.OnAdDisplayFailedEvent += InterstitialFailedToDisplayEvent;
-            MaxSdkCallbacks.Interstitial.OnAdHiddenEvent += OnInterstitialDismissedEvent;
-            MaxSdkCallbacks.Interstitial.OnAdRevenuePaidEvent += (adUnitID, adInfo) => { OnAdRevenuePaidEvent(AdsType.INTERSTITIAL, adUnitID, adInfo);};
-            MaxSdkCallbacks.Interstitial.OnAdDisplayedEvent += OnInterstitialAdShowSucceededEvent;
+
+        public override void InitInterstitialAd(UnityAction adClosedCallback, UnityAction adLoadSuccessCallback,
+            UnityAction adLoadFailedCallback, UnityAction adShowSuccessCallback, UnityAction adShowFailCallback)
+        {
+            base.InitInterstitialAd(adClosedCallback, adLoadSuccessCallback, adLoadFailedCallback,
+                adShowSuccessCallback, adShowFailCallback);
+            DebugAds.Log("[MAX] Init Interstitial");
+            MaxSdkCallbacks.Interstitial.OnAdRevenuePaidEvent += (adUnitID, adInfo) =>
+                OnAdRevenuePaidEvent(AdsType.INTERSTITIAL, adUnitID, adInfo);
         }
-        public override void RequestInterstitialAd() {
+
+        public override void RequestInterstitialAd()
+        {
             base.RequestInterstitialAd();
-            DebugAds.Log("Request MAX Interstitial");
-            MaxSdk.LoadInterstitial(m_MaxAdConfig.InterstitialAdUnitID);
+            if (UseSequentialInterstitial)
+            {
+                EnsureInterstitialTierLoader();
+                _interstitialTierLoader.Load();
+                return;
+            }
+
+            RequestInterstitialLegacy();
         }
-        public override void ShowInterstitialAd() {
-            base.ShowInterstitialAd();
-            DebugAds.Log("Show MAX Interstitial");
-            MaxSdk.ShowInterstitial(m_MaxAdConfig.InterstitialAdUnitID);
-        }
-        public override bool IsInterstitialLoaded() {
+
+        public override bool IsInterstitialLoaded()
+        {
+            if (UseSequentialInterstitial)
+            {
+                EnsureInterstitialTierLoader();
+                return _interstitialTierLoader.IsReady;
+            }
+
             return MaxSdk.IsInterstitialReady(m_MaxAdConfig.InterstitialAdUnitID);
         }
-        void OnInterstitialLoadedEvent(string adUnitId, MaxSdkBase.AdInfo adInfo) {
-            DebugAds.Log("Load MAX Interstitial Success");
+
+        public override void ShowInterstitialAd()
+        {
+            base.ShowInterstitialAd();
+            if (UseSequentialInterstitial)
+            {
+                EnsureInterstitialTierLoader();
+                if (!_interstitialTierLoader.Show())
+                    OnAdInterstitialFailToShow(new SequentialTierShowError { Code = 0, Message = "not_ready" });
+                return;
+            }
+
+            if (MaxSdk.IsInterstitialReady(m_MaxAdConfig.InterstitialAdUnitID))
+            {
+                MaxSdk.ShowInterstitial(m_MaxAdConfig.InterstitialAdUnitID);
+            }
+            else
+            {
+                OnAdInterstitialFailToShow(new SequentialTierShowError { Code = 0, Message = "not_ready" });
+            }
+        }
+
+        void OnAdInterstitialSuccessToLoad()
+        {
+            DebugAds.Log("[MAX] Load Interstitial success");
             InterstitialCallbacks.LoadedSuccess?.Invoke();
         }
-        void OnInterstitialLoadFailedEvent(string adUnitId, MaxSdkBase.ErrorInfo errorInfo) {
-            DebugAds.Log("Load MAX Interstitial Fail");
+
+        void OnAdInterstitialFailedToLoad()
+        {
+            DebugAds.Log("[MAX] Load Interstitial failed");
             InterstitialCallbacks.LoadedFail?.Invoke();
         }
-        void InterstitialFailedToDisplayEvent(string adUnitId, MaxSdkBase.ErrorInfo errorInfo, MaxSdkBase.AdInfo adInfo) {
-            DebugAds.Log("unity-script: I got InterstitialAdShowFailedEvent, code :  " + errorInfo.Code + ", description : " + errorInfo.Message);
+
+        void OnAdInterstitialOpening()
+        {
+            DebugAds.Log("[MAX] Interstitial opened");
             InterstitialCallbacks.Displayed?.Invoke();
         }
-        void OnInterstitialDismissedEvent(string adUnitId, MaxSdkBase.AdInfo adInfo) {
-            DebugAds.Log("Interstitial dismissed");
+
+        void OnAdInterstitialFailToShow(SequentialTierShowError? error)
+        {
+            DebugAds.Log("[MAX] Interstitial failed to show: " + (error?.Message ?? "unknown"));
+            InterstitialCallbacks.DisplayedFail?.Invoke();
+        }
+
+        void OnCloseInterstitialAd()
+        {
+            DebugAds.Log("[MAX] Interstitial closed");
             InterstitialCallbacks.Closed?.Invoke(true);
+            if (!UseSequentialInterstitial)
+                RequestInterstitialLegacy();
         }
-        void OnInterstitialAdShowSucceededEvent(string adUnitId, MaxSdkBase.AdInfo adInfo) {
-            DebugAds.Log("unity-script: I got InterstitialAdShowSuccee");
-            InterstitialCallbacks.Displayed?.Invoke();
+
+        void RequestInterstitialLegacy()
+        {
+            var adUnitId = m_MaxAdConfig.InterstitialAdUnitID;
+            if (string.IsNullOrEmpty(adUnitId))
+            {
+                OnAdInterstitialFailedToLoad();
+                return;
+            }
+
+            MaxSdkCallbacks.Interstitial.OnAdLoadedEvent -= OnLegacyInterstitialLoaded;
+            MaxSdkCallbacks.Interstitial.OnAdLoadFailedEvent -= OnLegacyInterstitialLoadFailed;
+            MaxSdkCallbacks.Interstitial.OnAdDisplayedEvent -= OnLegacyInterstitialDisplayed;
+            MaxSdkCallbacks.Interstitial.OnAdDisplayFailedEvent -= OnLegacyInterstitialDisplayFailed;
+            MaxSdkCallbacks.Interstitial.OnAdHiddenEvent -= OnLegacyInterstitialHidden;
+
+            MaxSdkCallbacks.Interstitial.OnAdLoadedEvent += OnLegacyInterstitialLoaded;
+            MaxSdkCallbacks.Interstitial.OnAdLoadFailedEvent += OnLegacyInterstitialLoadFailed;
+            MaxSdkCallbacks.Interstitial.OnAdDisplayedEvent += OnLegacyInterstitialDisplayed;
+            MaxSdkCallbacks.Interstitial.OnAdDisplayFailedEvent += OnLegacyInterstitialDisplayFailed;
+            MaxSdkCallbacks.Interstitial.OnAdHiddenEvent += OnLegacyInterstitialHidden;
+
+            MaxSdk.LoadInterstitial(adUnitId);
         }
+
+        void OnLegacyInterstitialLoaded(string id, MaxSdkBase.AdInfo info) => OnAdInterstitialSuccessToLoad();
+        void OnLegacyInterstitialLoadFailed(string id, MaxSdkBase.ErrorInfo error) => OnAdInterstitialFailedToLoad();
+        void OnLegacyInterstitialDisplayed(string id, MaxSdkBase.AdInfo info) => OnAdInterstitialOpening();
+        void OnLegacyInterstitialDisplayFailed(string id, MaxSdkBase.ErrorInfo error, MaxSdkBase.AdInfo info) =>
+            OnAdInterstitialFailToShow(new SequentialTierShowError { Code = (int)error.Code, Message = error.Message });
+        void OnLegacyInterstitialHidden(string id, MaxSdkBase.AdInfo info) => OnCloseInterstitialAd();
+
+        public void DestroyInterstitialAd()
+        {
+            _interstitialTierLoader?.Destroy();
+            _interstitialTierLoader = null;
+        }
+
         #endregion
 
-        #region Rewards Video
-        public override void InitRewardVideoAd(UnityAction videoSuccess,UnityAction<bool> videoClosed, UnityAction videoLoadSuccess,
-            UnityAction videoLoadFailed, UnityAction videoStart) {
-            base.InitRewardVideoAd(videoSuccess, videoClosed, videoLoadSuccess, videoLoadFailed,videoStart);
+        #region Rewarded Video
 
-            DebugAds.Log("Init MAX RewardedVideoAd");
-            MaxSdkCallbacks.Rewarded.OnAdDisplayedEvent += Rewarded_OnAdStartedEvent;
-            MaxSdkCallbacks.Rewarded.OnAdDisplayFailedEvent += Rewarded_OnAdShowFailedEvent;
-            MaxSdkCallbacks.Rewarded.OnAdClickedEvent += Rewarded_OnAdClickedEvent;
-            MaxSdkCallbacks.Rewarded.OnAdReceivedRewardEvent += Rewarded_OnAdRewardedEvent;
-            MaxSdkCallbacks.Rewarded.OnAdHiddenEvent += Rewarded_OnAdClosedEvent;
-            MaxSdkCallbacks.Rewarded.OnAdLoadedEvent += Rewarded_OnAdLoadedEvent;
-            MaxSdkCallbacks.Rewarded.OnAdLoadFailedEvent += Rewarded_OnAdLoadedFailEvent;
-            MaxSdkCallbacks.Rewarded.OnAdRevenuePaidEvent += (adUnitID, adInfo) => { OnAdRevenuePaidEvent(AdsType.REWARDED, adUnitID, adInfo);};
+        public override void InitRewardVideoAd(UnityAction videoSuccess, UnityAction<bool> videoClosed,
+            UnityAction videoLoadSuccess, UnityAction videoLoadFailed, UnityAction videoStart)
+        {
+            base.InitRewardVideoAd(videoSuccess, videoClosed, videoLoadSuccess, videoLoadFailed, videoStart);
+            DebugAds.Log("[MAX] Init RewardedVideoAd");
+            MaxSdkCallbacks.Rewarded.OnAdRevenuePaidEvent += (adUnitID, adInfo) =>
+                OnAdRevenuePaidEvent(AdsType.REWARDED, adUnitID, adInfo);
             RequestRewardVideoAd();
         }
 
-
-        public override void RequestRewardVideoAd() {
+        public override void RequestRewardVideoAd()
+        {
             base.RequestRewardVideoAd();
-            DebugAds.Log("Request MAX RewardedVideoAd");
-#if UNITY_EDITOR
-            Rewarded_OnAdLoadedFailEvent("", null);
-#else
-            MaxSdk.LoadRewardedAd(m_MaxAdConfig.RewardedAdUnitID);
-#endif
+            if (UseSequentialRewarded)
+            {
+                EnsureRewardedTierLoader();
+                _rewardedTierLoader.Load();
+                return;
+            }
+
+            RequestRewardedLegacy();
         }
-        public override void ShowRewardVideoAd(){
+
+        public override void ShowRewardVideoAd()
+        {
 #if UNITY_EDITOR
             IsWatchSuccess = false;
-            Rewarded_OnAdRewardedEvent("", new MaxSdkBase.Reward(), null);
-#else
-        IsWatchSuccess = false;
-        MaxSdk.ShowRewardedAd(m_MaxAdConfig.RewardedAdUnitID);{
+            OnRewardBasedVideoRewarded();
+            return;
 #endif
+            base.ShowRewardVideoAd();
+            if (UseSequentialRewarded)
+            {
+                EnsureRewardedTierLoader();
+                IsWatchSuccess = false;
+                if (!_rewardedTierLoader.Show())
+                    OnRewardedAdFailedToShow(new SequentialTierShowError { Code = 0, Message = "not_ready" });
+                return;
+            }
+
+            if (IsRewardVideoLoaded())
+            {
+                IsWatchSuccess = false;
+                MaxSdk.ShowRewardedAd(m_MaxAdConfig.RewardedAdUnitID);
+            }
         }
-        public override bool IsRewardVideoLoaded() {
+
+        public override bool IsRewardVideoLoaded()
+        {
 #if UNITY_EDITOR
             return false;
 #else
+            if (UseSequentialRewarded)
+            {
+                EnsureRewardedTierLoader();
+                return _rewardedTierLoader.IsReady;
+            }
             return MaxSdk.IsRewardedAdReady(m_MaxAdConfig.RewardedAdUnitID);
 #endif
         }
 
-        /************* RewardedVideo Delegates *************/
-        private void Rewarded_OnAdLoadedEvent(string adUnitID, MaxSdkBase.AdInfo adInfo) {
-            DebugAds.Log("MAX Ads: RewardedVideoAd MAX Loaded Success");
+        void OnRewardBasedVideoLoaded()
+        {
+            DebugAds.Log("[MAX] RewardedVideoAd Loaded");
             RewardedVideoCallbacks.LoadedSuccess?.Invoke();
         }
-        private void Rewarded_OnAdLoadedFailEvent(string adUnitID, MaxSdkBase.ErrorInfo adError) {
-            DebugAds.Log("MAX Ads: RewardedVideoAd MAX Loaded Fail");
+
+        void OnRewardBasedVideoFailedToLoad()
+        {
+            DebugAds.Log("[MAX] RewardedVideoAd Load Fail");
             RewardedVideoCallbacks.LoadedFail?.Invoke();
         }
-        void Rewarded_OnAdRewardedEvent(string adUnitID, MaxSdkBase.Reward reward, MaxSdkBase.AdInfo adInfo)
+
+        void OnRewardBasedVideoOpened()
         {
-        DebugAds.Log("MAX Ads: I got RewardedVideoAdRewardedEvent");
-            IsWatchSuccess = true;
-            switch (Application.platform)
-            {
-                case RuntimePlatform.Android:
-                {
-                    if (RewardedVideoCallbacks.Completed != null) {
-                        DebugAds.Log("MAX Ads: Watch video Success Callback!");
-                        RewardedVideoCallbacks.Completed.Invoke();
-                        RewardedVideoCallbacks.Completed = null;
-                    }
-
-                    break;
-                }
-                case RuntimePlatform.IPhonePlayer:
-                {
-                    if (RewardedVideoCallbacks.Completed != null) {
-                        DebugAds.Log("MAX Ads: Watch video Success Callback!");
-                        EventManager.InvokeNextFrame(RewardedVideoCallbacks.Completed);
-                        RewardedVideoCallbacks.Completed = null;
-                    }
-                    break;
-                }
-            }
-        }
-        void Rewarded_OnAdClosedEvent(string adUnitID, MaxSdkBase.AdInfo adInfo) {
-            DebugAds.Log("MAX Ads: I got RewardedVideoAdClosedEvent");
-            if (RewardedVideoCallbacks.Completed != null && IsWatchSuccess) {
-                EventManager.InvokeNextFrame(RewardedVideoCallbacks.Completed);
-                RewardedVideoCallbacks.Completed = null;
-            }
-
-            RewardedVideoCallbacks.Closed?.Invoke(IsWatchSuccess);
-        }
-        void Rewarded_OnAdStartedEvent(string adUnitID, MaxSdkBase.AdInfo adInfo) {
-            DebugAds.Log("MAX Ads: I got RewardedVideoAdStartedEvent");
+            DebugAds.Log("[MAX] RewardedVideoAd Opened");
             RewardedVideoCallbacks.Displayed?.Invoke();
         }
-        void RewardedVideoAdEndedEvent() {
-            DebugAds.Log("MAX Ads: I got RewardedVideoAdEndedEvent");
+
+        void OnRewardBasedVideoRewarded()
+        {
+            DebugAds.Log("[MAX] RewardedVideoAd Rewarded");
             IsWatchSuccess = true;
+            if (Application.platform == RuntimePlatform.Android)
+            {
+                RewardedVideoCallbacks.Completed?.Invoke();
+            }
+            else if (Application.platform == RuntimePlatform.IPhonePlayer)
+            {
+                EventManager.InvokeNextFrame(RewardedVideoCallbacks.Completed);
+            }
         }
-        void Rewarded_OnAdShowFailedEvent(string adUnitID, MaxSdkBase.ErrorInfo errorInfo, MaxSdkBase.AdInfo adInfo) {
-            DebugAds.Log("MAX Ads: I got RewardedVideoAdShowFailedEvent, code :  " + errorInfo.Code + ", description : " + errorInfo.Message);
+
+        void OnRewardBasedVideoClosed()
+        {
+            DebugAds.Log("[MAX] RewardedVideoAd Closed");
+            if (Application.platform == RuntimePlatform.IPhonePlayer && IsWatchSuccess)
+            {
+                EventManager.InvokeNextFrame(RewardedVideoCallbacks.Completed);
+            }
+            EventManager.InvokeNextFrame(() => RewardedVideoCallbacks.Closed?.Invoke(IsWatchSuccess));
+        }
+
+        void OnRewardedAdFailedToShow(SequentialTierShowError? error)
+        {
+            DebugAds.Log("[MAX] RewardedVideoAd Show Fail: " + (error?.Message ?? "unknown"));
             RewardedVideoCallbacks.DisplayedFailed?.Invoke();
         }
-        void Rewarded_OnAdClickedEvent(string adUnitID, MaxSdkBase.AdInfo adInfo) {
-            DebugAds.Log("MAX Ads: I got RewardedVideoAdClickedEvent");
+
+        void RequestRewardedLegacy()
+        {
+            var adUnitId = m_MaxAdConfig.RewardedAdUnitID;
+            if (string.IsNullOrEmpty(adUnitId))
+            {
+                OnRewardBasedVideoFailedToLoad();
+                return;
+            }
+
+            MaxSdkCallbacks.Rewarded.OnAdLoadedEvent -= OnLegacyRewardedLoaded;
+            MaxSdkCallbacks.Rewarded.OnAdLoadFailedEvent -= OnLegacyRewardedLoadFailed;
+            MaxSdkCallbacks.Rewarded.OnAdDisplayedEvent -= OnLegacyRewardedDisplayed;
+            MaxSdkCallbacks.Rewarded.OnAdDisplayFailedEvent -= OnLegacyRewardedDisplayFailed;
+            MaxSdkCallbacks.Rewarded.OnAdReceivedRewardEvent -= OnLegacyRewardedRewarded;
+            MaxSdkCallbacks.Rewarded.OnAdHiddenEvent -= OnLegacyRewardedHidden;
+
+            MaxSdkCallbacks.Rewarded.OnAdLoadedEvent += OnLegacyRewardedLoaded;
+            MaxSdkCallbacks.Rewarded.OnAdLoadFailedEvent += OnLegacyRewardedLoadFailed;
+            MaxSdkCallbacks.Rewarded.OnAdDisplayedEvent += OnLegacyRewardedDisplayed;
+            MaxSdkCallbacks.Rewarded.OnAdDisplayFailedEvent += OnLegacyRewardedDisplayFailed;
+            MaxSdkCallbacks.Rewarded.OnAdReceivedRewardEvent += OnLegacyRewardedRewarded;
+            MaxSdkCallbacks.Rewarded.OnAdHiddenEvent += OnLegacyRewardedHidden;
+
+            MaxSdk.LoadRewardedAd(adUnitId);
         }
+
+        void OnLegacyRewardedLoaded(string id, MaxSdkBase.AdInfo info) => OnRewardBasedVideoLoaded();
+        void OnLegacyRewardedLoadFailed(string id, MaxSdkBase.ErrorInfo error) => OnRewardBasedVideoFailedToLoad();
+        void OnLegacyRewardedDisplayed(string id, MaxSdkBase.AdInfo info) => OnRewardBasedVideoOpened();
+        void OnLegacyRewardedDisplayFailed(string id, MaxSdkBase.ErrorInfo error, MaxSdkBase.AdInfo info) =>
+            OnRewardedAdFailedToShow(new SequentialTierShowError { Code = (int)error.Code, Message = error.Message });
+        void OnLegacyRewardedRewarded(string id, MaxSdkBase.Reward reward, MaxSdkBase.AdInfo info) => OnRewardBasedVideoRewarded();
+        void OnLegacyRewardedHidden(string id, MaxSdkBase.AdInfo info) => OnRewardBasedVideoClosed();
+
+        public void DestroyRewardedAd()
+        {
+            _rewardedTierLoader?.Destroy();
+            _rewardedTierLoader = null;
+        }
+
         #endregion
 
         #region Banner
 
         public MaxSdkBase.BannerPosition m_BannerPosition;
         private bool m_IsBannerLoaded;
+
         public override void InitBannerAds(
-            UnityAction bannerLoadedSuccessCallback, 
-            UnityAction bannerAdLoadedFailCallback, 
-            UnityAction bannerAdsCollapsedCallback, 
+            UnityAction bannerLoadedSuccessCallback,
+            UnityAction bannerAdLoadedFailCallback,
+            UnityAction bannerAdsCollapsedCallback,
             UnityAction bannerAdsExpandedCallback,
-            UnityAction bannerAdsDisplayed, 
+            UnityAction bannerAdsDisplayed,
             UnityAction bannerAdsDisplayedFailedCallback,
-            UnityAction bannerAdsClickedCallback) {
+            UnityAction bannerAdsClickedCallback)
+        {
             base.InitBannerAds(
-                bannerLoadedSuccessCallback, 
-                bannerAdLoadedFailCallback, 
-                bannerAdsCollapsedCallback, 
-                bannerAdsExpandedCallback,
-                bannerAdsDisplayed,
-                bannerAdsDisplayedFailedCallback,
+                bannerLoadedSuccessCallback, bannerAdLoadedFailCallback, bannerAdsCollapsedCallback,
+                bannerAdsExpandedCallback, bannerAdsDisplayed, bannerAdsDisplayedFailedCallback,
                 bannerAdsClickedCallback);
-            DebugAds.Log("Banner MAX Init ID = " + m_MaxAdConfig.BannerAdUnitID);
+            DebugAds.Log("[MAX] Banner Init ID = " + m_MaxAdConfig.BannerAdUnitID);
             MaxSdk.CreateBanner(m_MaxAdConfig.BannerAdUnitID, m_BannerPosition);
             MaxSdk.SetBannerBackgroundColor(m_MaxAdConfig.BannerAdUnitID, Color.black);
-            
+
             MaxSdkCallbacks.Banner.OnAdLoadedEvent += BannerAdLoadedEvent;
             MaxSdkCallbacks.Banner.OnAdLoadFailedEvent += BannerAdLoadFailedEvent;
             MaxSdkCallbacks.Banner.OnAdClickedEvent += BannerAdClickedEvent;
-            MaxSdkCallbacks.Banner.OnAdRevenuePaidEvent += (adUnitID, adInfo) => { OnAdRevenuePaidEvent(AdsType.BANNER, adUnitID, adInfo);};
+            MaxSdkCallbacks.Banner.OnAdRevenuePaidEvent += (adUnitID, adInfo) =>
+                OnAdRevenuePaidEvent(AdsType.BANNER, adUnitID, adInfo);
             MaxSdkCallbacks.Banner.OnAdCollapsedEvent += OnBannerAdCollapsedEvent;
             MaxSdkCallbacks.Banner.OnAdExpandedEvent += OnBannerAdExpandedEvent;
         }
 
-        public override void ShowBannerAds() {
+        public override void ShowBannerAds()
+        {
             base.ShowBannerAds();
-            DebugAds.Log("MAX Mediation Banner Call Show");
             MaxSdk.ShowBanner(m_MaxAdConfig.BannerAdUnitID);
         }
+
         public override void HideBannerAds()
         {
             base.HideBannerAds();
-            DebugAds.Log("MAX Mediation Banner Call Hide");
             MaxSdk.HideBanner(m_MaxAdConfig.BannerAdUnitID);
         }
 
-        public override bool IsBannerLoaded()
+        public override bool IsBannerLoaded() => m_IsBannerLoaded;
+
+        public override void DestroyBannerAds()
         {
-            return m_IsBannerLoaded;
+            base.DestroyBannerAds();
+            MaxSdk.DestroyBanner(m_MaxAdConfig.BannerAdUnitID);
+            m_IsBannerLoaded = false;
         }
 
-        private void BannerAdLoadedEvent(string adUnitID, MaxSdkBase.AdInfo adInfo) {
-            DebugAds.Log("MAX Mediation Banner Loaded Success");
+        private void BannerAdLoadedEvent(string adUnitID, MaxSdkBase.AdInfo adInfo)
+        {
+            DebugAds.Log("[MAX] Banner Loaded");
             BannerCallbacks.LoadedSuccess?.Invoke();
             m_IsBannerLoaded = true;
         }
+
         private void BannerAdLoadFailedEvent(string adUnitID, MaxSdkBase.ErrorInfo errorInfo)
         {
-            DebugAds.Log("MAX Mediation Banner Loaded Fail");
+            DebugAds.Log("[MAX] Banner Load Fail");
             BannerCallbacks.LoadedFail?.Invoke();
             m_IsBannerLoaded = false;
         }
+
         private void BannerAdClickedEvent(string adUnitID, MaxSdkBase.AdInfo adInfo)
         {
-            DebugAds.Log("MAX Mediation Banner Clicked");
+            DebugAds.Log("[MAX] Banner Clicked");
             BannerCallbacks.Clicked?.Invoke();
         }
+
         private void OnBannerAdCollapsedEvent(string adUnitID, MaxSdkBase.AdInfo adInfo)
         {
-            DebugAds.Log("MAX Mediation Banner Collapsed");
+            DebugAds.Log("[MAX] Banner Collapsed");
             BannerCallbacks.Collapsed?.Invoke();
         }
+
         private void OnBannerAdExpandedEvent(string adUnitID, MaxSdkBase.AdInfo adInfo)
         {
-            DebugAds.Log("MAX Mediation Banner Expanded");
+            DebugAds.Log("[MAX] Banner Expanded");
             BannerCallbacks.Expanded?.Invoke();
+            BannerCallbacks.Displayed?.Invoke();
         }
+
         #endregion
-        
+
         #region App Open Ads
 
-        public override void InitAppOpenAds(UnityAction adLoadedCallback, UnityAction adLoadFailedCallback, 
+        public override void InitAppOpenAds(UnityAction adLoadedCallback, UnityAction adLoadFailedCallback,
             UnityAction adClosedCallback, UnityAction adDisplayedCallback, UnityAction adFailedToDisplayCallback)
         {
-            base.InitAppOpenAds(adLoadedCallback, adLoadFailedCallback, 
+            base.InitAppOpenAds(adLoadedCallback, adLoadFailedCallback,
                 adClosedCallback, adDisplayedCallback, adFailedToDisplayCallback);
-            
+
             MaxSdkCallbacks.AppOpen.OnAdLoadedEvent += OnAppOpenAdLoadedEvent;
             MaxSdkCallbacks.AppOpen.OnAdLoadFailedEvent += OnAppOpenAdLoadFailedEvent;
-            MaxSdkCallbacks.AppOpen.OnAdClickedEvent += OnAppOpenAdClickedEvent;
-            MaxSdkCallbacks.AppOpen.OnAdRevenuePaidEvent += (adUnitID, adInfo) => { OnAdRevenuePaidEvent(AdsType.APP_OPEN, adUnitID, adInfo);};
+            MaxSdkCallbacks.AppOpen.OnAdRevenuePaidEvent += (adUnitID, adInfo) =>
+                OnAdRevenuePaidEvent(AdsType.APP_OPEN, adUnitID, adInfo);
             MaxSdkCallbacks.AppOpen.OnAdHiddenEvent += OnAppOpenAdHiddenEvent;
             MaxSdkCallbacks.AppOpen.OnAdDisplayedEvent += OnAppOpenAdDisplayedEvent;
             MaxSdkCallbacks.AppOpen.OnAdDisplayFailedEvent += OnAppOpenAdDisplayFailedEvent;
             RequestAppOpenAds();
         }
+
         public override void ShowAppOpenAds()
         {
             base.ShowAppOpenAds();
-            MaxSdk.ShowAppOpenAd(m_MaxAdConfig.AppOpenAdUnitID);
+            if (MaxSdk.IsAppOpenAdReady(m_MaxAdConfig.AppOpenAdUnitID))
+                MaxSdk.ShowAppOpenAd(m_MaxAdConfig.AppOpenAdUnitID);
         }
-        public override void RequestAppOpenAds()
-        {
+
+        public override void RequestAppOpenAds() =>
             MaxSdk.LoadAppOpenAd(m_MaxAdConfig.AppOpenAdUnitID);
-        }
-        public override bool IsAppOpenAdsLoaded()
-        {
-            return MaxSdk.IsAppOpenAdReady(m_MaxAdConfig.AppOpenAdUnitID);
-        }
+
+        public override bool IsAppOpenAdsLoaded() =>
+            MaxSdk.IsAppOpenAdReady(m_MaxAdConfig.AppOpenAdUnitID);
+
         private void OnAppOpenAdLoadedEvent(string adUnitID, MaxSdkBase.AdInfo adInfo)
         {
-            DebugAds.Log("MAX Mediation App Open Ads Loaded Success");
+            DebugAds.Log("[MAX] App Open Ads Loaded");
             AppOpenAdCallbacks.LoadedSuccess?.Invoke();
         }
+
         private void OnAppOpenAdLoadFailedEvent(string adUnitID, MaxSdkBase.ErrorInfo errorInfo)
         {
-            DebugAds.Log("MAX Mediation App Open Ads Loaded Fail");
+            DebugAds.Log("[MAX] App Open Ads Load Fail");
             AppOpenAdCallbacks.LoadedFail?.Invoke();
         }
-        private void OnAppOpenAdClickedEvent(string adUnitID, MaxSdkBase.AdInfo adInfo)
-        {
-        }
+
         private void OnAppOpenAdDisplayedEvent(string adUnitID, MaxSdkBase.AdInfo adInfo)
         {
-            DebugAds.Log("MAX Mediation App Open Ads Displayed");
+            DebugAds.Log("[MAX] App Open Ads Displayed");
             AppOpenAdCallbacks.Displayed?.Invoke();
         }
+
         private void OnAppOpenAdDisplayFailedEvent(string adUnitID, MaxSdkBase.ErrorInfo errorInfo, MaxSdkBase.AdInfo adInfo)
         {
-            DebugAds.Log("MAX Mediation App Open Ads Displayed Fail");
+            DebugAds.Log("[MAX] App Open Ads Displayed Fail");
             AppOpenAdCallbacks.DisplayedFail?.Invoke();
         }
+
         private void OnAppOpenAdHiddenEvent(string adUnitID, MaxSdkBase.AdInfo adInfo)
         {
-            DebugAds.Log("MAX Mediation App Open Ads Hidden");
+            DebugAds.Log("[MAX] App Open Ads Hidden");
             AppOpenAdCallbacks.Closed?.Invoke(true);
         }
+
         #endregion
- #endif
-        public override AdsMediationType GetAdsMediationType() {
-            return AdsMediationType.MAX;
+
+        #region Rewarded Interstitial
+
+        private bool _rewardedInterstitialLoading;
+
+        public void LoadRewardedInterstitial()
+        {
+            if (_rewardedInterstitialLoading) return;
+            var unitId = m_MaxAdConfig.RewardedInterstitialAdUnitID;
+            if (string.IsNullOrEmpty(unitId))
+            {
+                DebugAds.LogWarning("[MAX][RewardedInterstitial] Missing Ad Unit Id.");
+                return;
+            }
+
+            if (MaxSdk.IsRewardedInterstitialAdReady(unitId)) return;
+
+            _rewardedInterstitialLoading = true;
+            MaxSdkCallbacks.RewardedInterstitial.OnAdLoadedEvent -= OnRewardedInterstitialLoaded;
+            MaxSdkCallbacks.RewardedInterstitial.OnAdLoadFailedEvent -= OnRewardedInterstitialLoadFailed;
+            MaxSdkCallbacks.RewardedInterstitial.OnAdLoadedEvent += OnRewardedInterstitialLoaded;
+            MaxSdkCallbacks.RewardedInterstitial.OnAdLoadFailedEvent += OnRewardedInterstitialLoadFailed;
+            MaxSdk.LoadRewardedInterstitialAd(unitId);
         }
+
+        public bool IsRewardedInterstitialLoaded()
+        {
+            var unitId = m_MaxAdConfig.RewardedInterstitialAdUnitID;
+            return !string.IsNullOrEmpty(unitId) && MaxSdk.IsRewardedInterstitialAdReady(unitId);
+        }
+
+        public void ShowRewardedInterstitial(UnityAction rewardCallback, UnityAction<bool> closedCallback = null,
+            UnityAction failedCallback = null)
+        {
+            var unitId = m_MaxAdConfig.RewardedInterstitialAdUnitID;
+            if (!IsRewardedInterstitialLoaded())
+            {
+                LoadRewardedInterstitial();
+                failedCallback?.Invoke();
+                closedCallback?.Invoke(false);
+                return;
+            }
+
+            var rewarded = false;
+
+            Action<string, MaxSdkBase.Reward, MaxSdkBase.AdInfo> onRewarded = null;
+            Action<string, MaxSdkBase.AdInfo> onHidden = null;
+            Action<string, MaxSdkBase.ErrorInfo, MaxSdkBase.AdInfo> onFailed = null;
+
+            onRewarded = (id, reward, info) =>
+            {
+                rewarded = true;
+                rewardCallback?.Invoke();
+            };
+            onHidden = (id, info) =>
+            {
+                Unsub();
+                closedCallback?.Invoke(rewarded);
+                LoadRewardedInterstitial();
+            };
+            onFailed = (id, error, info) =>
+            {
+                Unsub();
+                failedCallback?.Invoke();
+                closedCallback?.Invoke(false);
+                LoadRewardedInterstitial();
+            };
+
+            void Unsub()
+            {
+                MaxSdkCallbacks.RewardedInterstitial.OnAdReceivedRewardEvent -= onRewarded;
+                MaxSdkCallbacks.RewardedInterstitial.OnAdHiddenEvent -= onHidden;
+                MaxSdkCallbacks.RewardedInterstitial.OnAdDisplayFailedEvent -= onFailed;
+            }
+
+            MaxSdkCallbacks.RewardedInterstitial.OnAdReceivedRewardEvent += onRewarded;
+            MaxSdkCallbacks.RewardedInterstitial.OnAdHiddenEvent += onHidden;
+            MaxSdkCallbacks.RewardedInterstitial.OnAdDisplayFailedEvent += onFailed;
+
+            MaxSdk.ShowRewardedInterstitialAd(unitId);
+        }
+
+        private void OnRewardedInterstitialLoaded(string adUnitId, MaxSdkBase.AdInfo adInfo)
+        {
+            _rewardedInterstitialLoading = false;
+            DebugAds.Log("[MAX][RewardedInterstitial] Loaded");
+        }
+
+        private void OnRewardedInterstitialLoadFailed(string adUnitId, MaxSdkBase.ErrorInfo errorInfo)
+        {
+            _rewardedInterstitialLoading = false;
+            DebugAds.Log("[MAX][RewardedInterstitial] Load failed: " + errorInfo.Message);
+        }
+
+        #endregion
+
+        private void OnApplicationQuit()
+        {
+            _interstitialTierLoader?.Destroy();
+            _rewardedTierLoader?.Destroy();
+        }
+
+#endif
+        public override AdsMediationType GetAdsMediationType() => AdsMediationType.MAX;
     }
-    #if !UNITY_AD_MAX
+
+#if !UNITY_AD_MAX
     public enum BannerPosition
     {
-        TopLeft,
-        TopCenter,
-        TopRight,
-        Centered,
-        CenterLeft,
-        CenterRight,
-        BottomLeft,
-        BottomCenter,
-        BottomRight
+        TopLeft, TopCenter, TopRight,
+        Centered, CenterLeft, CenterRight,
+        BottomLeft, BottomCenter, BottomRight
     }
-    #endif
+#endif
 }

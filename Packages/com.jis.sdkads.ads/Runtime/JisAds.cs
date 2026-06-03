@@ -105,6 +105,7 @@ namespace JisSDKAds.Ads
             EnsureResumeCoordinator();
             _appOpen = new AppOpenAdService(this, this);
             _appOpenUnscaledTime = Time.unscaledTime;
+            AdLoadCoordinator.Instance.Configure(this);
             BindCoreCappingEvents();
             _appOpen.ConfigureColdStart(
                 showAppOpenOnColdStart,
@@ -189,8 +190,57 @@ namespace JisSDKAds.Ads
 
             _standardFormatsPreloadedAfterRemoteConfig = true;
             PreloadBannerAd(isStartup: true);
-            PreloadInterstitialAd();
             PreloadRewardedAd();
+            StartCoroutine(CoDeferredInterstitialPreload());
+        }
+
+        IEnumerator CoDeferredInterstitialPreload()
+        {
+            var coordinator = AdLoadCoordinator.Instance;
+            var maxWaitSec = coordinator.GetMaxDeferredInterstitialPreloadSeconds();
+            var startedAt = Time.unscaledTime;
+            var beganBecauseIdle = false;
+
+            if (coordinator.IsPipelineIdle)
+            {
+                beganBecauseIdle = true;
+            }
+            else
+            {
+                void OnPipelineIdle() => beganBecauseIdle = true;
+                coordinator.PipelineBecameIdle += OnPipelineIdle;
+                try
+                {
+                    while (!beganBecauseIdle)
+                    {
+                        if (maxWaitSec > 0f && Time.unscaledTime - startedAt >= maxWaitSec)
+                            break;
+
+                        yield return null;
+                    }
+                }
+                finally
+                {
+                    coordinator.PipelineBecameIdle -= OnPipelineIdle;
+                }
+            }
+
+            if (!ShouldPreloadAdsOnGameStart() || !UseCoreForStandardFormats)
+                yield break;
+
+            var waited = Time.unscaledTime - startedAt;
+            if (beganBecauseIdle)
+            {
+                DebugAds.Log(
+                    $"[JisAds] Interstitial preload starting after pipeline idle ({waited:0.#}s, max={maxWaitSec:0.#}s).");
+            }
+            else
+            {
+                DebugAds.Log(
+                    $"[JisAds] Interstitial preload starting after max defer wait ({waited:0.#}s, pipeline still busy).");
+            }
+
+            PreloadInterstitialAd();
         }
 
         void PreloadBannerAd(bool isStartup = false)
@@ -807,6 +857,9 @@ namespace JisSDKAds.Ads
 
             if (UseCoreForStandardFormats)
             {
+                if (!IsRewardedVideoLoaded())
+                    AdLoadCoordinator.Instance.PrepareUrgentRewarded();
+
                 _core.ShowRewarded(
                     onRewardEarned: ConsumePendingRewardedCallbacksOnRewardGranted,
                     onClosed: () => ConsumePendingRewardedCallbacksOnClose(_pendingRewardedRewardGranted),
@@ -903,6 +956,26 @@ namespace JisSDKAds.Ads
                 return;
             }
         }
+        /// <summary>Warm-load interstitial through the global load pipeline (serialized with rewarded).</summary>
+        public void RequestInterstitialLoadIfNeeded()
+        {
+            if (!UseCoreForStandardFormats || !CanShowAds())
+                return;
+            if (IsInterstitialAdLoaded())
+                return;
+            PreloadInterstitialAd();
+        }
+
+        /// <summary>Warm-load rewarded through the global load pipeline (serialized with interstitial).</summary>
+        public void RequestRewardedLoadIfNeeded()
+        {
+            if (!UseCoreForStandardFormats || !CanShowAds())
+                return;
+            if (IsRewardedVideoLoaded())
+                return;
+            PreloadRewardedAd();
+        }
+
         public bool IsInterstitialAdLoaded() =>
             UseCoreForStandardFormats && (_core.PrimaryProvider?.Interstitial.IsLoaded ?? false);
 

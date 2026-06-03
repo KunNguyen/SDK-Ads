@@ -25,6 +25,7 @@ namespace JisSDKAds.Providers.AdMob.SequentialTier
                 host,
                 "int",
                 "interstitial",
+                AdLoadFormat.Interstitial,
                 config,
                 () => new AdMobInterstitialAdapter());
             RefreshLoaderCallbacks();
@@ -51,7 +52,7 @@ namespace JisSDKAds.Providers.AdMob.SequentialTier
                 return;
 
             _pendingOnShowFailed?.Invoke("Interstitial not ready");
-            _loader.Load();
+            _loader.Load(urgent: false);
         }
 
         public void Destroy() => _loader.Destroy();
@@ -99,11 +100,11 @@ namespace JisSDKAds.Providers.AdMob.SequentialTier
             _loader.Load(forceReload: true);
         }
 
-        void OnShowFailed(GoogleMobileAds.Api.AdError error)
+        void OnShowFailed(SequentialTierShowError? error)
         {
             var cb = _pendingOnShowFailed;
             _pendingOnShowFailed = null;
-            cb?.Invoke(error?.GetMessage() ?? "show_failed");
+            cb?.Invoke(string.IsNullOrEmpty(error?.Message) ? "show_failed" : error.Value.Message);
             _loader.Load(forceReload: true);
         }
     }
