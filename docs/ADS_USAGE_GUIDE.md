@@ -20,7 +20,7 @@ Tài liệu này tóm tắt **tất cả những gì cần setup để chạy qu
 6. Gọi `await JisAds.Instance.InitializeAsync()` từ màn loading.
 7. Dùng API: `ShowInterstitial` / `ShowRewardVideo` / `ShowBannerAds`.
 
-> ⚠️ **Nếu dùng Tiered:** bắt buộc cấu hình unit ID ở Remote Config **hoặc** điền fallback local, nếu không format đó **không bao giờ load được**. Xem [mục 3.2](#32-tiered-sequential-ladder).
+> ⚠️ **Nếu dùng Tiered:** unit ID của từng tier phải cấu hình ở Remote Config. Local chỉ cấu hình **fallback unit ID**, và fallback chỉ được load sau khi tier Fill fail đủ số lần cấu hình. Xem [mục 3.2](#32-tiered-sequential-ladder).
 
 ---
 
@@ -77,16 +77,13 @@ Trong `SDKSetup` (vd. `AndroidSDKSetup.asset`):
 
 Bật `enableSequentialLadder = true`. SDK sẽ load lần lượt **Premium → High → Mid → Low → Fill** (tier nào load được trước thì dùng).
 
-**Nguồn unit ID cho mỗi tier (theo thứ tự ưu tiên):**
-1. **Firebase Remote Config** theo key tier (xem bảng [mục 4](#4-remote-config-keys)).
-2. `tierConfig.tiers[].androidAdUnitId` (điền tay trong asset).
-3. `tierConfig.defaultAndroidAdUnitId`.
-4. `admobAdsSetup.rewardedAdUnitID` (list unit chuẩn) — fallback cuối.
+**Nguồn unit ID:**
+1. **Tier unit IDs:** chỉ lấy từ Firebase Remote Config theo key tier (xem bảng [mục 4](#4-remote-config-keys)).
+2. **Fallback local:** `tierConfig.defaultAndroidAdUnitId` / `defaultIosAdUnitId` (hoặc list unit chuẩn làm fallback tương thích cũ).
 
-> ⚠️ **Bẫy cấu hình:** nếu cả 4 nguồn đều trống thì ladder fail với `no_ad_unit_configured` và **format đó không bao giờ load** (preload tiered chỉ retry vài lần rồi dừng). Console sẽ in cảnh báo:
-> `[SequentialTier] rewarded ladder has NO ad unit id …`
->
-> **Khuyến nghị:** luôn điền tối thiểu **1 fallback local** (`defaultAndroidAdUnitId` hoặc list unit chuẩn) để kể cả khi Remote Config trống vẫn load được.
+Runtime sẽ load Premium → High → Mid → Low → Fill bằng RC tier IDs. Nếu Fill fail đủ `fillHoldMaxRetries` lần (mặc định 3), SDK mới load fallback local.
+
+> ⚠️ **Bẫy cấu hình:** nếu Remote Config không có tier ID thì ladder fail với `no_remote_tier_ad_unit_configured`; fallback local không thay thế tier IDs từ đầu. Nếu Fill fail đủ 3 lần mà fallback local trống, format fail với `fallback_ad_unit_not_configured`.
 
 > SDK đã có cơ chế tự hồi phục: khi Remote Config refresh, unit ID tier mới được áp lại và preload được re-arm tự động.
 
@@ -102,7 +99,7 @@ Tạo các tham số này trong Firebase Remote Config (chỉ cần khi dùng t�
 | `interstitial_inventory_mode` | `single` \| `tiered` | Chế độ inventory interstitial |
 | `rewarded_inventory_mode` | `single` \| `tiered` | Chế độ inventory rewarded |
 
-### Tiered unit IDs (bắt buộc khi tiered + không có fallback local)
+### Tiered unit IDs (bắt buộc khi tiered)
 | Interstitial | Rewarded |
 |--------------|----------|
 | `inter_premium_id` | `reward_premium_id` |
@@ -250,7 +247,7 @@ Các field serialized (chỉnh trong Inspector của GameObject gắn `JisAds`):
 | Triệu chứng | Nguyên nhân thường gặp |
 |-------------|------------------------|
 | Rewarded/Inter "load 1 lần rồi hết" (MAX/iOS) | Provider phải warm-reload sau close — đã fix trong SDK. Build lại với `UNITY_AD_MAX`. |
-| Tiered rewarded **không bao giờ load** | Không có unit ID ở RC lẫn local. Xem cảnh báo `[SequentialTier] … NO ad unit id`. Điền RC key hoặc fallback (mục 3.2). |
+| Tiered rewarded **không bao giờ load** | Không có tier unit ID ở RC, hoặc Fill fail đủ số lần nhưng fallback local trống. Điền RC tier keys và fallback local (mục 3.2). |
 | Banner mất sau khi đóng ad | Bật `restoreBannerAfterFullscreenAds`; kiểm tra log `[JisAds][BannerRestore]`. |
 | `using JisSDKAds.Common` không resolve | Thêm asmdef reference (xem [GAME_SETUP.md](GAME_SETUP.md) mục 4). |
 | Không có ad trong Editor | Bình thường — startup preload bị skip trong Editor; test trên device. |
