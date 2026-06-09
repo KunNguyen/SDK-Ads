@@ -102,6 +102,7 @@ namespace JisSDKAds.Ads.AppOpen
                 return;
             }
 
+            _host.HideBannerForFullscreenAd("app_open");
             _host.SetAdsShowingState(true);
             _host.Core.ShowAppOpen(
                 onClosed: () =>
@@ -111,11 +112,13 @@ namespace JisSDKAds.Ads.AppOpen
                     _host.SetAdsShowingState(false);
                     Preload();
                     onClosed?.Invoke();
+                    _host.ScheduleBannerRestoreAfterFullscreenAd("app_open");
                 },
                 onFailed: err =>
                 {
                     _host.SetAdsShowingState(false);
                     onFailed?.Invoke(err);
+                    _host.ScheduleBannerRestoreAfterFullscreenAd("app_open");
                 });
         }
 

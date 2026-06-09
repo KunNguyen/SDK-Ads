@@ -31,6 +31,10 @@ namespace JisSDKAds.Ads
         [SerializeField] private float appOpenFirstShowDelayMs = 600f;
         [SerializeField] private float appOpenFirstShowWaitLoadTimeoutSec = 2.5f;
         [SerializeField] private float appOpenMinIntervalBetweenShowsSec = 20f;
+        [Header("Banner restore after fullscreen ads")]
+        [SerializeField] private bool restoreBannerAfterFullscreenAds = true;
+        [SerializeField] private float bannerRestoreDelaySec = 0.35f;
+        [SerializeField] private float bannerRestoreDebounceSec = 2f;
         private AdManager _core;
         private AppOpenAdService _appOpen;
         private bool _isReady;
@@ -64,6 +68,9 @@ namespace JisSDKAds.Ads
         private bool _bannerAutoRefreshEnabled;
         private float _bannerAutoRefreshIntervalSec = BannerRefreshSettings.DefaultIntervalSeconds;
         private Coroutine _bannerAutoRefreshCoroutine;
+        private Coroutine _bannerRestoreCoroutine;
+        private Coroutine _bannerPauseRestoreCoroutine;
+        const string BannerRestoreLogPrefix = "[JisAds][BannerRestore]";
         enum StandardAdPreloadFormat
         {
             Banner,
@@ -116,11 +123,16 @@ namespace JisSDKAds.Ads
         private void OnApplicationPause(bool pauseStatus)
         {
             resumeCoordinator?.OnApplicationPause(pauseStatus);
+
+            if (!pauseStatus && _bannerWantsVisible && !IsShowingAnyAd())
+                ScheduleBannerRestoreOnAppResume();
         }
         private void OnDestroy()
         {
             StopAllPreloadRetries();
             StopBannerAutoRefresh();
+            CancelPendingBannerRestore();
+            CancelPendingBannerPauseRestore();
             UnbindCoreCappingEvents();
         }
         private void Start()
@@ -686,6 +698,7 @@ namespace JisSDKAds.Ads
 
             if (UseCoreForStandardFormats)
             {
+                HideBannerForFullscreenAd("interstitial");
                 _core.ShowInterstitial(
                     onClosed: () =>
                     {
@@ -715,6 +728,7 @@ namespace JisSDKAds.Ads
             if (didShow)
                 onSuccess?.Invoke();
             onClosed?.Invoke();
+            ScheduleBannerRestoreAfterFullscreenAd("interstitial");
         }
 
         void ConsumePendingInterstitialCallbacksOnFail()
@@ -725,6 +739,7 @@ namespace JisSDKAds.Ads
             var onFail = _pendingInterstitialShowFailCallback;
             ClearPendingInterstitialCallbacks();
             onFail?.Invoke();
+            ScheduleBannerRestoreAfterFullscreenAd("interstitial");
         }
 
         void ClearPendingInterstitialCallbacks()
@@ -860,6 +875,7 @@ namespace JisSDKAds.Ads
                 if (!IsRewardedVideoLoaded())
                     AdLoadCoordinator.Instance.PrepareUrgentRewarded();
 
+                HideBannerForFullscreenAd("rewarded");
                 _core.ShowRewarded(
                     onRewardEarned: ConsumePendingRewardedCallbacksOnRewardGranted,
                     onClosed: () => ConsumePendingRewardedCallbacksOnClose(_pendingRewardedRewardGranted),
@@ -890,6 +906,7 @@ namespace JisSDKAds.Ads
             var onClosed = _pendingRewardedClosedCallback;
             ClearPendingRewardedCallbacks();
             onClosed?.Invoke(closedOk);
+            ScheduleBannerRestoreAfterFullscreenAd("rewarded");
         }
 
         void ConsumePendingRewardedCallbacksOnFail()
@@ -900,6 +917,7 @@ namespace JisSDKAds.Ads
             var onFail = _pendingRewardedFailCallback;
             ClearPendingRewardedCallbacks();
             onFail?.Invoke();
+            ScheduleBannerRestoreAfterFullscreenAd("rewarded");
         }
 
         void ClearPendingRewardedCallbacks()
@@ -949,12 +967,116 @@ namespace JisSDKAds.Ads
         public void HideBannerAds()
         {
             _bannerWantsVisible = false;
+            CancelPendingBannerRestore();
+            CancelPendingBannerPauseRestore();
             if (UseCoreForStandardFormats)
             {
                 _core.HideBanner();
                 StopBannerAutoRefresh();
                 return;
             }
+        }
+
+        /// <summary>
+        /// Hides the native banner before a fullscreen ad without clearing <see cref="_bannerWantsVisible"/>.
+        /// </summary>
+        public void HideBannerForFullscreenAd(string reason)
+        {
+            if (!restoreBannerAfterFullscreenAds || !CanShowAds() || !UseCoreForStandardFormats)
+                return;
+            if (!_bannerWantsVisible)
+                return;
+
+            DebugAds.Log($"{BannerRestoreLogPrefix} hide reason={reason}");
+            _core.HideBanner();
+        }
+
+        /// <summary>
+        /// Debounced destroy+recreate+show after fullscreen ads when the banner should stay visible.
+        /// </summary>
+        public void ScheduleBannerRestoreAfterFullscreenAd(string reason)
+        {
+            if (!restoreBannerAfterFullscreenAds || !CanShowAds() || !UseCoreForStandardFormats)
+                return;
+            if (!_bannerWantsVisible)
+                return;
+
+            CancelPendingBannerRestore();
+            _bannerRestoreCoroutine = StartCoroutine(CoRestoreBannerAfterFullscreenAd(reason));
+        }
+
+        void ScheduleBannerRestoreOnAppResume()
+        {
+            if (!restoreBannerAfterFullscreenAds || !CanShowAds() || !UseCoreForStandardFormats)
+                return;
+            if (!_bannerWantsVisible || IsShowingAnyAd())
+                return;
+
+            CancelPendingBannerPauseRestore();
+            _bannerPauseRestoreCoroutine = StartCoroutine(CoDebouncedBannerRestoreOnAppResume());
+        }
+
+        void CancelPendingBannerRestore()
+        {
+            if (_bannerRestoreCoroutine == null)
+                return;
+
+            StopCoroutine(_bannerRestoreCoroutine);
+            _bannerRestoreCoroutine = null;
+        }
+
+        void CancelPendingBannerPauseRestore()
+        {
+            if (_bannerPauseRestoreCoroutine == null)
+                return;
+
+            StopCoroutine(_bannerPauseRestoreCoroutine);
+            _bannerPauseRestoreCoroutine = null;
+        }
+
+        IEnumerator CoRestoreBannerAfterFullscreenAd(string reason)
+        {
+            if (bannerRestoreDelaySec > 0f)
+                yield return new WaitForSecondsRealtime(bannerRestoreDelaySec);
+
+            _bannerRestoreCoroutine = null;
+
+            if (!restoreBannerAfterFullscreenAds || !CanShowAds() || !UseCoreForStandardFormats || !_bannerWantsVisible)
+                yield break;
+
+            if (IsShowingAnyAd())
+            {
+                DebugAds.Log($"{BannerRestoreLogPrefix} restore deferred reason={reason} (fullscreen ad still showing)");
+                yield break;
+            }
+
+            DebugAds.Log($"{BannerRestoreLogPrefix} restore start reason={reason}");
+            _core.PrimaryProvider.Banner.Load(
+                onLoaded: () =>
+                {
+                    if (!_bannerWantsVisible || !CanShowAds())
+                        return;
+
+                    _core.ShowBanner(
+                        onShown: () => DebugAds.Log($"{BannerRestoreLogPrefix} restore shown reason={reason}"),
+                        onFailed: err => DebugAds.LogWarning($"{BannerRestoreLogPrefix} restore show failed reason={reason} error={err}"));
+                },
+                onFailed: err => DebugAds.LogWarning($"{BannerRestoreLogPrefix} restore load failed reason={reason} error={err}"));
+        }
+
+        IEnumerator CoDebouncedBannerRestoreOnAppResume()
+        {
+            if (bannerRestoreDebounceSec > 0f)
+                yield return new WaitForSecondsRealtime(bannerRestoreDebounceSec);
+
+            _bannerPauseRestoreCoroutine = null;
+
+            if (!restoreBannerAfterFullscreenAds || !CanShowAds() || !UseCoreForStandardFormats)
+                yield break;
+            if (!_bannerWantsVisible || IsShowingAnyAd())
+                yield break;
+
+            ScheduleBannerRestoreAfterFullscreenAd("app_resume");
         }
         /// <summary>Warm-load interstitial through the global load pipeline (serialized with rewarded).</summary>
         public void RequestInterstitialLoadIfNeeded()

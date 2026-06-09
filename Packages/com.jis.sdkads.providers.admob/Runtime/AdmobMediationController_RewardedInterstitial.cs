@@ -69,7 +69,22 @@ namespace JisSDKAds.Ads
                 return;
             }
 
+            JisAds.Instance?.HideBannerForFullscreenAd("rewarded_interstitial");
+
             var rewarded = false;
+            void OnClosed()
+            {
+                closedCallback?.Invoke(rewarded);
+                JisAds.Instance?.ScheduleBannerRestoreAfterFullscreenAd("rewarded_interstitial");
+            }
+
+            void OnFailed()
+            {
+                failedCallback?.Invoke();
+                closedCallback?.Invoke(false);
+                JisAds.Instance?.ScheduleBannerRestoreAfterFullscreenAd("rewarded_interstitial");
+            }
+
             try
             {
                 _rewardedInterstitial.Show(reward =>
@@ -81,12 +96,12 @@ namespace JisSDKAds.Ads
             catch (Exception e)
             {
                 DebugAds.LogException("[AdMob][RewardedInterstitial] Exception on Show", e);
-                failedCallback?.Invoke();
-                closedCallback?.Invoke(false);
+                OnFailed();
                 return;
             }
 
-            _rewardedInterstitial.OnAdFullScreenContentClosed += () => closedCallback?.Invoke(rewarded);
+            _rewardedInterstitial.OnAdFullScreenContentClosed += OnClosed;
+            _rewardedInterstitial.OnAdFullScreenContentFailed += _ => OnFailed();
         }
 
         private string GetRewardedInterstitialUnitId()

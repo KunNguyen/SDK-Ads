@@ -93,6 +93,7 @@ namespace JisSDKAds.Ads.Resume
             if (!_host.CanShowAds() || _host.IsShowingAnyAd())
                 return;
 
+            _host.HideBannerForFullscreenAd("resume_ad");
             _host.SetAdsShowingState(true);
 
             switch (_policy.Format)
@@ -114,6 +115,7 @@ namespace JisSDKAds.Ads.Resume
         {
             _lastShowTime = DateTime.Now;
             _host.SetAdsShowingState(false);
+            _host.ScheduleBannerRestoreAfterFullscreenAd("resume_ad");
         }
     }
 }
