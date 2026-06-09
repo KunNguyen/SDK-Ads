@@ -78,6 +78,24 @@ namespace JisSDKAds.Ads
             return true;
         }
 
+        bool TryHideBannerViaJisAds()
+        {
+            if (!ShouldRouteStandardFormatsToJisAds())
+                return false;
+
+            ActiveJisAds.HideBannerAds();
+            return true;
+        }
+
+        bool TryDestroyBannerViaJisAds()
+        {
+            if (!ShouldRouteStandardFormatsToJisAds())
+                return false;
+
+            ActiveJisAds.HideBannerAds();
+            return true;
+        }
+
         bool TryQueryRewardedLoadedFromJisAds(out bool loaded)
         {
             loaded = false;

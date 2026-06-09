@@ -35,6 +35,11 @@ namespace JisSDKAds.Ads
         [SerializeField] private bool restoreBannerAfterFullscreenAds = true;
         [SerializeField] private float bannerRestoreDelaySec = 0.35f;
         [SerializeField] private float bannerRestoreDebounceSec = 2f;
+        [SerializeField] private int bannerRestoreMaxRetries = 4;
+        [SerializeField] private float bannerRestoreRetryDelaySec = 3f;
+        [Header("Fullscreen in-flight watchdog (recover stuck callbacks)")]
+        [SerializeField] private bool enableFullscreenInFlightWatchdog = true;
+        [SerializeField] private float fullscreenInFlightWatchdogSec = 60f;
         private AdManager _core;
         private AppOpenAdService _appOpen;
         private bool _isReady;
@@ -48,6 +53,7 @@ namespace JisSDKAds.Ads
         private UnityAction _pendingInterstitialShowFailCallback;
         private bool _interstitialCallbacksInFlight;
         private int _interstitialShowAttemptId;
+        private Coroutine _interstitialWatchdogCoroutine;
 
         private bool _pendingRewardedWasShown;
         private bool _pendingRewardedRewardGranted;
@@ -56,6 +62,7 @@ namespace JisSDKAds.Ads
         private UnityAction _pendingRewardedFailCallback;
         private bool _rewardedCallbacksInFlight;
         private int _rewardedShowAttemptId;
+        private Coroutine _rewardedWatchdogCoroutine;
         private bool _standardFormatsPreloadedAfterRemoteConfig;
         private readonly int[] _preloadFailCounts = new int[3];
         private readonly bool[] _preloadRetryInFlight = new bool[3];
@@ -472,6 +479,11 @@ namespace JisSDKAds.Ads
                 if (!_bannerWantsVisible)
                     continue;
 
+                // Never destroy/reload the banner while a fullscreen ad is on screen — it races
+                // with the hide/restore flow and can leave the banner in a bad state.
+                if (IsShowingAnyAd())
+                    continue;
+
                 RefreshVisibleBanner();
             }
         }
@@ -514,6 +526,28 @@ namespace JisSDKAds.Ads
             _appOpen?.ApplyRemoteConfig();
             resumeCoordinator?.ApplyRemoteConfig();
             ApplyBannerRemoteConfig();
+            RecoverStandardPreloadsAfterRemoteConfigRefresh();
+        }
+
+        /// <summary>
+        /// When Remote Config refreshes (e.g. sequential-tier ad unit IDs arrive late), re-apply the
+        /// resolved IDs and re-arm interstitial/rewarded preloads that may have permanently given up
+        /// earlier (the tiered preload retry stops after a few "no ad unit configured" failures).
+        /// </summary>
+        void RecoverStandardPreloadsAfterRemoteConfigRefresh()
+        {
+            if (!UseCoreForStandardFormats || !CanShowAds())
+                return;
+
+            // Push the latest RC-resolved unit IDs onto the (shared) sequential-tier config instances.
+            ApplyRemoteAdInventoryFromConfig();
+
+            // Clear the "stopped after N failures" state so late-arriving inventory can load again.
+            _preloadFailCounts[PreloadFormatIndex(StandardAdPreloadFormat.Interstitial)] = 0;
+            _preloadFailCounts[PreloadFormatIndex(StandardAdPreloadFormat.Rewarded)] = 0;
+
+            RequestInterstitialLoadIfNeeded();
+            RequestRewardedLoadIfNeeded();
         }
         public async Task InitializeFirebaseAsync(bool fetchRemoteConfig = true)
         {
@@ -691,6 +725,7 @@ namespace JisSDKAds.Ads
             // after we know the ad actually opened; then invoke success together with close.
             _interstitialCallbacksInFlight = true;
             _interstitialShowAttemptId++;
+            StartInterstitialInFlightWatchdog(_interstitialShowAttemptId);
             _pendingInterstitialWasShown = false;
             _pendingInterstitialClosedCallback = closedCallback;
             _pendingInterstitialShowSuccessCallback = showSuccessCallback;
@@ -698,6 +733,7 @@ namespace JisSDKAds.Ads
 
             if (UseCoreForStandardFormats)
             {
+                SetAdsShowingState(true);
                 HideBannerForFullscreenAd("interstitial");
                 _core.ShowInterstitial(
                     onClosed: () =>
@@ -749,6 +785,8 @@ namespace JisSDKAds.Ads
             _pendingInterstitialShowSuccessCallback = null;
             _pendingInterstitialShowFailCallback = null;
             _interstitialCallbacksInFlight = false;
+            StopInterstitialInFlightWatchdog();
+            SetAdsShowingState(false);
         }
 
         bool ShouldBlockInterstitialByCapping(out float remainingSeconds, out string reason)
@@ -863,6 +901,7 @@ namespace JisSDKAds.Ads
 
             _rewardedCallbacksInFlight = true;
             _rewardedShowAttemptId++;
+            StartRewardedInFlightWatchdog(_rewardedShowAttemptId);
             _pendingRewardedWasShown = false;
             _pendingRewardedRewardGranted = false;
             _pendingRewardedRewardCallback = successCallback;
@@ -928,8 +967,70 @@ namespace JisSDKAds.Ads
             _pendingRewardedRewardCallback = null;
             _pendingRewardedFailCallback = null;
             _rewardedCallbacksInFlight = false;
+            StopRewardedInFlightWatchdog();
             SetAdsShowingState(false);
         }
+
+        void StartInterstitialInFlightWatchdog(int attemptId)
+        {
+            StopInterstitialInFlightWatchdog();
+            if (!enableFullscreenInFlightWatchdog || fullscreenInFlightWatchdogSec <= 0f)
+                return;
+            _interstitialWatchdogCoroutine = StartCoroutine(CoInterstitialInFlightWatchdog(attemptId));
+        }
+
+        void StopInterstitialInFlightWatchdog()
+        {
+            if (_interstitialWatchdogCoroutine == null)
+                return;
+            StopCoroutine(_interstitialWatchdogCoroutine);
+            _interstitialWatchdogCoroutine = null;
+        }
+
+        IEnumerator CoInterstitialInFlightWatchdog(int attemptId)
+        {
+            yield return new WaitForSecondsRealtime(fullscreenInFlightWatchdogSec);
+            _interstitialWatchdogCoroutine = null;
+
+            if (!_interstitialCallbacksInFlight || attemptId != _interstitialShowAttemptId)
+                yield break;
+
+            DebugAds.LogWarning(
+                "[JisAds] Interstitial in-flight watchdog fired — close callback never arrived. Recovering so future shows aren't blocked.");
+            ConsumePendingInterstitialCallbacksOnFail();
+            RequestInterstitialLoadIfNeeded();
+        }
+
+        void StartRewardedInFlightWatchdog(int attemptId)
+        {
+            StopRewardedInFlightWatchdog();
+            if (!enableFullscreenInFlightWatchdog || fullscreenInFlightWatchdogSec <= 0f)
+                return;
+            _rewardedWatchdogCoroutine = StartCoroutine(CoRewardedInFlightWatchdog(attemptId));
+        }
+
+        void StopRewardedInFlightWatchdog()
+        {
+            if (_rewardedWatchdogCoroutine == null)
+                return;
+            StopCoroutine(_rewardedWatchdogCoroutine);
+            _rewardedWatchdogCoroutine = null;
+        }
+
+        IEnumerator CoRewardedInFlightWatchdog(int attemptId)
+        {
+            yield return new WaitForSecondsRealtime(fullscreenInFlightWatchdogSec);
+            _rewardedWatchdogCoroutine = null;
+
+            if (!_rewardedCallbacksInFlight || attemptId != _rewardedShowAttemptId)
+                yield break;
+
+            DebugAds.LogWarning(
+                "[JisAds] Rewarded in-flight watchdog fired — close callback never arrived. Recovering so future shows aren't blocked.");
+            ConsumePendingRewardedCallbacksOnFail();
+            RequestRewardedLoadIfNeeded();
+        }
+
         public void ShowBannerAds()
         {
             if (!CanShowAds())
@@ -1039,30 +1140,86 @@ namespace JisSDKAds.Ads
             if (bannerRestoreDelaySec > 0f)
                 yield return new WaitForSecondsRealtime(bannerRestoreDelaySec);
 
-            _bannerRestoreCoroutine = null;
-
-            if (!restoreBannerAfterFullscreenAds || !CanShowAds() || !UseCoreForStandardFormats || !_bannerWantsVisible)
-                yield break;
-
-            if (IsShowingAnyAd())
+            // Wait (bounded) until no fullscreen ad is on screen instead of silently dropping the restore.
+            var fullscreenWait = 0f;
+            const float maxFullscreenWaitSec = 30f;
+            while (IsShowingAnyAd() && fullscreenWait < maxFullscreenWaitSec)
             {
-                DebugAds.Log($"{BannerRestoreLogPrefix} restore deferred reason={reason} (fullscreen ad still showing)");
-                yield break;
+                if (!BannerRestorePreconditionsMet())
+                {
+                    _bannerRestoreCoroutine = null;
+                    yield break;
+                }
+                fullscreenWait += 0.2f;
+                yield return new WaitForSecondsRealtime(0.2f);
             }
 
-            DebugAds.Log($"{BannerRestoreLogPrefix} restore start reason={reason}");
-            _core.PrimaryProvider.Banner.Load(
-                onLoaded: () =>
+            var maxAttempts = Mathf.Max(1, bannerRestoreMaxRetries);
+            for (var attempt = 1; attempt <= maxAttempts; attempt++)
+            {
+                if (!BannerRestorePreconditionsMet() || IsShowingAnyAd())
                 {
-                    if (!_bannerWantsVisible || !CanShowAds())
-                        return;
+                    _bannerRestoreCoroutine = null;
+                    yield break;
+                }
 
-                    _core.ShowBanner(
-                        onShown: () => DebugAds.Log($"{BannerRestoreLogPrefix} restore shown reason={reason}"),
-                        onFailed: err => DebugAds.LogWarning($"{BannerRestoreLogPrefix} restore show failed reason={reason} error={err}"));
-                },
-                onFailed: err => DebugAds.LogWarning($"{BannerRestoreLogPrefix} restore load failed reason={reason} error={err}"));
+                DebugAds.Log($"{BannerRestoreLogPrefix} restore start reason={reason} attempt={attempt}/{maxAttempts}");
+
+                var done = false;
+                var succeeded = false;
+                _core.PrimaryProvider.Banner.Load(
+                    onLoaded: () =>
+                    {
+                        if (!_bannerWantsVisible || !CanShowAds())
+                        {
+                            done = true;
+                            succeeded = true; // intent changed — stop retrying.
+                            return;
+                        }
+
+                        _core.ShowBanner(
+                            onShown: () =>
+                            {
+                                DebugAds.Log($"{BannerRestoreLogPrefix} restore shown reason={reason}");
+                                succeeded = true;
+                                done = true;
+                            },
+                            onFailed: err =>
+                            {
+                                DebugAds.LogWarning($"{BannerRestoreLogPrefix} restore show failed reason={reason} error={err}");
+                                done = true;
+                            });
+                    },
+                    onFailed: err =>
+                    {
+                        DebugAds.LogWarning($"{BannerRestoreLogPrefix} restore load failed reason={reason} attempt={attempt} error={err}");
+                        done = true;
+                    });
+
+                var waited = 0f;
+                const float perAttemptTimeoutSec = 15f;
+                while (!done && waited < perAttemptTimeoutSec)
+                {
+                    waited += Time.unscaledDeltaTime;
+                    yield return null;
+                }
+
+                if (succeeded)
+                {
+                    _bannerRestoreCoroutine = null;
+                    yield break;
+                }
+
+                if (attempt < maxAttempts)
+                    yield return new WaitForSecondsRealtime(Mathf.Max(0.1f, bannerRestoreRetryDelaySec));
+            }
+
+            DebugAds.LogWarning($"{BannerRestoreLogPrefix} restore failed after {maxAttempts} attempts reason={reason}");
+            _bannerRestoreCoroutine = null;
         }
+
+        bool BannerRestorePreconditionsMet() =>
+            restoreBannerAfterFullscreenAds && CanShowAds() && UseCoreForStandardFormats && _bannerWantsVisible;
 
         IEnumerator CoDebouncedBannerRestoreOnAppResume()
         {

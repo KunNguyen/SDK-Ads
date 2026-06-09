@@ -85,31 +85,58 @@ namespace JisSDKAds.Providers.Max
     internal class MaxInterstitialAd : IInterstitialAd
     {
         private readonly string _adUnitId;
+        private Action _pendingOnLoaded;
+        private Action<string> _pendingOnLoadFailed;
+        private Action _pendingOnShown;
+        private Action _pendingOnClosed;
+        private Action<string> _pendingOnShowFailed;
 
         public MaxInterstitialAd(string adUnitId) => _adUnitId = adUnitId;
         public bool IsLoaded => MaxSdk.IsInterstitialReady(_adUnitId);
 
         public void Load(Action onLoaded = null, Action<string> onFailed = null)
         {
-            MaxSdkCallbacks.Interstitial.OnAdLoadedEvent += OnLoaded;
-            MaxSdkCallbacks.Interstitial.OnAdLoadFailedEvent += OnFailed;
+            if (string.IsNullOrEmpty(_adUnitId))
+            {
+                onFailed?.Invoke("Interstitial ad unit id is empty");
+                return;
+            }
+
+            _pendingOnLoaded = onLoaded;
+            _pendingOnLoadFailed = onFailed;
+
+            // Idempotent: never stack handlers when Load is called repeatedly before a result.
+            MaxSdkCallbacks.Interstitial.OnAdLoadedEvent -= OnLoadResult;
+            MaxSdkCallbacks.Interstitial.OnAdLoadedEvent += OnLoadResult;
+            MaxSdkCallbacks.Interstitial.OnAdLoadFailedEvent -= OnLoadFailed;
+            MaxSdkCallbacks.Interstitial.OnAdLoadFailedEvent += OnLoadFailed;
             MaxSdk.LoadInterstitial(_adUnitId);
+        }
 
-            void OnLoaded(string id, MaxSdkBase.AdInfo info)
-            {
-                if (id != _adUnitId) return;
-                MaxSdkCallbacks.Interstitial.OnAdLoadedEvent -= OnLoaded;
-                MaxSdkCallbacks.Interstitial.OnAdLoadFailedEvent -= OnFailed;
-                onLoaded?.Invoke();
-            }
+        void OnLoadResult(string id, MaxSdkBase.AdInfo info)
+        {
+            if (id != _adUnitId) return;
+            UnsubscribeLoad();
+            var cb = _pendingOnLoaded;
+            _pendingOnLoaded = null;
+            _pendingOnLoadFailed = null;
+            cb?.Invoke();
+        }
 
-            void OnFailed(string id, MaxSdkBase.ErrorInfo err)
-            {
-                if (id != _adUnitId) return;
-                MaxSdkCallbacks.Interstitial.OnAdLoadedEvent -= OnLoaded;
-                MaxSdkCallbacks.Interstitial.OnAdLoadFailedEvent -= OnFailed;
-                onFailed?.Invoke(err.Message);
-            }
+        void OnLoadFailed(string id, MaxSdkBase.ErrorInfo err)
+        {
+            if (id != _adUnitId) return;
+            UnsubscribeLoad();
+            var cb = _pendingOnLoadFailed;
+            _pendingOnLoaded = null;
+            _pendingOnLoadFailed = null;
+            cb?.Invoke(err.Message);
+        }
+
+        void UnsubscribeLoad()
+        {
+            MaxSdkCallbacks.Interstitial.OnAdLoadedEvent -= OnLoadResult;
+            MaxSdkCallbacks.Interstitial.OnAdLoadFailedEvent -= OnLoadFailed;
         }
 
         public void Show(Action onShown = null, Action onClosed = null, Action<string> onFailed = null)
@@ -120,68 +147,128 @@ namespace JisSDKAds.Providers.Max
                 return;
             }
 
+            _pendingOnShown = onShown;
+            _pendingOnClosed = onClosed;
+            _pendingOnShowFailed = onFailed;
+
+            MaxSdkCallbacks.Interstitial.OnAdDisplayedEvent -= OnShown;
             MaxSdkCallbacks.Interstitial.OnAdDisplayedEvent += OnShown;
-            MaxSdkCallbacks.Interstitial.OnAdHiddenEvent += OnClosedHandler;
-            MaxSdkCallbacks.Interstitial.OnAdDisplayFailedEvent += OnFailedHandler;
+            MaxSdkCallbacks.Interstitial.OnAdHiddenEvent -= OnHidden;
+            MaxSdkCallbacks.Interstitial.OnAdHiddenEvent += OnHidden;
+            MaxSdkCallbacks.Interstitial.OnAdDisplayFailedEvent -= OnDisplayFailed;
+            MaxSdkCallbacks.Interstitial.OnAdDisplayFailedEvent += OnDisplayFailed;
             MaxSdk.ShowInterstitial(_adUnitId);
+        }
 
-            void OnShown(string id, MaxSdkBase.AdInfo info)
-            {
-                if (id != _adUnitId) return;
-                MaxSdkCallbacks.Interstitial.OnAdDisplayedEvent -= OnShown;
-                onShown?.Invoke();
-            }
+        void OnShown(string id, MaxSdkBase.AdInfo info)
+        {
+            if (id != _adUnitId) return;
+            MaxSdkCallbacks.Interstitial.OnAdDisplayedEvent -= OnShown;
+            var cb = _pendingOnShown;
+            _pendingOnShown = null;
+            cb?.Invoke();
+        }
 
-            void OnClosedHandler(string id, MaxSdkBase.AdInfo info)
-            {
-                if (id != _adUnitId) return;
-                Unsubscribe();
-                onClosed?.Invoke();
-            }
+        void OnHidden(string id, MaxSdkBase.AdInfo info)
+        {
+            if (id != _adUnitId) return;
+            UnsubscribeShow();
+            var cb = _pendingOnClosed;
+            ClearShowCallbacks();
+            cb?.Invoke();
+            // MAX interstitial is one-time-use — warm-load the next impression after close.
+            WarmReload();
+        }
 
-            void OnFailedHandler(string id, MaxSdkBase.ErrorInfo err, MaxSdkBase.AdInfo info)
-            {
-                if (id != _adUnitId) return;
-                Unsubscribe();
-                onFailed?.Invoke(err.Message);
-            }
+        void OnDisplayFailed(string id, MaxSdkBase.ErrorInfo err, MaxSdkBase.AdInfo info)
+        {
+            if (id != _adUnitId) return;
+            UnsubscribeShow();
+            var cb = _pendingOnShowFailed;
+            ClearShowCallbacks();
+            cb?.Invoke(err.Message);
+            // Display failed consumed/invalidated the loaded ad — reload a fresh one.
+            WarmReload();
+        }
 
-            void Unsubscribe()
-            {
-                MaxSdkCallbacks.Interstitial.OnAdHiddenEvent -= OnClosedHandler;
-                MaxSdkCallbacks.Interstitial.OnAdDisplayFailedEvent -= OnFailedHandler;
-            }
+        void UnsubscribeShow()
+        {
+            MaxSdkCallbacks.Interstitial.OnAdDisplayedEvent -= OnShown;
+            MaxSdkCallbacks.Interstitial.OnAdHiddenEvent -= OnHidden;
+            MaxSdkCallbacks.Interstitial.OnAdDisplayFailedEvent -= OnDisplayFailed;
+        }
+
+        void ClearShowCallbacks()
+        {
+            _pendingOnShown = null;
+            _pendingOnClosed = null;
+            _pendingOnShowFailed = null;
+        }
+
+        void WarmReload()
+        {
+            if (string.IsNullOrEmpty(_adUnitId) || MaxSdk.IsInterstitialReady(_adUnitId))
+                return;
+            MaxSdk.LoadInterstitial(_adUnitId);
         }
     }
 
     internal class MaxRewardedAd : IRewardedAd
     {
         private readonly string _adUnitId;
+        private Action _pendingOnLoaded;
+        private Action<string> _pendingOnLoadFailed;
+        private Action _pendingOnRewardEarned;
+        private Action _pendingOnClosed;
+        private Action<string> _pendingOnShowFailed;
+        private bool _rewardEarned;
 
         public MaxRewardedAd(string adUnitId) => _adUnitId = adUnitId;
         public bool IsLoaded => MaxSdk.IsRewardedAdReady(_adUnitId);
 
         public void Load(Action onLoaded = null, Action<string> onFailed = null)
         {
-            MaxSdkCallbacks.Rewarded.OnAdLoadedEvent += OnLoadedHandler;
-            MaxSdkCallbacks.Rewarded.OnAdLoadFailedEvent += OnFailedHandler;
+            if (string.IsNullOrEmpty(_adUnitId))
+            {
+                onFailed?.Invoke("Rewarded ad unit id is empty");
+                return;
+            }
+
+            _pendingOnLoaded = onLoaded;
+            _pendingOnLoadFailed = onFailed;
+
+            // Idempotent: never stack handlers when Load is called repeatedly before a result.
+            MaxSdkCallbacks.Rewarded.OnAdLoadedEvent -= OnLoadResult;
+            MaxSdkCallbacks.Rewarded.OnAdLoadedEvent += OnLoadResult;
+            MaxSdkCallbacks.Rewarded.OnAdLoadFailedEvent -= OnLoadFailed;
+            MaxSdkCallbacks.Rewarded.OnAdLoadFailedEvent += OnLoadFailed;
             MaxSdk.LoadRewardedAd(_adUnitId);
+        }
 
-            void OnLoadedHandler(string id, MaxSdkBase.AdInfo info)
-            {
-                if (id != _adUnitId) return;
-                MaxSdkCallbacks.Rewarded.OnAdLoadedEvent -= OnLoadedHandler;
-                MaxSdkCallbacks.Rewarded.OnAdLoadFailedEvent -= OnFailedHandler;
-                onLoaded?.Invoke();
-            }
+        void OnLoadResult(string id, MaxSdkBase.AdInfo info)
+        {
+            if (id != _adUnitId) return;
+            UnsubscribeLoad();
+            var cb = _pendingOnLoaded;
+            _pendingOnLoaded = null;
+            _pendingOnLoadFailed = null;
+            cb?.Invoke();
+        }
 
-            void OnFailedHandler(string id, MaxSdkBase.ErrorInfo err)
-            {
-                if (id != _adUnitId) return;
-                MaxSdkCallbacks.Rewarded.OnAdLoadedEvent -= OnLoadedHandler;
-                MaxSdkCallbacks.Rewarded.OnAdLoadFailedEvent -= OnFailedHandler;
-                onFailed?.Invoke(err.Message);
-            }
+        void OnLoadFailed(string id, MaxSdkBase.ErrorInfo err)
+        {
+            if (id != _adUnitId) return;
+            UnsubscribeLoad();
+            var cb = _pendingOnLoadFailed;
+            _pendingOnLoaded = null;
+            _pendingOnLoadFailed = null;
+            cb?.Invoke(err.Message);
+        }
+
+        void UnsubscribeLoad()
+        {
+            MaxSdkCallbacks.Rewarded.OnAdLoadedEvent -= OnLoadResult;
+            MaxSdkCallbacks.Rewarded.OnAdLoadFailedEvent -= OnLoadFailed;
         }
 
         public void Show(Action onRewardEarned = null, Action onClosed = null, Action<string> onFailed = null)
@@ -192,36 +279,70 @@ namespace JisSDKAds.Providers.Max
                 return;
             }
 
-            bool rewardEarned = false;
+            _rewardEarned = false;
+            _pendingOnRewardEarned = onRewardEarned;
+            _pendingOnClosed = onClosed;
+            _pendingOnShowFailed = onFailed;
+
+            MaxSdkCallbacks.Rewarded.OnAdReceivedRewardEvent -= OnReward;
             MaxSdkCallbacks.Rewarded.OnAdReceivedRewardEvent += OnReward;
-            MaxSdkCallbacks.Rewarded.OnAdHiddenEvent += OnClosedHandler;
-            MaxSdkCallbacks.Rewarded.OnAdDisplayFailedEvent += OnFailedHandler;
+            MaxSdkCallbacks.Rewarded.OnAdHiddenEvent -= OnHidden;
+            MaxSdkCallbacks.Rewarded.OnAdHiddenEvent += OnHidden;
+            MaxSdkCallbacks.Rewarded.OnAdDisplayFailedEvent -= OnDisplayFailed;
+            MaxSdkCallbacks.Rewarded.OnAdDisplayFailedEvent += OnDisplayFailed;
             MaxSdk.ShowRewardedAd(_adUnitId);
+        }
 
-            void OnReward(string id, MaxSdkBase.Reward reward, MaxSdkBase.AdInfo info)
-            {
-                if (id != _adUnitId) return;
-                rewardEarned = true;
-            }
+        void OnReward(string id, MaxSdkBase.Reward reward, MaxSdkBase.AdInfo info)
+        {
+            if (id != _adUnitId) return;
+            _rewardEarned = true;
+        }
 
-            void OnClosedHandler(string id, MaxSdkBase.AdInfo info)
-            {
-                if (id != _adUnitId) return;
-                MaxSdkCallbacks.Rewarded.OnAdReceivedRewardEvent -= OnReward;
-                MaxSdkCallbacks.Rewarded.OnAdHiddenEvent -= OnClosedHandler;
-                MaxSdkCallbacks.Rewarded.OnAdDisplayFailedEvent -= OnFailedHandler;
-                if (rewardEarned) onRewardEarned?.Invoke();
-                onClosed?.Invoke();
-            }
+        void OnHidden(string id, MaxSdkBase.AdInfo info)
+        {
+            if (id != _adUnitId) return;
+            UnsubscribeShow();
+            var rewardEarned = _rewardEarned;
+            var onReward = _pendingOnRewardEarned;
+            var onClosed = _pendingOnClosed;
+            ClearShowCallbacks();
+            if (rewardEarned) onReward?.Invoke();
+            onClosed?.Invoke();
+            // MAX rewarded is one-time-use — warm-load the next impression after close.
+            WarmReload();
+        }
 
-            void OnFailedHandler(string id, MaxSdkBase.ErrorInfo err, MaxSdkBase.AdInfo info)
-            {
-                if (id != _adUnitId) return;
-                MaxSdkCallbacks.Rewarded.OnAdReceivedRewardEvent -= OnReward;
-                MaxSdkCallbacks.Rewarded.OnAdHiddenEvent -= OnClosedHandler;
-                MaxSdkCallbacks.Rewarded.OnAdDisplayFailedEvent -= OnFailedHandler;
-                onFailed?.Invoke(err.Message);
-            }
+        void OnDisplayFailed(string id, MaxSdkBase.ErrorInfo err, MaxSdkBase.AdInfo info)
+        {
+            if (id != _adUnitId) return;
+            UnsubscribeShow();
+            var cb = _pendingOnShowFailed;
+            ClearShowCallbacks();
+            cb?.Invoke(err.Message);
+            // Display failed consumed/invalidated the loaded ad — reload a fresh one.
+            WarmReload();
+        }
+
+        void UnsubscribeShow()
+        {
+            MaxSdkCallbacks.Rewarded.OnAdReceivedRewardEvent -= OnReward;
+            MaxSdkCallbacks.Rewarded.OnAdHiddenEvent -= OnHidden;
+            MaxSdkCallbacks.Rewarded.OnAdDisplayFailedEvent -= OnDisplayFailed;
+        }
+
+        void ClearShowCallbacks()
+        {
+            _pendingOnRewardEarned = null;
+            _pendingOnClosed = null;
+            _pendingOnShowFailed = null;
+        }
+
+        void WarmReload()
+        {
+            if (string.IsNullOrEmpty(_adUnitId) || MaxSdk.IsRewardedAdReady(_adUnitId))
+                return;
+            MaxSdk.LoadRewardedAd(_adUnitId);
         }
     }
 
@@ -229,36 +350,76 @@ namespace JisSDKAds.Providers.Max
     {
         private readonly string _adUnitId;
         private bool _isVisible;
+        private bool _isLoaded;
+        private bool _created;
+        private Action _pendingOnLoaded;
+        private Action<string> _pendingOnFailed;
 
         public MaxBannerAd(string adUnitId) => _adUnitId = adUnitId;
-        public bool IsLoaded => true;
+        public bool IsLoaded => _isLoaded;
         public bool IsVisible => _isVisible;
 
         public void Load(Action onLoaded = null, Action<string> onFailed = null)
         {
-            MaxSdkCallbacks.Banner.OnAdLoadedEvent += OnLoadedHandler;
-            MaxSdkCallbacks.Banner.OnAdLoadFailedEvent += OnFailedHandler;
-            MaxSdk.CreateBanner(_adUnitId, MaxSdkBase.BannerPosition.BottomCenter);
-
-            void OnLoadedHandler(string id, MaxSdkBase.AdInfo info)
+            if (string.IsNullOrEmpty(_adUnitId))
             {
-                if (id != _adUnitId) return;
-                MaxSdkCallbacks.Banner.OnAdLoadedEvent -= OnLoadedHandler;
-                MaxSdkCallbacks.Banner.OnAdLoadFailedEvent -= OnFailedHandler;
+                onFailed?.Invoke("Banner ad unit id is empty");
+                return;
+            }
+
+            // MAX banners auto-refresh — keep persistent load callbacks subscribed idempotently.
+            MaxSdkCallbacks.Banner.OnAdLoadedEvent -= OnLoaded;
+            MaxSdkCallbacks.Banner.OnAdLoadedEvent += OnLoaded;
+            MaxSdkCallbacks.Banner.OnAdLoadFailedEvent -= OnFailed;
+            MaxSdkCallbacks.Banner.OnAdLoadFailedEvent += OnFailed;
+
+            if (!_created)
+            {
+                _pendingOnLoaded = onLoaded;
+                _pendingOnFailed = onFailed;
+                MaxSdk.CreateBanner(_adUnitId, MaxSdkBase.BannerPosition.BottomCenter);
+                _created = true;
+                return;
+            }
+
+            // Already created (and auto-refreshing). Report immediately if a fill exists.
+            if (_isLoaded)
+            {
                 onLoaded?.Invoke();
+                return;
             }
 
-            void OnFailedHandler(string id, MaxSdkBase.ErrorInfo err)
-            {
-                if (id != _adUnitId) return;
-                MaxSdkCallbacks.Banner.OnAdLoadedEvent -= OnLoadedHandler;
-                MaxSdkCallbacks.Banner.OnAdLoadFailedEvent -= OnFailedHandler;
-                onFailed?.Invoke(err.Message);
-            }
+            _pendingOnLoaded = onLoaded;
+            _pendingOnFailed = onFailed;
+        }
+
+        void OnLoaded(string id, MaxSdkBase.AdInfo info)
+        {
+            if (id != _adUnitId) return;
+            _isLoaded = true;
+            var cb = _pendingOnLoaded;
+            _pendingOnLoaded = null;
+            _pendingOnFailed = null;
+            cb?.Invoke();
+        }
+
+        void OnFailed(string id, MaxSdkBase.ErrorInfo err)
+        {
+            if (id != _adUnitId) return;
+            _isLoaded = false;
+            var cb = _pendingOnFailed;
+            _pendingOnFailed = null;
+            cb?.Invoke(err.Message);
         }
 
         public void Show(Action onShown = null, Action<string> onFailed = null)
         {
+            if (!_created)
+            {
+                onFailed?.Invoke("Banner not created — call Load first");
+                return;
+            }
+
             MaxSdk.ShowBanner(_adUnitId);
             _isVisible = true;
             onShown?.Invoke();
@@ -272,14 +433,23 @@ namespace JisSDKAds.Providers.Max
 
         public void Destroy()
         {
+            MaxSdkCallbacks.Banner.OnAdLoadedEvent -= OnLoaded;
+            MaxSdkCallbacks.Banner.OnAdLoadFailedEvent -= OnFailed;
             MaxSdk.DestroyBanner(_adUnitId);
             _isVisible = false;
+            _isLoaded = false;
+            _created = false;
         }
     }
 
     internal class MaxAppOpenAd : IAppOpenAd
     {
         private readonly string _adUnitId;
+        private Action _pendingOnLoaded;
+        private Action<string> _pendingOnLoadFailed;
+        private Action _pendingOnShown;
+        private Action _pendingOnClosed;
+        private Action<string> _pendingOnShowFailed;
 
         public MaxAppOpenAd(string adUnitId) => _adUnitId = adUnitId;
         public bool IsLoaded => !string.IsNullOrEmpty(_adUnitId) && MaxSdk.IsAppOpenAdReady(_adUnitId);
@@ -292,29 +462,40 @@ namespace JisSDKAds.Providers.Max
                 return;
             }
 
-            MaxSdkCallbacks.AppOpen.OnAdLoadedEvent += OnLoaded;
-            MaxSdkCallbacks.AppOpen.OnAdLoadFailedEvent += OnFailedHandler;
+            _pendingOnLoaded = onLoaded;
+            _pendingOnLoadFailed = onFailed;
+
+            MaxSdkCallbacks.AppOpen.OnAdLoadedEvent -= OnLoadResult;
+            MaxSdkCallbacks.AppOpen.OnAdLoadedEvent += OnLoadResult;
+            MaxSdkCallbacks.AppOpen.OnAdLoadFailedEvent -= OnLoadFailed;
+            MaxSdkCallbacks.AppOpen.OnAdLoadFailedEvent += OnLoadFailed;
             MaxSdk.LoadAppOpenAd(_adUnitId);
+        }
 
-            void OnLoaded(string id, MaxSdkBase.AdInfo info)
-            {
-                if (id != _adUnitId) return;
-                UnsubscribeLoad();
-                onLoaded?.Invoke();
-            }
+        void OnLoadResult(string id, MaxSdkBase.AdInfo info)
+        {
+            if (id != _adUnitId) return;
+            UnsubscribeLoad();
+            var cb = _pendingOnLoaded;
+            _pendingOnLoaded = null;
+            _pendingOnLoadFailed = null;
+            cb?.Invoke();
+        }
 
-            void OnFailedHandler(string id, MaxSdkBase.ErrorInfo err)
-            {
-                if (id != _adUnitId) return;
-                UnsubscribeLoad();
-                onFailed?.Invoke(err.Message);
-            }
+        void OnLoadFailed(string id, MaxSdkBase.ErrorInfo err)
+        {
+            if (id != _adUnitId) return;
+            UnsubscribeLoad();
+            var cb = _pendingOnLoadFailed;
+            _pendingOnLoaded = null;
+            _pendingOnLoadFailed = null;
+            cb?.Invoke(err.Message);
+        }
 
-            void UnsubscribeLoad()
-            {
-                MaxSdkCallbacks.AppOpen.OnAdLoadedEvent -= OnLoaded;
-                MaxSdkCallbacks.AppOpen.OnAdLoadFailedEvent -= OnFailedHandler;
-            }
+        void UnsubscribeLoad()
+        {
+            MaxSdkCallbacks.AppOpen.OnAdLoadedEvent -= OnLoadResult;
+            MaxSdkCallbacks.AppOpen.OnAdLoadFailedEvent -= OnLoadFailed;
         }
 
         public void Show(Action onShown = null, Action onClosed = null, Action<string> onFailed = null)
@@ -325,37 +506,58 @@ namespace JisSDKAds.Providers.Max
                 return;
             }
 
-            MaxSdkCallbacks.AppOpen.OnAdDisplayedEvent += OnShownHandler;
-            MaxSdkCallbacks.AppOpen.OnAdHiddenEvent += OnClosedHandler;
+            _pendingOnShown = onShown;
+            _pendingOnClosed = onClosed;
+            _pendingOnShowFailed = onFailed;
+
+            MaxSdkCallbacks.AppOpen.OnAdDisplayedEvent -= OnShown;
+            MaxSdkCallbacks.AppOpen.OnAdDisplayedEvent += OnShown;
+            MaxSdkCallbacks.AppOpen.OnAdHiddenEvent -= OnHidden;
+            MaxSdkCallbacks.AppOpen.OnAdHiddenEvent += OnHidden;
+            MaxSdkCallbacks.AppOpen.OnAdDisplayFailedEvent -= OnDisplayFailed;
             MaxSdkCallbacks.AppOpen.OnAdDisplayFailedEvent += OnDisplayFailed;
             MaxSdk.ShowAppOpenAd(_adUnitId);
+        }
 
-            void OnShownHandler(string id, MaxSdkBase.AdInfo info)
-            {
-                if (id != _adUnitId) return;
-                MaxSdkCallbacks.AppOpen.OnAdDisplayedEvent -= OnShownHandler;
-                onShown?.Invoke();
-            }
+        void OnShown(string id, MaxSdkBase.AdInfo info)
+        {
+            if (id != _adUnitId) return;
+            MaxSdkCallbacks.AppOpen.OnAdDisplayedEvent -= OnShown;
+            var cb = _pendingOnShown;
+            _pendingOnShown = null;
+            cb?.Invoke();
+        }
 
-            void OnClosedHandler(string id, MaxSdkBase.AdInfo info)
-            {
-                if (id != _adUnitId) return;
-                UnsubscribeShow();
-                onClosed?.Invoke();
-            }
+        void OnHidden(string id, MaxSdkBase.AdInfo info)
+        {
+            if (id != _adUnitId) return;
+            UnsubscribeShow();
+            var cb = _pendingOnClosed;
+            ClearShowCallbacks();
+            cb?.Invoke();
+        }
 
-            void OnDisplayFailed(string id, MaxSdkBase.ErrorInfo err, MaxSdkBase.AdInfo info)
-            {
-                if (id != _adUnitId) return;
-                UnsubscribeShow();
-                onFailed?.Invoke(err.Message);
-            }
+        void OnDisplayFailed(string id, MaxSdkBase.ErrorInfo err, MaxSdkBase.AdInfo info)
+        {
+            if (id != _adUnitId) return;
+            UnsubscribeShow();
+            var cb = _pendingOnShowFailed;
+            ClearShowCallbacks();
+            cb?.Invoke(err.Message);
+        }
 
-            void UnsubscribeShow()
-            {
-                MaxSdkCallbacks.AppOpen.OnAdHiddenEvent -= OnClosedHandler;
-                MaxSdkCallbacks.AppOpen.OnAdDisplayFailedEvent -= OnDisplayFailed;
-            }
+        void UnsubscribeShow()
+        {
+            MaxSdkCallbacks.AppOpen.OnAdDisplayedEvent -= OnShown;
+            MaxSdkCallbacks.AppOpen.OnAdHiddenEvent -= OnHidden;
+            MaxSdkCallbacks.AppOpen.OnAdDisplayFailedEvent -= OnDisplayFailed;
+        }
+
+        void ClearShowCallbacks()
+        {
+            _pendingOnShown = null;
+            _pendingOnClosed = null;
+            _pendingOnShowFailed = null;
         }
     }
 }

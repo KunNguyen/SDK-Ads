@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using JisSDKAds.Common;
 using UnityEngine;
 
 namespace JisSDKAds.Ads.SequentialTier
@@ -32,6 +33,10 @@ namespace JisSDKAds.Ads.SequentialTier
         bool _fillHoldActive;
         int _fillHoldAttempt;
         Coroutine _fillHoldRoutine;
+
+        // Safety cap for tiers configured with timeout 0 ("wait indefinitely", e.g. Fill) so a hung
+        // SDK callback can never leave the loader permanently stuck in the loading state.
+        const float SafetyLoadTimeoutSeconds = 45f;
 
         Action _onLoadedSuccess;
         Action _onLoadedFail;
@@ -204,7 +209,11 @@ namespace JisSDKAds.Ads.SequentialTier
         {
             StopTimeout();
             var timeout = _config.GetTimeoutSeconds(tier);
-            if (timeout <= 0f) return;
+            // A tier timeout of 0 means "wait as long as needed" (typically Fill). Still apply a
+            // generous safety timeout so a hung SDK load callback can't leave the loader stuck in
+            // _isLoading forever (which would block every future load for the session).
+            if (timeout <= 0f)
+                timeout = SafetyLoadTimeoutSeconds;
             _timeoutRoutine = _host.StartCoroutine(TimeoutCoroutine(tier, adUnitId, generation, timeout));
         }
 
@@ -274,6 +283,12 @@ namespace JisSDKAds.Ads.SequentialTier
 
         void FinishLadderFailed(string reason)
         {
+            if (reason == "no_ad_unit_configured")
+                DebugAds.LogWarning(
+                    $"[SequentialTier] {_format} ladder has NO ad unit id — every tier is empty across " +
+                    "Remote Config keys, tier config, default and the standard unit-id list. This format " +
+                    "can never load until you set a Remote Config tier key or a local fallback unit id.");
+
             _memory.RecordLadderFailure();
             EndLoadSession();
             SequentialTierAnalytics.LogLoadFail(_format, "", AdTier.Fill, 0, reason, 0);

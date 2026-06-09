@@ -52,12 +52,18 @@ namespace JisSDKAds.Ads
           public void HideBannerAds()
           {
                DebugAds.Log(("Call Hide Banner Ads"));
+               if (TryHideBannerViaJisAds())
+                    return;
+
                if (!IsReady) return;
                BannerAdManager.Hide();
           }
 
           public void DestroyBanner()
           {
+               if (TryDestroyBannerViaJisAds())
+                    return;
+
                BannerAdManager.DestroyAd();
           }
           public bool CanShowBannerAd()
