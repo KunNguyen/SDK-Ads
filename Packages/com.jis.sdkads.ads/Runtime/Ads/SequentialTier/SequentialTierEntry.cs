@@ -19,10 +19,9 @@ namespace JisSDKAds.Ads.SequentialTier
 
         [NonSerialized] string _remoteAdUnitId;
 
-        public bool HasUnitId =>
-            !string.IsNullOrWhiteSpace(_remoteAdUnitId)
-            || !string.IsNullOrWhiteSpace(androidAdUnitId)
-            || !string.IsNullOrWhiteSpace(iosAdUnitId);
+        public bool HasUnitId => HasRemoteAdUnitId;
+
+        public bool HasRemoteAdUnitId => !string.IsNullOrWhiteSpace(_remoteAdUnitId);
 
         public void SetRemoteAdUnitId(string adUnitId)
         {
@@ -33,16 +32,15 @@ namespace JisSDKAds.Ads.SequentialTier
 
         public string ResolveAdUnitId()
         {
+            return ResolveRemoteAdUnitId();
+        }
+
+        public string ResolveRemoteAdUnitId()
+        {
             if (!string.IsNullOrWhiteSpace(_remoteAdUnitId))
                 return _remoteAdUnitId.Trim();
 
-#if UNITY_IOS
-            if (!string.IsNullOrWhiteSpace(iosAdUnitId)) return iosAdUnitId.Trim();
-            return androidAdUnitId?.Trim();
-#else
-            if (!string.IsNullOrWhiteSpace(androidAdUnitId)) return androidAdUnitId.Trim();
-            return iosAdUnitId?.Trim();
-#endif
+            return null;
         }
     }
 }

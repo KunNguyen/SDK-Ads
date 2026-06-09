@@ -2,13 +2,10 @@ using System.Collections.Generic;
 using JisSDKAds.Ads.Settings;
 using JisSDKAds.Common;
 using JisSDKAds.Firebase;
-using UnityEngine;
 
 namespace JisSDKAds.Ads.SequentialTier
 {
-    /// <summary>
-    /// Resolves sequential tier (Premium→Fill) unit IDs from Firebase RC with settings fallback.
-    /// </summary>
+    /// <summary>Resolves sequential tier unit IDs from Firebase Remote Config only.</summary>
     public static class SequentialTierUnitIdResolver
     {
         static readonly AdTier[] TierOrder =
@@ -46,16 +43,7 @@ namespace JisSDKAds.Ads.SequentialTier
                 }
             }
 
-            if (anyRc) return tierIds.Count > 0;
-
-            var fallback = ResolveDefaultFallbackUnitId(format, profile);
-            if (string.IsNullOrEmpty(fallback)) return false;
-
-            foreach (var tier in TierOrder)
-                tierIds[tier] = fallback;
-
-            DebugAds.Log($"[RemoteConfig] {format} all RC tiers empty → fallback {fallback}");
-            return true;
+            return anyRc && tierIds.Count > 0;
         }
 
         public static string ResolveDefaultFallbackUnitId(

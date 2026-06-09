@@ -90,17 +90,25 @@ namespace JisSDKAds.Editor
                 $"Tier IDs (tiered only): {tierKeys}\n" +
                 $"Platform: {platformLabel}, AdMob. Editor toolbar = local default before RC fetch.",
                 MessageType.Info);
+            EditorGUILayout.HelpBox(
+                "Tier ad unit IDs are read from Remote Config only. Local setup only stores fallback, " +
+                "which is loaded after the Fill tier fails the configured number of times.",
+                MessageType.Warning);
 
             if (platform == BuildTargetPlatform.iOS)
-                tier.defaultIosAdUnitId = EditorGUILayout.TextField("Fallback unit ID (optional)", tier.defaultIosAdUnitId);
+                tier.defaultIosAdUnitId = EditorGUILayout.TextField("Fallback unit ID", tier.defaultIosAdUnitId);
             else
-                tier.defaultAndroidAdUnitId = EditorGUILayout.TextField("Fallback unit ID (optional)", tier.defaultAndroidAdUnitId);
+                tier.defaultAndroidAdUnitId = EditorGUILayout.TextField("Fallback unit ID", tier.defaultAndroidAdUnitId);
 
             tier.enableTierMemoryCooldown = EditorGUILayout.Toggle("Tier memory + cooldown", tier.enableTierMemoryCooldown);
             tier.premiumRetryCooldownMinutes = EditorGUILayout.FloatField(
                 "Premium retry cooldown (min)", tier.premiumRetryCooldownMinutes);
             tier.consecutiveFailuresBeforeDowngrade = EditorGUILayout.IntField(
                 "Failures before downgrade", tier.consecutiveFailuresBeforeDowngrade);
+            tier.fillHoldMaxRetries = EditorGUILayout.IntField(
+                "Fill failures before fallback", tier.fillHoldMaxRetries);
+            tier.fillHoldRetryIntervalSeconds = EditorGUILayout.FloatField(
+                "Fill retry interval (seconds)", tier.fillHoldRetryIntervalSeconds);
 
             EditorGUILayout.Space(4);
             EditorGUILayout.LabelField("Per-tier load timeout (Premium → Fill)", EditorStyles.miniBoldLabel);

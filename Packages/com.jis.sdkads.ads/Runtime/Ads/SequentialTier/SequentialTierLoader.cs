@@ -12,7 +12,7 @@ namespace JisSDKAds.Ads.SequentialTier
         public ISequentialTierAdAdapter Adapter;
     }
 
-    /// <summary>Sequential Premium→Fill ladder; one tier load at a time. Provider-agnostic.</summary>
+    /// <summary>Sequential Premium->Fill ladder. Tier unit IDs come from Remote Config only.</summary>
     public sealed class SequentialTierLoader
     {
         readonly MonoBehaviour _host;
@@ -30,12 +30,10 @@ namespace JisSDKAds.Ads.SequentialTier
         Coroutine _timeoutRoutine;
         DateTime _loadStartedUtc;
 
-        bool _fillHoldActive;
-        int _fillHoldAttempt;
-        Coroutine _fillHoldRoutine;
+        int _fillFailureCount;
+        bool _isLoadingFallback;
+        Coroutine _fillRetryRoutine;
 
-        // Safety cap for tiers configured with timeout 0 ("wait indefinitely", e.g. Fill) so a hung
-        // SDK callback can never leave the loader permanently stuck in the loading state.
         const float SafetyLoadTimeoutSeconds = 45f;
 
         Action _onLoadedSuccess;
@@ -93,19 +91,17 @@ namespace JisSDKAds.Ads.SequentialTier
 
             _isLoading = true;
             _loadGeneration++;
-            if (_fillHoldActive && _config.fillHoldMaxRetries > 0 && _fillHoldAttempt < _config.fillHoldMaxRetries)
-                TryLoadTier(AdTier.Fill);
-            else
-                TryLoadTier(_memory.ResolveStartTier(_config));
+            _fillFailureCount = 0;
+            _isLoadingFallback = false;
+            TryLoadTier(_memory.ResolveStartTier(_config));
         }
 
-        /// <summary>Abort in-flight ladder (preempt). Does not clear a ready cached ad.</summary>
         public void CancelActiveLoad()
         {
             if (!_isLoading) return;
 
             StopTimeout();
-            StopFillHold();
+            StopFillRetry();
             _loadGeneration++;
             _loadAdapter?.Destroy();
             _loadAdapter = _createAdapter();
@@ -161,7 +157,7 @@ namespace JisSDKAds.Ads.SequentialTier
         {
             AdLoadCoordinator.Instance.UnregisterLoader(this, _loadFormat);
             StopTimeout();
-            StopFillHold();
+            StopFillRetry();
             CancelActiveLoad();
             _loadAdapter?.Destroy();
             ClearReady();
@@ -170,12 +166,9 @@ namespace JisSDKAds.Ads.SequentialTier
 
         void TryLoadTier(AdTier tier)
         {
-            var entry = _config.GetEntry(tier);
-            var adUnitId = entry != null && entry.HasUnitId
-                ? entry.ResolveAdUnitId()
-                : _config.ResolveDefaultAdUnitId();
+            var adUnitId = _config.GetEntry(tier)?.ResolveRemoteAdUnitId();
 
-            if (string.IsNullOrEmpty(adUnitId))
+            if (string.IsNullOrWhiteSpace(adUnitId))
             {
                 if (tier < AdTier.Fill)
                 {
@@ -183,10 +176,30 @@ namespace JisSDKAds.Ads.SequentialTier
                     return;
                 }
 
-                FinishLadderFailed("no_ad_unit_configured");
+                FinishLadderFailed("no_remote_tier_ad_unit_configured");
                 return;
             }
 
+            TryLoadAdUnit(adUnitId.Trim(), tier, isFallback: false);
+        }
+
+        void TryLoadFallbackAfterFillFailures()
+        {
+            var fallbackAdUnitId = _config.ResolveDefaultAdUnitId();
+            if (string.IsNullOrWhiteSpace(fallbackAdUnitId))
+            {
+                FinishLadderFailed("fallback_ad_unit_not_configured");
+                return;
+            }
+
+            DebugAds.Log(
+                $"[SequentialTier] {_format} Fill failed {_fillFailureCount} time(s) - loading local fallback unit.");
+            TryLoadAdUnit(fallbackAdUnitId.Trim(), AdTier.Fill, isFallback: true);
+        }
+
+        void TryLoadAdUnit(string adUnitId, AdTier tier, bool isFallback)
+        {
+            _isLoadingFallback = isFallback;
             _currentTier = tier;
             _loadStartedUtc = DateTime.UtcNow;
             var generation = _loadGeneration;
@@ -209,9 +222,6 @@ namespace JisSDKAds.Ads.SequentialTier
         {
             StopTimeout();
             var timeout = _config.GetTimeoutSeconds(tier);
-            // A tier timeout of 0 means "wait as long as needed" (typically Fill). Still apply a
-            // generous safety timeout so a hung SDK load callback can't leave the loader stuck in
-            // _isLoading forever (which would block every future load for the session).
             if (timeout <= 0f)
                 timeout = SafetyLoadTimeoutSeconds;
             _timeoutRoutine = _host.StartCoroutine(TimeoutCoroutine(tier, adUnitId, generation, timeout));
@@ -230,12 +240,18 @@ namespace JisSDKAds.Ads.SequentialTier
             _loadAdapter.Destroy();
             _loadAdapter = _createAdapter();
             StopTimeout();
+            if (_isLoadingFallback)
+            {
+                FinishLadderFailed("fallback_ad_unit_timeout");
+                yield break;
+            }
             AdvanceAfterTierFailure(tier);
         }
 
         void OnTierLoadSuccess(string adUnitId, AdTier tier)
         {
             StopTimeout();
+            StopFillRetry();
             var elapsedMs = (long)(DateTime.UtcNow - _loadStartedUtc).TotalMilliseconds;
             SequentialTierAnalytics.LogLoadSuccess(_format, adUnitId, tier, elapsedMs);
 
@@ -248,7 +264,8 @@ namespace JisSDKAds.Ads.SequentialTier
             };
             _loadAdapter = _createAdapter();
 
-            _memory.RecordSuccess(tier);
+            if (!_isLoadingFallback)
+                _memory.RecordSuccess(tier);
             EndLoadSession();
             _onLoadedSuccess?.Invoke();
         }
@@ -260,6 +277,13 @@ namespace JisSDKAds.Ads.SequentialTier
             SequentialTierAnalytics.LogLoadFail(_format, adUnitId, tier, code, message, elapsedMs);
             _loadAdapter.Destroy();
             _loadAdapter = _createAdapter();
+
+            if (_isLoadingFallback)
+            {
+                FinishLadderFailed("fallback_ad_unit_failed");
+                return;
+            }
+
             AdvanceAfterTierFailure(tier);
         }
 
@@ -271,23 +295,23 @@ namespace JisSDKAds.Ads.SequentialTier
                 return;
             }
 
-            if (_config.fillHoldMaxRetries > 0 && _config.fillHoldRetryIntervalSeconds > 0f)
+            _fillFailureCount++;
+            var maxFillAttempts = Mathf.Max(0, _config.fillHoldMaxRetries);
+            if (_fillFailureCount < maxFillAttempts && _config.fillHoldRetryIntervalSeconds > 0f)
             {
-                StartFillHoldIfNeeded();
-                ScheduleNextFillHoldAttemptOrRestart();
+                ScheduleFillRetry();
                 return;
             }
 
-            FinishLadderFailed("all_tiers_failed");
+            TryLoadFallbackAfterFillFailures();
         }
 
         void FinishLadderFailed(string reason)
         {
-            if (reason == "no_ad_unit_configured")
+            if (reason == "no_remote_tier_ad_unit_configured")
                 DebugAds.LogWarning(
-                    $"[SequentialTier] {_format} ladder has NO ad unit id — every tier is empty across " +
-                    "Remote Config keys, tier config, default and the standard unit-id list. This format " +
-                    "can never load until you set a Remote Config tier key or a local fallback unit id.");
+                    $"[SequentialTier] {_format} ladder has NO Remote Config tier ad unit id. " +
+                    "Tiered inventory requires Remote Config tier keys; local fallback is used only after Fill fails.");
 
             _memory.RecordLadderFailure();
             EndLoadSession();
@@ -295,43 +319,25 @@ namespace JisSDKAds.Ads.SequentialTier
             _onLoadedFail?.Invoke();
         }
 
-        void StartFillHoldIfNeeded()
+        void StopFillRetry()
         {
-            if (_fillHoldActive) return;
-            _fillHoldActive = true;
-            _fillHoldAttempt = 0;
+            if (_fillRetryRoutine != null && _host != null)
+                _host.StopCoroutine(_fillRetryRoutine);
+            _fillRetryRoutine = null;
         }
 
-        void StopFillHold()
+        void ScheduleFillRetry()
         {
-            _fillHoldActive = false;
-            _fillHoldAttempt = 0;
-            if (_fillHoldRoutine != null && _host != null)
-                _host.StopCoroutine(_fillHoldRoutine);
-            _fillHoldRoutine = null;
+            StopTimeout();
+            if (_fillRetryRoutine != null && _host != null)
+                _host.StopCoroutine(_fillRetryRoutine);
+            _fillRetryRoutine = _host.StartCoroutine(CoDelayedFillRetry());
         }
 
-        void ScheduleNextFillHoldAttemptOrRestart()
-        {
-            if (_fillHoldActive && _fillHoldAttempt < _config.fillHoldMaxRetries)
-            {
-                _fillHoldAttempt++;
-                StopTimeout();
-                _isLoading = false;
-
-                if (_fillHoldRoutine != null && _host != null)
-                    _host.StopCoroutine(_fillHoldRoutine);
-                _fillHoldRoutine = _host.StartCoroutine(CoDelayedFillReload());
-                return;
-            }
-
-            StopFillHold();
-            ReleasePipelineAndReload();
-        }
-
-        IEnumerator CoDelayedFillReload()
+        IEnumerator CoDelayedFillRetry()
         {
             yield return new WaitForSecondsRealtime(_config.fillHoldRetryIntervalSeconds);
+            _fillRetryRoutine = null;
             if (_host == null) yield break;
             if (IsReady)
             {
@@ -340,15 +346,14 @@ namespace JisSDKAds.Ads.SequentialTier
             }
 
             if (AdLoadCoordinator.Instance.HoldsSessionFor(this))
-                ExecuteLoad(forceReload: true);
+            {
+                TryLoadTier(AdTier.Fill);
+            }
             else
+            {
+                ReleasePipelineAfterResult();
                 Load(forceReload: true);
-        }
-
-        void ReleasePipelineAndReload()
-        {
-            ReleasePipelineAfterResult();
-            Load(forceReload: true);
+            }
         }
 
         void ReleasePipelineAfterResult()

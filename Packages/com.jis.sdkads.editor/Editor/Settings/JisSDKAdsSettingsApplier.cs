@@ -188,31 +188,25 @@ namespace JisSDKAds.Editor
 
             if (setup.interstitialAdsMediationType == AdsMediationType.ADMOB
                 && setup.admobAdsSetup.InterstitialTierConfig.enableSequentialLadder
-                && !HasAnyTierId(setup.admobAdsSetup.InterstitialTierConfig))
+                && !HasFallbackId(setup.admobAdsSetup.InterstitialTierConfig))
             {
                 result.AddWarning(
-                    $"{platformLabel}: interstitial tier enabled — set Firebase RC keys inter_premium_id … inter_fill_id.");
+                    $"{platformLabel}: interstitial tier enabled - set a local fallback ID. Tier IDs must come from Firebase RC keys inter_premium_id ... inter_fill_id.");
             }
 
             if (setup.rewardedAdsMediationType == AdsMediationType.ADMOB
                 && setup.admobAdsSetup.RewardedTierConfig.enableSequentialLadder
-                && !HasAnyTierId(setup.admobAdsSetup.RewardedTierConfig))
+                && !HasFallbackId(setup.admobAdsSetup.RewardedTierConfig))
             {
                 result.AddWarning(
-                    $"{platformLabel}: rewarded tier enabled — set Firebase RC keys reward_premium_id … reward_fill_id.");
+                    $"{platformLabel}: rewarded tier enabled - set a local fallback ID. Tier IDs must come from Firebase RC keys reward_premium_id ... reward_fill_id.");
             }
         }
 
-        static bool HasAnyTierId(SequentialTierConfig config)
+        static bool HasFallbackId(SequentialTierConfig config)
         {
             if (config == null) return false;
-            if (!string.IsNullOrWhiteSpace(config.ResolveDefaultAdUnitId())) return true;
-            foreach (var entry in config.Tiers)
-            {
-                if (entry != null && entry.HasUnitId) return true;
-            }
-
-            return false;
+            return !string.IsNullOrWhiteSpace(config.ResolveDefaultAdUnitId());
         }
 
         public class ValidationResult

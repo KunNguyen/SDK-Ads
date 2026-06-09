@@ -76,12 +76,20 @@ namespace JisSDKAds.Ads.SequentialTier
                 ApplyToConfig(admob.InterstitialTierConfig, interIds);
                 LogAppliedIds(SequentialTierAdFormat.Interstitial, admob.InterstitialTierConfig);
             }
+            else if (admob.InterstitialTierConfig.enableSequentialLadder)
+            {
+                ApplyToConfig(admob.InterstitialTierConfig, null);
+            }
 
             if (admob.RewardedTierConfig.enableSequentialLadder
                 && TryReadTierIds(SequentialTierAdFormat.Rewarded, profile, out var rewardIds))
             {
                 ApplyToConfig(admob.RewardedTierConfig, rewardIds);
                 LogAppliedIds(SequentialTierAdFormat.Rewarded, admob.RewardedTierConfig);
+            }
+            else if (admob.RewardedTierConfig.enableSequentialLadder)
+            {
+                ApplyToConfig(admob.RewardedTierConfig, null);
             }
 #endif
         }

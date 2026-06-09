@@ -10,7 +10,7 @@ namespace JisSDKAds.Ads.SequentialTier
         [Tooltip("When true: sequential Premium→Fill ladder. When false: single default unit only.")]
         public bool enableSequentialLadder;
 
-        [Tooltip("Fallback unit when ladder is off or a tier entry has no id.")]
+        [Tooltip("Fallback unit used only after the Remote Config Fill tier fails fillHoldMaxRetries times.")]
         public string defaultAndroidAdUnitId;
 
         public string defaultIosAdUnitId;
@@ -22,10 +22,10 @@ namespace JisSDKAds.Ads.SequentialTier
         [Min(1)] public int consecutiveFailuresBeforeDowngrade = 2;
 
         [Header("Fill hold policy (after full ladder fail)")]
-        [Tooltip("If the ladder fails all tiers: keep retrying Fill this many times (spaced by fillHoldRetryIntervalSeconds), then restart normal schedule.")]
-        [Min(0)] public int fillHoldMaxRetries = 10;
+        [Tooltip("Number of Fill tier load failures before trying the local fallback unit ID.")]
+        [Min(0)] public int fillHoldMaxRetries = 3;
 
-        [Tooltip("Delay between Fill retries when holding on Fill.")]
+        [Tooltip("Delay between Fill retries before trying fallback.")]
         [Min(1f)] public float fillHoldRetryIntervalSeconds = 30f;
 
         [Header("eCPM recovery")]
