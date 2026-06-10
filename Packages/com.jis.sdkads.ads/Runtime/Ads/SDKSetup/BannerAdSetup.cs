@@ -6,12 +6,27 @@ using GoogleMobileAds.Api;
 
 namespace JisSDKAds.Ads
 {
+     /// <summary>
+     /// MAX banner anchor — mirrors AppLovin <c>MaxSdkBase.BannerPosition</c> ordinals so the ads
+     /// package does not need a reference to <c>MaxSdk.Scripts</c> (conversion happens in providers.max).
+     /// </summary>
+     public enum MaxBannerAdsPosition
+     {
+          TopLeft = 0,
+          TopCenter = 1,
+          TopRight = 2,
+          Centered = 3,
+          CenterLeft = 4,
+          CenterRight = 5,
+          BottomLeft = 6,
+          BottomCenter = 7,
+          BottomRight = 8
+     }
+
      public partial class SDKSetup
      {
           public AdsMediationType bannerAdsMediationType;
-#if UNITY_AD_MAX
-          public MaxSdkBase.BannerPosition maxBannerAdsPosition;
-#endif
+          public MaxBannerAdsPosition maxBannerAdsPosition = MaxBannerAdsPosition.BottomCenter;
 #if UNITY_AD_ADMOB
           public AdPosition admobBannerAdsPosition;
 #endif

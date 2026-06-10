@@ -74,8 +74,23 @@ namespace JisSDKAds.Ads
             if (adsMediationType == AdsMediationType.MAX)
             {
                 string assetPath = "Assets/MaxSdk/Resources/AppLovinSettings.asset";
-                AppLovinSettings applovinSettings = AssetDatabase.LoadAssetAtPath<AppLovinSettings>(assetPath);
-                applovinSettings.SdkKey = sdkKey_MAX;
+                UnityEngine.Object applovinSettings = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(assetPath);
+                if (applovinSettings == null)
+                {
+                    Debug.LogWarning($"[JIS SDK] AppLovin settings asset not found at {assetPath}.");
+                    return;
+                }
+
+                SerializedObject serializedSettings = new SerializedObject(applovinSettings);
+                SerializedProperty sdkKeyProperty = serializedSettings.FindProperty("sdkKey");
+                if (sdkKeyProperty == null)
+                {
+                    Debug.LogWarning("[JIS SDK] AppLovin settings asset does not contain a sdkKey field.");
+                    return;
+                }
+
+                sdkKeyProperty.stringValue = sdkKey_MAX;
+                serializedSettings.ApplyModifiedProperties();
                 EditorUtility.SetDirty(applovinSettings);
                 AssetDatabase.SaveAssets();
             }

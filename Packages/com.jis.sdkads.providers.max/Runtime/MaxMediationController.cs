@@ -477,95 +477,22 @@ namespace JisSDKAds.Ads
 
         #region Rewarded Interstitial
 
-        private bool _rewardedInterstitialLoading;
-
         public void LoadRewardedInterstitial()
         {
-            if (_rewardedInterstitialLoading) return;
-            var unitId = m_MaxAdConfig.RewardedInterstitialAdUnitID;
-            if (string.IsNullOrEmpty(unitId))
-            {
-                DebugAds.LogWarning("[MAX][RewardedInterstitial] Missing Ad Unit Id.");
-                return;
-            }
-
-            if (MaxSdk.IsRewardedInterstitialAdReady(unitId)) return;
-
-            _rewardedInterstitialLoading = true;
-            MaxSdkCallbacks.RewardedInterstitial.OnAdLoadedEvent -= OnRewardedInterstitialLoaded;
-            MaxSdkCallbacks.RewardedInterstitial.OnAdLoadFailedEvent -= OnRewardedInterstitialLoadFailed;
-            MaxSdkCallbacks.RewardedInterstitial.OnAdLoadedEvent += OnRewardedInterstitialLoaded;
-            MaxSdkCallbacks.RewardedInterstitial.OnAdLoadFailedEvent += OnRewardedInterstitialLoadFailed;
-            MaxSdk.LoadRewardedInterstitialAd(unitId);
+            DebugAds.LogWarning("[MAX][RewardedInterstitial] Unsupported by the installed AppLovin MAX Unity SDK.");
         }
 
         public bool IsRewardedInterstitialLoaded()
         {
-            var unitId = m_MaxAdConfig.RewardedInterstitialAdUnitID;
-            return !string.IsNullOrEmpty(unitId) && MaxSdk.IsRewardedInterstitialAdReady(unitId);
+            return false;
         }
 
         public void ShowRewardedInterstitial(UnityAction rewardCallback, UnityAction<bool> closedCallback = null,
             UnityAction failedCallback = null)
         {
-            var unitId = m_MaxAdConfig.RewardedInterstitialAdUnitID;
-            if (!IsRewardedInterstitialLoaded())
-            {
-                LoadRewardedInterstitial();
-                failedCallback?.Invoke();
-                closedCallback?.Invoke(false);
-                return;
-            }
-
-            var rewarded = false;
-
-            Action<string, MaxSdkBase.Reward, MaxSdkBase.AdInfo> onRewarded = null;
-            Action<string, MaxSdkBase.AdInfo> onHidden = null;
-            Action<string, MaxSdkBase.ErrorInfo, MaxSdkBase.AdInfo> onFailed = null;
-
-            onRewarded = (id, reward, info) =>
-            {
-                rewarded = true;
-                rewardCallback?.Invoke();
-            };
-            onHidden = (id, info) =>
-            {
-                Unsub();
-                closedCallback?.Invoke(rewarded);
-                LoadRewardedInterstitial();
-            };
-            onFailed = (id, error, info) =>
-            {
-                Unsub();
-                failedCallback?.Invoke();
-                closedCallback?.Invoke(false);
-                LoadRewardedInterstitial();
-            };
-
-            void Unsub()
-            {
-                MaxSdkCallbacks.RewardedInterstitial.OnAdReceivedRewardEvent -= onRewarded;
-                MaxSdkCallbacks.RewardedInterstitial.OnAdHiddenEvent -= onHidden;
-                MaxSdkCallbacks.RewardedInterstitial.OnAdDisplayFailedEvent -= onFailed;
-            }
-
-            MaxSdkCallbacks.RewardedInterstitial.OnAdReceivedRewardEvent += onRewarded;
-            MaxSdkCallbacks.RewardedInterstitial.OnAdHiddenEvent += onHidden;
-            MaxSdkCallbacks.RewardedInterstitial.OnAdDisplayFailedEvent += onFailed;
-
-            MaxSdk.ShowRewardedInterstitialAd(unitId);
-        }
-
-        private void OnRewardedInterstitialLoaded(string adUnitId, MaxSdkBase.AdInfo adInfo)
-        {
-            _rewardedInterstitialLoading = false;
-            DebugAds.Log("[MAX][RewardedInterstitial] Loaded");
-        }
-
-        private void OnRewardedInterstitialLoadFailed(string adUnitId, MaxSdkBase.ErrorInfo errorInfo)
-        {
-            _rewardedInterstitialLoading = false;
-            DebugAds.Log("[MAX][RewardedInterstitial] Load failed: " + errorInfo.Message);
+            DebugAds.LogWarning("[MAX][RewardedInterstitial] Unsupported by the installed AppLovin MAX Unity SDK.");
+            failedCallback?.Invoke();
+            closedCallback?.Invoke(false);
         }
 
         #endregion

@@ -15,6 +15,7 @@ namespace JisSDKAds.Ads.SequentialTier
         bool _rewardGranted;
         bool _finished;
         bool _graceScheduled;
+        Action _pendingDeliverClosed;
 
         public bool RewardGranted => _rewardGranted;
 
@@ -24,6 +25,7 @@ namespace JisSDKAds.Ads.SequentialTier
             _rewardGranted = false;
             _finished = false;
             _graceScheduled = false;
+            _pendingDeliverClosed = null;
         }
 
         public void NotifyRewardGranted(Action deliverReward)
@@ -42,6 +44,8 @@ namespace JisSDKAds.Ads.SequentialTier
                 return;
 
             _fullscreenClosed = true;
+            if (deliverClosed != null)
+                _pendingDeliverClosed = deliverClosed;
             TryCompleteShow(deliverClosed);
         }
 
@@ -52,7 +56,7 @@ namespace JisSDKAds.Ads.SequentialTier
 
             if (_rewardGranted)
             {
-                CompleteShow(deliverClosed);
+                CompleteShow(deliverClosed ?? _pendingDeliverClosed);
                 return;
             }
 

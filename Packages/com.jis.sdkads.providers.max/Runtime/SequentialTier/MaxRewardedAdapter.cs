@@ -88,11 +88,12 @@ namespace JisSDKAds.Providers.Max.SequentialTier
             onHidden = (id, info) =>
             {
                 if (id != _adUnitId) return;
-                Unsubscribe();
+                UnsubscribeExceptReward();
                 _showCompletion.NotifyFullscreenClosed(() =>
                 {
                     if (!_showCompletion.RewardGranted)
                         DebugAds.Log("[MAX][Rewarded][Tier] show_closed_without_reward");
+                    Unsubscribe();
                     hooks.onClosed?.Invoke();
                 });
             };
@@ -114,6 +115,14 @@ namespace JisSDKAds.Providers.Max.SequentialTier
                 MaxSdkCallbacks.Rewarded.OnAdDisplayFailedEvent -= onDisplayFailed;
                 MaxSdkCallbacks.Rewarded.OnAdHiddenEvent -= onHidden;
                 MaxSdkCallbacks.Rewarded.OnAdReceivedRewardEvent -= onRewarded;
+                MaxSdkCallbacks.Rewarded.OnAdRevenuePaidEvent -= onPaid;
+            }
+
+            void UnsubscribeExceptReward()
+            {
+                MaxSdkCallbacks.Rewarded.OnAdDisplayedEvent -= onDisplayed;
+                MaxSdkCallbacks.Rewarded.OnAdDisplayFailedEvent -= onDisplayFailed;
+                MaxSdkCallbacks.Rewarded.OnAdHiddenEvent -= onHidden;
                 MaxSdkCallbacks.Rewarded.OnAdRevenuePaidEvent -= onPaid;
             }
 

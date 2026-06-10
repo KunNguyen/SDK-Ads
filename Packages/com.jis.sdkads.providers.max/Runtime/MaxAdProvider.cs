@@ -1,5 +1,6 @@
 #if UNITY_AD_MAX
 using System;
+using JisSDKAds.Ads.SequentialTier;
 using JisSDKAds.Core.Interfaces;
 using JisSDKAds.Core.Models;
 using UnityEngine;
@@ -176,7 +177,7 @@ namespace JisSDKAds.Providers.Max
             var cb = _pendingOnClosed;
             ClearShowCallbacks();
             cb?.Invoke();
-            // MAX interstitial is one-time-use — warm-load the next impression after close.
+            // MAX interstitial is one-time-use â€” warm-load the next impression after close.
             WarmReload();
         }
 
@@ -221,7 +222,7 @@ namespace JisSDKAds.Providers.Max
         private Action _pendingOnRewardEarned;
         private Action _pendingOnClosed;
         private Action<string> _pendingOnShowFailed;
-        private bool _rewardEarned;
+        private readonly RewardedShowCompletionTracker _showCompletion = new RewardedShowCompletionTracker();
 
         public MaxRewardedAd(string adUnitId) => _adUnitId = adUnitId;
         public bool IsLoaded => MaxSdk.IsRewardedAdReady(_adUnitId);
@@ -279,10 +280,10 @@ namespace JisSDKAds.Providers.Max
                 return;
             }
 
-            _rewardEarned = false;
             _pendingOnRewardEarned = onRewardEarned;
             _pendingOnClosed = onClosed;
             _pendingOnShowFailed = onFailed;
+            _showCompletion.Reset();
 
             MaxSdkCallbacks.Rewarded.OnAdReceivedRewardEvent -= OnReward;
             MaxSdkCallbacks.Rewarded.OnAdReceivedRewardEvent += OnReward;
@@ -296,21 +297,21 @@ namespace JisSDKAds.Providers.Max
         void OnReward(string id, MaxSdkBase.Reward reward, MaxSdkBase.AdInfo info)
         {
             if (id != _adUnitId) return;
-            _rewardEarned = true;
+            _showCompletion.NotifyRewardGranted(() => _pendingOnRewardEarned?.Invoke());
         }
 
         void OnHidden(string id, MaxSdkBase.AdInfo info)
         {
             if (id != _adUnitId) return;
-            UnsubscribeShow();
-            var rewardEarned = _rewardEarned;
-            var onReward = _pendingOnRewardEarned;
-            var onClosed = _pendingOnClosed;
-            ClearShowCallbacks();
-            if (rewardEarned) onReward?.Invoke();
-            onClosed?.Invoke();
-            // MAX rewarded is one-time-use — warm-load the next impression after close.
-            WarmReload();
+            UnsubscribeShowExceptReward();
+            _showCompletion.NotifyFullscreenClosed(() =>
+            {
+                var onClosed = _pendingOnClosed;
+                UnsubscribeShow();
+                ClearShowCallbacks();
+                onClosed?.Invoke();
+                WarmReload();
+            });
         }
 
         void OnDisplayFailed(string id, MaxSdkBase.ErrorInfo err, MaxSdkBase.AdInfo info)
@@ -327,6 +328,12 @@ namespace JisSDKAds.Providers.Max
         void UnsubscribeShow()
         {
             MaxSdkCallbacks.Rewarded.OnAdReceivedRewardEvent -= OnReward;
+            MaxSdkCallbacks.Rewarded.OnAdHiddenEvent -= OnHidden;
+            MaxSdkCallbacks.Rewarded.OnAdDisplayFailedEvent -= OnDisplayFailed;
+        }
+
+        void UnsubscribeShowExceptReward()
+        {
             MaxSdkCallbacks.Rewarded.OnAdHiddenEvent -= OnHidden;
             MaxSdkCallbacks.Rewarded.OnAdDisplayFailedEvent -= OnDisplayFailed;
         }
