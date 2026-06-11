@@ -123,6 +123,7 @@ namespace JisSDKAds.Ads
         private const string ads_reward_click = "ads_reward_click";
         private const string ads_reward_show = "ads_reward_show";
         private const string ads_reward_fail = "ads_reward_fail";
+        private const string ads_reward_show_fail_by_load = "ads_reward_show_fail_by_load";
         private const string ads_reward_load_success = "ads_reward_load_success";
         private const string ads_reward_first_show = "ads_reward_first_show";
 
@@ -142,6 +143,11 @@ namespace JisSDKAds.Ads
         public void TrackAdsReward_ShowFail()
         {
             FirebaseManager.Instance.LogEvent(ads_reward_fail);
+        }
+
+        public void TrackAdsReward_ShowFailByLoad()
+        {
+            FirebaseManager.Instance.LogEvent(ads_reward_show_fail_by_load);
         }
 
         public void TrackAdsReward_ShowCompleted(string placement)

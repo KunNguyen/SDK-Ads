@@ -15,6 +15,8 @@ namespace JisSDKAds.Ads.SequentialTier
         public int Precision;
         public string AdUnitId;
         public string AdSource;
+        public string AdSourceId;
+        public string AdSourceInstanceId;
     }
 
     public struct SequentialTierShowHooks

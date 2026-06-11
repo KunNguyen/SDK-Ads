@@ -174,7 +174,10 @@ namespace JisSDKAds.Ads.UnitAdManagers
                }
                else
                {
-                    AdsTracker.Instance.TrackAdsInterstitial_ShowFailByLoad();
+                    if (AdsTracker.Instance != null)
+                         AdsTracker.Instance.TrackAdsInterstitial_ShowFailByLoad();
+                    else
+                         DebugAds.LogWarning("[InterstitialAdManager] AdsTracker.Instance is null. Skipping interstitial show-fail-by-load tracking.");
                     showFailCallback?.Invoke();
                }
           }

@@ -56,7 +56,9 @@ namespace JisSDKAds.Ads
             string interstitialPlacement,
             UnityAction closedCallback,
             UnityAction showSuccessCallback,
-            UnityAction showFailCallback)
+            UnityAction showFailCallback,
+            bool isTracking,
+            bool isSkipCapping)
         {
             if (!ShouldRouteStandardFormatsToJisAds())
                 return false;
@@ -65,7 +67,9 @@ namespace JisSDKAds.Ads
                 interstitialPlacement,
                 closedCallback,
                 showSuccessCallback,
-                showFailCallback);
+                showFailCallback,
+                isTracking,
+                isSkipCapping);
             return true;
         }
 

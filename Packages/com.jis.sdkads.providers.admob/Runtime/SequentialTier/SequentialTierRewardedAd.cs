@@ -66,7 +66,7 @@ namespace JisSDKAds.Providers.AdMob.SequentialTier
                     onClosed = OnShowClosed,
                     onRewardGranted = OnRewardGranted,
                     onFailed = OnShowFailed,
-                    onPaid = null
+                    onPaid = OnPaid
                 });
         }
 
@@ -110,6 +110,21 @@ namespace JisSDKAds.Providers.AdMob.SequentialTier
             _pendingOnShowFailed = null;
             cb?.Invoke(string.IsNullOrEmpty(error?.Message) ? "show_failed" : error.Value.Message);
             _loader.Load(forceReload: true);
+        }
+
+        void OnPaid(SequentialTierPaidEvent paid)
+        {
+            var cache = _loader.ReadyCache;
+            if (cache != null)
+                SequentialTierAnalytics.LogPaid(
+                    "rewarded",
+                    cache.AdUnitId,
+                    cache.Tier,
+                    paid.Revenue,
+                    paid.Currency,
+                    paid.Precision);
+
+            AdMobCorePaidTracker.Track("REWARDED", paid);
         }
     }
 }

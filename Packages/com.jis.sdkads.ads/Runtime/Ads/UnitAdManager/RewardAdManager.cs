@@ -179,6 +179,14 @@ namespace JisSDKAds.Ads.UnitAdManagers
                {
                     Show();
                }
+               else
+               {
+                    if (AdsTracker.Instance != null)
+                         AdsTracker.Instance.TrackAdsReward_ShowFailByLoad();
+                    else
+                         DebugAds.LogWarning("[RewardAdManager] AdsTracker.Instance is null. Skipping reward show-fail-by-load tracking.");
+                    showFailCallback?.Invoke();
+               }
           }
 
           public override void OnAdLoadSuccess()

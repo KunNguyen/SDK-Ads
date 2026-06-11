@@ -48,6 +48,9 @@ namespace JisSDKAds.Ads
         private float _appOpenUnscaledTime;
         private float _interstitialNextAllowedUnscaledTime;
         private bool _pendingInterstitialWasShown;
+        private bool _pendingInterstitialHadLoadedAdAtShowRequest;
+        private bool _pendingInterstitialIsTracking;
+        private string _pendingInterstitialPlacement;
         private UnityAction _pendingInterstitialClosedCallback;
         private UnityAction _pendingInterstitialShowSuccessCallback;
         private UnityAction _pendingInterstitialShowFailCallback;
@@ -57,6 +60,8 @@ namespace JisSDKAds.Ads
 
         private bool _pendingRewardedWasShown;
         private bool _pendingRewardedRewardGranted;
+        private bool _pendingRewardedHadLoadedAdAtShowRequest;
+        private string _pendingRewardedPlacement;
         private UnityAction<bool> _pendingRewardedClosedCallback;
         private UnityAction _pendingRewardedRewardCallback;
         private UnityAction _pendingRewardedFailCallback;
@@ -67,7 +72,6 @@ namespace JisSDKAds.Ads
         private readonly int[] _preloadFailCounts = new int[3];
         private readonly bool[] _preloadRetryInFlight = new bool[3];
         private readonly Coroutine[] _preloadRetryCoroutines = new Coroutine[3];
-        private const int SequentialTierPreloadMaxRetries = 3;
         private const float SinglePreloadRetryDelay1Sec = 30f;
         private const float SinglePreloadRetryDelay2Sec = 60f;
         private const float SinglePreloadRetryDelaySteadySec = 120f;
@@ -363,13 +367,6 @@ namespace JisSDKAds.Ads
             _preloadFailCounts[idx]++;
 
             var single = IsSingleInventoryForFormat(format);
-            if (!single && _preloadFailCounts[idx] > SequentialTierPreloadMaxRetries)
-            {
-                DebugAds.LogWarning(
-                    $"[JisAds] Preload {format} stopped after {SequentialTierPreloadMaxRetries} failures (sequential tier).");
-                return;
-            }
-
             var delay = GetPreloadRetryDelaySeconds(single, _preloadFailCounts[idx]);
             DebugAds.Log(
                 $"[JisAds] Preload {format} retry #{_preloadFailCounts[idx]} in {delay:0.#}s " +
@@ -393,7 +390,8 @@ namespace JisSDKAds.Ads
             {
                 1 => 2f,
                 2 => 5f,
-                _ => 10f
+                3 => 10f,
+                _ => SinglePreloadRetryDelaySteadySec
             };
         }
 
@@ -727,9 +725,14 @@ namespace JisSDKAds.Ads
             _interstitialShowAttemptId++;
             StartInterstitialInFlightWatchdog(_interstitialShowAttemptId);
             _pendingInterstitialWasShown = false;
+            _pendingInterstitialHadLoadedAdAtShowRequest = IsInterstitialAdLoaded();
+            _pendingInterstitialIsTracking = isTracking;
+            _pendingInterstitialPlacement = interstitialPlacement;
             _pendingInterstitialClosedCallback = closedCallback;
             _pendingInterstitialShowSuccessCallback = showSuccessCallback;
             _pendingInterstitialShowFailCallback = showFailCallback;
+
+            TrackPendingInterstitialClick();
 
             if (UseCoreForStandardFormats)
             {
@@ -743,12 +746,62 @@ namespace JisSDKAds.Ads
                     onFailed: err =>
                     {
                         Debug.LogWarning($"[JisAds] Core interstitial failed: {err}");
+                        TrackPendingInterstitialShowFailure(isTracking);
                         ConsumePendingInterstitialCallbacksOnFail();
                     });
                 return;
             }
             Debug.LogWarning("[JisAds] Legacy interstitial is removed. Enable Core AdManager.");
+            TrackPendingInterstitialShowFailure(isTracking);
             ConsumePendingInterstitialCallbacksOnFail();
+        }
+
+        void TrackPendingInterstitialShowFailure(bool isTracking)
+        {
+            if (!isTracking)
+                return;
+
+            var tracker = AdsTracker.Instance;
+            if (tracker == null)
+            {
+                DebugAds.LogWarning("[JisAds] AdsTracker.Instance is null. Skipping interstitial failure tracking.");
+                return;
+            }
+
+            if (!_pendingInterstitialHadLoadedAdAtShowRequest)
+                tracker.TrackAdsInterstitial_ShowFailByLoad();
+            else
+                tracker.TrackAdsInterstitial_ShowFail();
+        }
+
+        void TrackPendingInterstitialClick()
+        {
+            if (!_pendingInterstitialIsTracking)
+                return;
+
+            var tracker = AdsTracker.Instance;
+            if (tracker == null)
+            {
+                DebugAds.LogWarning("[JisAds] AdsTracker.Instance is null. Skipping interstitial click tracking.");
+                return;
+            }
+
+            tracker.TrackAdsInterstitial_ClickOnButton(_pendingInterstitialPlacement);
+        }
+
+        void TrackPendingInterstitialShowSuccess()
+        {
+            if (!_pendingInterstitialIsTracking)
+                return;
+
+            var tracker = AdsTracker.Instance;
+            if (tracker == null)
+            {
+                DebugAds.LogWarning("[JisAds] AdsTracker.Instance is null. Skipping interstitial show tracking.");
+                return;
+            }
+
+            tracker.TrackAdsInterstitial_ShowSuccess(_pendingInterstitialPlacement);
         }
 
         void ConsumePendingInterstitialCallbacksOnClose()
@@ -781,6 +834,9 @@ namespace JisSDKAds.Ads
         void ClearPendingInterstitialCallbacks()
         {
             _pendingInterstitialWasShown = false;
+            _pendingInterstitialHadLoadedAdAtShowRequest = false;
+            _pendingInterstitialIsTracking = false;
+            _pendingInterstitialPlacement = null;
             _pendingInterstitialClosedCallback = null;
             _pendingInterstitialShowSuccessCallback = null;
             _pendingInterstitialShowFailCallback = null;
@@ -865,7 +921,10 @@ namespace JisSDKAds.Ads
                 return;
             // Only mark "shown" for the current in-flight show attempt.
             if (_interstitialCallbacksInFlight)
+            {
                 _pendingInterstitialWasShown = true;
+                TrackPendingInterstitialShowSuccess();
+            }
             ResetCoreInterstitialBetweenShowsCooldown();
         }
 
@@ -904,10 +963,14 @@ namespace JisSDKAds.Ads
             StartRewardedInFlightWatchdog(_rewardedShowAttemptId);
             _pendingRewardedWasShown = false;
             _pendingRewardedRewardGranted = false;
+            _pendingRewardedHadLoadedAdAtShowRequest = IsRewardedVideoLoaded();
+            _pendingRewardedPlacement = rewardedPlacement;
             _pendingRewardedRewardCallback = successCallback;
             _pendingRewardedClosedCallback = closedCallback;
             _pendingRewardedFailCallback = failedCallback;
             SetAdsShowingState(true);
+
+            TrackRewardedClick();
 
             if (UseCoreForStandardFormats)
             {
@@ -921,12 +984,41 @@ namespace JisSDKAds.Ads
                     onFailed: err =>
                     {
                         Debug.LogWarning($"[JisAds] Core rewarded failed: {err}");
+                        TrackPendingRewardedShowFailure();
                         ConsumePendingRewardedCallbacksOnFail();
                     });
                 return;
             }
             Debug.LogWarning("[JisAds] Legacy rewarded is removed. Enable Core AdManager.");
+            TrackPendingRewardedShowFailure();
             ConsumePendingRewardedCallbacksOnFail();
+        }
+
+        void TrackPendingRewardedShowFailure()
+        {
+            var tracker = AdsTracker.Instance;
+            if (tracker == null)
+            {
+                DebugAds.LogWarning("[JisAds] AdsTracker.Instance is null. Skipping rewarded failure tracking.");
+                return;
+            }
+
+            if (!_pendingRewardedHadLoadedAdAtShowRequest)
+                tracker.TrackAdsReward_ShowFailByLoad();
+            else
+                tracker.TrackAdsReward_ShowFail();
+        }
+
+        void TrackRewardedClick()
+        {
+            var tracker = AdsTracker.Instance;
+            if (tracker == null)
+            {
+                DebugAds.LogWarning("[JisAds] AdsTracker.Instance is null. Skipping rewarded click tracking.");
+                return;
+            }
+
+            tracker.TrackAdsReward_ClickOnButton();
         }
 
         void ConsumePendingRewardedCallbacksOnRewardGranted()
@@ -934,6 +1026,7 @@ namespace JisSDKAds.Ads
             if (!_rewardedCallbacksInFlight || _pendingRewardedRewardGranted)
                 return;
             _pendingRewardedRewardGranted = true;
+            AdsTracker.Instance?.TrackAdsReward_ShowCompleted(_pendingRewardedPlacement);
             _pendingRewardedRewardCallback?.Invoke();
         }
 
@@ -963,6 +1056,8 @@ namespace JisSDKAds.Ads
         {
             _pendingRewardedWasShown = false;
             _pendingRewardedRewardGranted = false;
+            _pendingRewardedHadLoadedAdAtShowRequest = false;
+            _pendingRewardedPlacement = null;
             _pendingRewardedClosedCallback = null;
             _pendingRewardedRewardCallback = null;
             _pendingRewardedFailCallback = null;

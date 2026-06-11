@@ -6,6 +6,7 @@ namespace JisSDKAds.Providers.AdMob.SequentialTier
 {
     internal sealed class AdMobInterstitialAdapter : ISequentialTierAdAdapter
     {
+        string _adUnitId;
         InterstitialAd _ad;
         SequentialTierShowHooks _hooks;
 
@@ -24,6 +25,7 @@ namespace JisSDKAds.Providers.AdMob.SequentialTier
             Action onSuccess, Action<int, string> onFail)
         {
             Destroy();
+            _adUnitId = adUnitId;
             var request = new AdRequest();
             request.Keywords.Add("unity-admob-sample");
 
@@ -68,13 +70,20 @@ namespace JisSDKAds.Providers.AdMob.SequentialTier
         void HandleOpened() => _hooks.onOpened?.Invoke();
         void HandleFailed(AdError e) => _hooks.onFailed?.Invoke(
             new SequentialTierShowError { Code = e.GetCode(), Message = e.GetMessage() });
-        void HandlePaid(AdValue v) => _hooks.onPaid?.Invoke(new SequentialTierPaidEvent
+        void HandlePaid(AdValue v)
         {
-            Revenue = (double)v.Value / 1_000_000,
-            Currency = v.CurrencyCode,
-            Precision = (int)v.Precision,
-            AdUnitId = _ad?.GetResponseInfo()?.GetLoadedAdapterResponseInfo()?.AdSourceId ?? ""
-        });
+            var adapter = _ad?.GetResponseInfo()?.GetLoadedAdapterResponseInfo();
+            _hooks.onPaid?.Invoke(new SequentialTierPaidEvent
+            {
+                Revenue = (double)v.Value / 1_000_000,
+                Currency = v.CurrencyCode,
+                Precision = (int)v.Precision,
+                AdUnitId = _adUnitId,
+                AdSource = adapter?.AdSourceName ?? "",
+                AdSourceId = adapter?.AdSourceId ?? "",
+                AdSourceInstanceId = adapter?.AdSourceInstanceId ?? ""
+            });
+        }
 
         void UnregisterEvents(InterstitialAd ad)
         {

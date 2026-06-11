@@ -41,8 +41,14 @@ namespace JisSDKAds.Ads
                bool isTracking = true,
                bool isSkipCapping = false)
           {
-               if (TryShowInterstitialViaJisAds(interstitialPlacement, closedCallback, showSuccessCallback, showFailCallback))
-                    return;
+               if (TryShowInterstitialViaJisAds(
+                        interstitialPlacement,
+                        closedCallback,
+                        showSuccessCallback,
+                        showFailCallback,
+                        isTracking,
+                        isSkipCapping))
+                     return;
 
                InterstitialAdManager.CallToShowAd(
                     interstitialPlacement,
