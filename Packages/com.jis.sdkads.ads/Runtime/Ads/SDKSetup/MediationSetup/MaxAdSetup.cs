@@ -17,38 +17,38 @@ public class MaxAdSetup
 
     public string SDKKey
     {
-        get => sdkKey.ID;
-        set => sdkKey.ID = value;
+        get => SdkKey.ID;
+        set => SdkKey.ID = value;
     }
 
     public string InterstitialAdUnitID
     {
-        get => interstitialAdUnitID.ID;
-        set => interstitialAdUnitID.ID = value;
+        get => InterstitialUnit.ID;
+        set => InterstitialUnit.ID = value;
     }
 
     public string RewardedAdUnitID
     {
-        get => rewardedAdUnitID.ID;
-        set => rewardedAdUnitID.ID = value;
+        get => RewardedUnit.ID;
+        set => RewardedUnit.ID = value;
     }
 
     public string BannerAdUnitID
     {
-        get => bannerAdUnitID.ID;
-        set => bannerAdUnitID.ID = value;
+        get => BannerUnit.ID;
+        set => BannerUnit.ID = value;
     }
 
     public string AppOpenAdUnitID
     {
-        get => appOpenAdUnitID.ID;
-        set => appOpenAdUnitID.ID = value;
+        get => AppOpenUnit.ID;
+        set => AppOpenUnit.ID = value;
     }
 
     public string RewardedInterstitialAdUnitID
     {
-        get => rewardedInterstitialAdUnitID.ID;
-        set => rewardedInterstitialAdUnitID.ID = value;
+        get => RewardedInterstitialUnit.ID;
+        set => RewardedInterstitialUnit.ID = value;
     }
 
     public SequentialTierConfig InterstitialTierConfig
@@ -71,5 +71,24 @@ public class MaxAdSetup
             return rewardedTierConfig;
         }
         set => rewardedTierConfig = value;
+    }
+
+    AdUnitID SdkKey => sdkKey ??= new AdUnitID();
+    AdUnitID InterstitialUnit => interstitialAdUnitID ??= new AdUnitID();
+    AdUnitID RewardedUnit => rewardedAdUnitID ??= new AdUnitID();
+    AdUnitID BannerUnit => bannerAdUnitID ??= new AdUnitID();
+    AdUnitID AppOpenUnit => appOpenAdUnitID ??= new AdUnitID();
+    AdUnitID RewardedInterstitialUnit => rewardedInterstitialAdUnitID ??= new AdUnitID();
+
+    public void EnsureInitialized()
+    {
+        _ = SdkKey;
+        _ = InterstitialUnit;
+        _ = RewardedUnit;
+        _ = BannerUnit;
+        _ = AppOpenUnit;
+        _ = RewardedInterstitialUnit;
+        _ = InterstitialTierConfig;
+        _ = RewardedTierConfig;
     }
 }

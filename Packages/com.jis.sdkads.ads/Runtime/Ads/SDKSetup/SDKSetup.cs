@@ -48,6 +48,7 @@ namespace JisSDKAds.Ads
           public void EnsureMediationSetups()
           {
                maxAdsSetup ??= new MaxAdSetup();
+               maxAdsSetup.EnsureInitialized();
                admobAdsSetup ??= new AdmobAdSetup();
                admobAdsSetup.EnsureInitialized();
           }
