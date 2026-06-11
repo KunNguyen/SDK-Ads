@@ -1,8 +1,10 @@
 ﻿using System.Collections.Generic;
+using System;
 using JisSDKAds.Ads.Settings;
 using JisSDKAds.Ads.UnitAdManagers;
 using JisSDKAds.Ads.Integration;
 using JisSDKAds.Common;
+using UnityEngine;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -111,11 +113,75 @@ namespace JisSDKAds.Ads
                BannerAdManager ??= GetComponentInChildren<BannerAdManager>(true);
                InterstitialAdManager ??= GetComponentInChildren<InterstitialAdManager>(true);
                RewardAdManager ??= GetComponentInChildren<RewardAdManager>(true);
-               if (AdsMediationControllers == null || AdsMediationControllers.Count == 0)
+               EnsureEditorMediationControllersForCurrentSetup();
+               AdsMediationControllers = new List<AdsMediationController>(
+                    GetComponentsInChildren<AdsMediationController>(true));
+          }
+
+          void EnsureEditorMediationControllersForCurrentSetup()
+          {
+               if (CurrentSDKSetup == null)
+                    return;
+
+               EnsureEditorMediationController(MainAdsMediationType);
+               foreach (AdsType adsType in Enum.GetValues(typeof(AdsType)))
+                    EnsureEditorMediationController(CurrentSDKSetup.GetAdsMediationType(adsType));
+          }
+
+          void EnsureEditorMediationController(AdsMediationType mediationType)
+          {
+               if (mediationType == AdsMediationType.NONE)
+                    return;
+               if (GetAdsMediationController(mediationType) != null)
+                    return;
+
+               foreach (var existing in GetComponentsInChildren<AdsMediationController>(true))
                {
-                    AdsMediationControllers = new List<AdsMediationController>(
-                         GetComponentsInChildren<AdsMediationController>(true));
+                    if (existing != null && existing.GetAdsMediationType() == mediationType)
+                         return;
                }
+
+               var typeName = mediationType switch
+               {
+                    AdsMediationType.MAX => "JisSDKAds.Ads.MaxMediationController, JisSDKAds.Providers.Max",
+                    AdsMediationType.ADMOB => "JisSDKAds.Ads.AdmobMediationController, JisSDKAds.Providers.AdMob",
+                    _ => null
+               };
+               if (string.IsNullOrEmpty(typeName))
+                    return;
+
+               var type = Type.GetType(typeName);
+               if (type == null || !typeof(AdsMediationController).IsAssignableFrom(type))
+                    return;
+
+               var mediationRoot = GetOrCreateEditorChild(transform, "Mediation");
+               var childName = mediationType == AdsMediationType.MAX ? "MaxMediation" : "AdmobMediation";
+               var host = GetOrCreateEditorChild(mediationRoot.transform, childName);
+               var controller = host.GetComponent(type) as AdsMediationController;
+               if (controller == null)
+                    controller = Undo.AddComponent(host, type) as AdsMediationController;
+               if (controller == null)
+                    return;
+
+               controller.AdsMediationType = mediationType;
+               AdsMediationControllers ??= new List<AdsMediationController>();
+               if (!AdsMediationControllers.Contains(controller))
+                    AdsMediationControllers.Add(controller);
+               EditorUtility.SetDirty(controller);
+          }
+
+          static GameObject GetOrCreateEditorChild(Transform parent, string childName)
+          {
+               foreach (Transform child in parent)
+               {
+                    if (child.name == childName)
+                         return child.gameObject;
+               }
+
+               var go = new GameObject(childName);
+               Undo.RegisterCreatedObjectUndo(go, "Create " + childName);
+               go.transform.SetParent(parent, false);
+               return go;
           }
 #endif
 

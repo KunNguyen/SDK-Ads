@@ -14,6 +14,7 @@ namespace JisSDKAds.Providers.Max
         {
 #if UNITY_AD_MAX
             if (manager == null || setup == null) return;
+            setup.EnsureMediationSetups();
 
             const AdsMediationType adsMediationType = AdsMediationType.MAX;
             var maxMediationController =
@@ -28,6 +29,7 @@ namespace JisSDKAds.Providers.Max
             }
 
             maxMediationController.AdsMediationType = adsMediationType;
+            maxMediationController.m_MaxAdConfig ??= new MaxAdSetup();
 
             if (setup.adsMediationType == adsMediationType)
                 maxMediationController.m_MaxAdConfig.SDKKey = setup.maxAdsSetup.SDKKey;
