@@ -15,9 +15,16 @@ namespace JisSDKAds.Providers.Max
         public string rewardedAdUnitId;
         public string bannerAdUnitId;
         public string appOpenAdUnitId;
+        public int bannerPosition = (int)MaxSdkBase.BannerPosition.BottomCenter;
 
         public AdProviderId ProviderId => AdProviderId.Max;
-        public IAdService CreateProvider() => new MaxAdProvider(sdkKey, interstitialAdUnitId, rewardedAdUnitId, bannerAdUnitId, appOpenAdUnitId);
+        public IAdService CreateProvider() => new MaxAdProvider(
+            sdkKey,
+            interstitialAdUnitId,
+            rewardedAdUnitId,
+            bannerAdUnitId,
+            appOpenAdUnitId,
+            (MaxSdkBase.BannerPosition)bannerPosition);
     }
 
     /// <summary>
@@ -30,6 +37,7 @@ namespace JisSDKAds.Providers.Max
         private readonly string _rewardedAdUnitId;
         private readonly string _bannerAdUnitId;
         private readonly string _appOpenAdUnitId;
+        private readonly MaxSdkBase.BannerPosition _bannerPosition;
         private bool _isInitialized;
 
         public string ProviderId => "Max";
@@ -40,17 +48,24 @@ namespace JisSDKAds.Providers.Max
         public IBannerAd Banner { get; }
         public IAppOpenAd AppOpen { get; }
 
-        public MaxAdProvider(string sdkKey, string interstitialAdUnitId, string rewardedAdUnitId, string bannerAdUnitId, string appOpenAdUnitId = null)
+        public MaxAdProvider(
+            string sdkKey,
+            string interstitialAdUnitId,
+            string rewardedAdUnitId,
+            string bannerAdUnitId,
+            string appOpenAdUnitId = null,
+            MaxSdkBase.BannerPosition bannerPosition = MaxSdkBase.BannerPosition.BottomCenter)
         {
             _sdkKey = sdkKey;
             _interstitialAdUnitId = interstitialAdUnitId;
             _rewardedAdUnitId = rewardedAdUnitId;
             _bannerAdUnitId = bannerAdUnitId;
             _appOpenAdUnitId = appOpenAdUnitId;
+            _bannerPosition = bannerPosition;
 
             Interstitial = new MaxInterstitialAd(_interstitialAdUnitId);
             Rewarded = new MaxRewardedAd(_rewardedAdUnitId);
-            Banner = new MaxBannerAd(_bannerAdUnitId);
+            Banner = new MaxBannerAd(_bannerAdUnitId, _bannerPosition);
             AppOpen = string.IsNullOrEmpty(_appOpenAdUnitId)
                 ? NullAppOpenAd.Instance
                 : new MaxAppOpenAd(_appOpenAdUnitId);
@@ -356,13 +371,19 @@ namespace JisSDKAds.Providers.Max
     internal class MaxBannerAd : IBannerAd
     {
         private readonly string _adUnitId;
+        private readonly MaxSdkBase.BannerPosition _position;
         private bool _isVisible;
         private bool _isLoaded;
         private bool _created;
         private Action _pendingOnLoaded;
         private Action<string> _pendingOnFailed;
 
-        public MaxBannerAd(string adUnitId) => _adUnitId = adUnitId;
+        public MaxBannerAd(string adUnitId, MaxSdkBase.BannerPosition position)
+        {
+            _adUnitId = adUnitId;
+            _position = position;
+        }
+
         public bool IsLoaded => _isLoaded;
         public bool IsVisible => _isVisible;
 
@@ -384,7 +405,7 @@ namespace JisSDKAds.Providers.Max
             {
                 _pendingOnLoaded = onLoaded;
                 _pendingOnFailed = onFailed;
-                MaxSdk.CreateBanner(_adUnitId, MaxSdkBase.BannerPosition.BottomCenter);
+                MaxSdk.CreateBanner(_adUnitId, _position);
                 _created = true;
                 return;
             }

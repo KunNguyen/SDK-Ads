@@ -22,7 +22,10 @@ namespace JisSDKAds.Ads
 
             var existing = profile.GetProviderConfig();
             if (existing != null)
+            {
+                SyncBannerPosition(profile, existing);
                 return existing;
+            }
 
             return profile.mediation switch
             {
@@ -34,6 +37,7 @@ namespace JisSDKAds.Ads
                     SetField(setup, "rewardedAdUnitId", profile.sdkSetup.maxAdsSetup.RewardedAdUnitID);
                     SetField(setup, "bannerAdUnitId", profile.sdkSetup.maxAdsSetup.BannerAdUnitID);
                     SetField(setup, "appOpenAdUnitId", profile.sdkSetup.maxAdsSetup.AppOpenAdUnitID);
+                    SetField(setup, "bannerPosition", (int)profile.sdkSetup.maxBannerAdsPosition);
                 }),
 #endif
 #if UNITY_AD_ADMOB
@@ -109,8 +113,31 @@ namespace JisSDKAds.Ads
             return instance as IAdProviderConfig;
         }
 
-        static void SetField(ScriptableObject target, string fieldName, object value)
+        static void SyncBannerPosition(PlatformAdsProfile profile, IAdProviderConfig providerConfig)
         {
+            if (profile?.sdkSetup == null || providerConfig == null)
+                return;
+
+            switch (profile.mediation)
+            {
+#if UNITY_AD_MAX
+                case AdsMediationType.MAX:
+                    SetField(providerConfig, "bannerPosition", (int)profile.sdkSetup.maxBannerAdsPosition);
+                    break;
+#endif
+#if UNITY_AD_ADMOB
+                case AdsMediationType.ADMOB:
+                    SetField(providerConfig, "bannerPosition", profile.sdkSetup.admobBannerAdsPosition);
+                    break;
+#endif
+            }
+        }
+
+        static void SetField(object target, string fieldName, object value)
+        {
+            if (target == null)
+                return;
+
             var field = target.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
             field?.SetValue(target, value);
         }
