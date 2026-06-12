@@ -247,7 +247,7 @@ namespace JisSDKAds.Ads
                if (UseSequentialInterstitial)
                {
                     EnsureInterstitialTierLoader();
-                    _interstitialTierLoader.Load();
+                    _interstitialTierLoader?.Load();
                     return;
                }
 
@@ -266,8 +266,10 @@ namespace JisSDKAds.Ads
           {
                if (UseSequentialInterstitial)
                {
+                    if (AdsManager.UsesJisAdsCoreForStandardLoads())
+                         return false;
                     EnsureInterstitialTierLoader();
-                    return _interstitialTierLoader.IsReady;
+                    return _interstitialTierLoader != null && _interstitialTierLoader.IsReady;
                }
 
                return InterstitialAds != null && InterstitialAds.CanShowAd();
@@ -278,8 +280,10 @@ namespace JisSDKAds.Ads
                base.ShowInterstitialAd();
                if (UseSequentialInterstitial)
                {
+                    if (AdsManager.UsesJisAdsCoreForStandardLoads())
+                         return;
                     EnsureInterstitialTierLoader();
-                    if (!_interstitialTierLoader.Show())
+                    if (_interstitialTierLoader == null || !_interstitialTierLoader.Show())
                          OnAdInterstitialFailToShow(null);
                     return;
                }
@@ -398,7 +402,7 @@ namespace JisSDKAds.Ads
                if (UseSequentialRewarded)
                {
                     EnsureRewardedTierLoader();
-                    _rewardedTierLoader.Load();
+                    _rewardedTierLoader?.Load();
                     return;
                }
 
@@ -418,8 +422,15 @@ namespace JisSDKAds.Ads
                base.ShowRewardVideoAd();
                if (UseSequentialRewarded)
                {
+                    if (AdsManager.UsesJisAdsCoreForStandardLoads())
+                         return;
                     EnsureRewardedTierLoader();
                     IsWatchSuccess = false;
+                    if (_rewardedTierLoader == null)
+                    {
+                         OnRewardedAdFailedToShow(null);
+                         return;
+                    }
                     if (!_rewardedTierLoader.IsReady)
                          AdLoadCoordinator.Instance.PrepareUrgentRewarded();
                     if (!_rewardedTierLoader.Show())
@@ -442,8 +453,10 @@ namespace JisSDKAds.Ads
 #else
                if (UseSequentialRewarded)
                {
+                    if (AdsManager.UsesJisAdsCoreForStandardLoads())
+                         return false;
                     EnsureRewardedTierLoader();
-                    return _rewardedTierLoader.IsReady;
+                    return _rewardedTierLoader != null && _rewardedTierLoader.IsReady;
                }
 
                return RewardVideoAds != null && RewardVideoAds.CanShowAd();

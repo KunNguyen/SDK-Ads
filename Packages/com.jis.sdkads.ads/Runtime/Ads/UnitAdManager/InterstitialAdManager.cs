@@ -248,7 +248,9 @@ namespace JisSDKAds.Ads.UnitAdManagers
           }
           public override bool IsLoaded()
           {
-               return MediationController.IsInterstitialLoaded();
+               if (AdsManager.UsesJisAdsCoreForStandardLoads())
+                    return JisAdsEntry.Instance != null && JisAdsEntry.Instance.IsInterstitialAdLoaded();
+               return MediationController != null && MediationController.IsInterstitialLoaded();
           }
           public override bool IsAdReady()
           {
