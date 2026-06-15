@@ -5,6 +5,7 @@ using JisSDKAds.Ads.Integration;
 using JisSDKAds.Ads.SequentialTier;
 using JisSDKAds.Core.Interfaces;
 using JisSDKAds.Core.Models;
+using JisSDKAds.Providers.Max.SequentialTier;
 using UnityEngine;
 #if UNITY_APPSFLYER
 using JisSDKAds.Ads.Tracking;
@@ -84,15 +85,19 @@ namespace JisSDKAds.Providers.Max
                 return;
             }
 
-            MaxSdk.SetSdkKey(_sdkKey);
+            MaxSdkInitializer.EnsureInitialized(
+                _sdkKey,
+                success =>
+                {
+                    if (!success)
+                    {
+                        onFailure?.Invoke("MAX InitializeSdk failed");
+                        return;
+                    }
 
-            MaxSdkCallbacks.OnSdkInitializedEvent += _ =>
-            {
-                _isInitialized = true;
-                onSuccess?.Invoke();
-            };
-
-            MaxSdk.InitializeSdk();
+                    _isInitialized = true;
+                    onSuccess?.Invoke();
+                });
         }
 
         public void SetConsent(bool hasConsent)
@@ -176,6 +181,8 @@ namespace JisSDKAds.Providers.Max
             MaxSdkCallbacks.Interstitial.OnAdHiddenEvent += OnHidden;
             MaxSdkCallbacks.Interstitial.OnAdDisplayFailedEvent -= OnDisplayFailed;
             MaxSdkCallbacks.Interstitial.OnAdDisplayFailedEvent += OnDisplayFailed;
+            MaxSdkCallbacks.Interstitial.OnAdRevenuePaidEvent -= OnPaid;
+            MaxSdkCallbacks.Interstitial.OnAdRevenuePaidEvent += OnPaid;
             MaxSdk.ShowInterstitial(_adUnitId);
         }
 
@@ -210,11 +217,18 @@ namespace JisSDKAds.Providers.Max
             WarmReload();
         }
 
+        void OnPaid(string id, MaxSdkBase.AdInfo info)
+        {
+            if (id != _adUnitId) return;
+            MaxCorePaidTracker.Track("INTERSTITIAL", info);
+        }
+
         void UnsubscribeShow()
         {
             MaxSdkCallbacks.Interstitial.OnAdDisplayedEvent -= OnShown;
             MaxSdkCallbacks.Interstitial.OnAdHiddenEvent -= OnHidden;
             MaxSdkCallbacks.Interstitial.OnAdDisplayFailedEvent -= OnDisplayFailed;
+            MaxSdkCallbacks.Interstitial.OnAdRevenuePaidEvent -= OnPaid;
         }
 
         void ClearShowCallbacks()
@@ -309,6 +323,8 @@ namespace JisSDKAds.Providers.Max
             MaxSdkCallbacks.Rewarded.OnAdHiddenEvent += OnHidden;
             MaxSdkCallbacks.Rewarded.OnAdDisplayFailedEvent -= OnDisplayFailed;
             MaxSdkCallbacks.Rewarded.OnAdDisplayFailedEvent += OnDisplayFailed;
+            MaxSdkCallbacks.Rewarded.OnAdRevenuePaidEvent -= OnPaid;
+            MaxSdkCallbacks.Rewarded.OnAdRevenuePaidEvent += OnPaid;
             MaxSdk.ShowRewardedAd(_adUnitId);
         }
 
@@ -343,17 +359,25 @@ namespace JisSDKAds.Providers.Max
             WarmReload();
         }
 
+        void OnPaid(string id, MaxSdkBase.AdInfo info)
+        {
+            if (id != _adUnitId) return;
+            MaxCorePaidTracker.Track("REWARDED", info);
+        }
+
         void UnsubscribeShow()
         {
             MaxSdkCallbacks.Rewarded.OnAdReceivedRewardEvent -= OnReward;
             MaxSdkCallbacks.Rewarded.OnAdHiddenEvent -= OnHidden;
             MaxSdkCallbacks.Rewarded.OnAdDisplayFailedEvent -= OnDisplayFailed;
+            MaxSdkCallbacks.Rewarded.OnAdRevenuePaidEvent -= OnPaid;
         }
 
         void UnsubscribeShowExceptReward()
         {
             MaxSdkCallbacks.Rewarded.OnAdHiddenEvent -= OnHidden;
             MaxSdkCallbacks.Rewarded.OnAdDisplayFailedEvent -= OnDisplayFailed;
+            MaxSdkCallbacks.Rewarded.OnAdRevenuePaidEvent -= OnPaid;
         }
 
         void ClearShowCallbacks()
@@ -403,6 +427,8 @@ namespace JisSDKAds.Providers.Max
             MaxSdkCallbacks.Banner.OnAdLoadedEvent += OnLoaded;
             MaxSdkCallbacks.Banner.OnAdLoadFailedEvent -= OnFailed;
             MaxSdkCallbacks.Banner.OnAdLoadFailedEvent += OnFailed;
+            MaxSdkCallbacks.Banner.OnAdRevenuePaidEvent -= OnPaid;
+            MaxSdkCallbacks.Banner.OnAdRevenuePaidEvent += OnPaid;
 
             if (!_created)
             {
@@ -443,6 +469,12 @@ namespace JisSDKAds.Providers.Max
             cb?.Invoke(err.Message);
         }
 
+        void OnPaid(string id, MaxSdkBase.AdInfo info)
+        {
+            if (id != _adUnitId) return;
+            MaxCorePaidTracker.Track("BANNER", info);
+        }
+
         public void Show(Action onShown = null, Action<string> onFailed = null)
         {
             if (!_created)
@@ -466,6 +498,7 @@ namespace JisSDKAds.Providers.Max
         {
             MaxSdkCallbacks.Banner.OnAdLoadedEvent -= OnLoaded;
             MaxSdkCallbacks.Banner.OnAdLoadFailedEvent -= OnFailed;
+            MaxSdkCallbacks.Banner.OnAdRevenuePaidEvent -= OnPaid;
             MaxSdk.DestroyBanner(_adUnitId);
             _isVisible = false;
             _isLoaded = false;
@@ -547,6 +580,8 @@ namespace JisSDKAds.Providers.Max
             MaxSdkCallbacks.AppOpen.OnAdHiddenEvent += OnHidden;
             MaxSdkCallbacks.AppOpen.OnAdDisplayFailedEvent -= OnDisplayFailed;
             MaxSdkCallbacks.AppOpen.OnAdDisplayFailedEvent += OnDisplayFailed;
+            MaxSdkCallbacks.AppOpen.OnAdRevenuePaidEvent -= OnPaid;
+            MaxSdkCallbacks.AppOpen.OnAdRevenuePaidEvent += OnPaid;
             MaxSdk.ShowAppOpenAd(_adUnitId);
         }
 
@@ -577,11 +612,18 @@ namespace JisSDKAds.Providers.Max
             cb?.Invoke(err.Message);
         }
 
+        void OnPaid(string id, MaxSdkBase.AdInfo info)
+        {
+            if (id != _adUnitId) return;
+            MaxCorePaidTracker.Track("APP_OPEN", info);
+        }
+
         void UnsubscribeShow()
         {
             MaxSdkCallbacks.AppOpen.OnAdDisplayedEvent -= OnShown;
             MaxSdkCallbacks.AppOpen.OnAdHiddenEvent -= OnHidden;
             MaxSdkCallbacks.AppOpen.OnAdDisplayFailedEvent -= OnDisplayFailed;
+            MaxSdkCallbacks.AppOpen.OnAdRevenuePaidEvent -= OnPaid;
         }
 
         void ClearShowCallbacks()
@@ -843,9 +885,27 @@ namespace JisSDKAds.Providers.Max.SequentialTier
 
     static class MaxCorePaidTracker
     {
+        public static void Track(string adFormat, MaxSdkBase.AdInfo info)
+        {
+            if (info == null)
+                return;
+
+            var format = string.IsNullOrEmpty(adFormat) ? info.AdFormat : adFormat;
+            Track(new ImpressionData
+            {
+                ad_mediation = AdsMediationType.MAX,
+                ad_source = info.NetworkName,
+                ad_unit_name = info.AdUnitIdentifier,
+                ad_format = format,
+                ad_currency = "USD",
+                ad_revenue = info.Revenue,
+                ad_type = format
+            });
+        }
+
         public static void Track(string adFormat, SequentialTierPaidEvent paid)
         {
-            var impression = new ImpressionData
+            Track(new ImpressionData
             {
                 ad_mediation = AdsMediationType.MAX,
                 ad_source = paid.AdSource,
@@ -857,8 +917,11 @@ namespace JisSDKAds.Providers.Max.SequentialTier
                 ad_currency = string.IsNullOrEmpty(paid.Currency) ? "USD" : paid.Currency,
                 ad_revenue = paid.Revenue,
                 ad_type = adFormat
-            };
+            });
+        }
 
+        static void Track(ImpressionData impression)
+        {
             var setup = JisAds.Instance?.Settings?.GetActiveProfile()?.sdkSetup;
             AdsTracker.TrackAdImpression(
                 impression,

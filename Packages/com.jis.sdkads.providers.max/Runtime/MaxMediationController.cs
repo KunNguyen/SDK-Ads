@@ -1,6 +1,7 @@
 ﻿using System;
 using JisSDKAds.Ads.SequentialTier;
 using JisSDKAds.Common;
+using JisSDKAds.Providers.Max;
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -17,13 +18,13 @@ namespace JisSDKAds.Ads
             if (Status != MediationStatus.NotInited) return;
             base.Init();
             DebugAds.Log("[MAX] Init");
-            MaxSdkCallbacks.OnSdkInitializedEvent += sdkConfiguration =>
-            {
-                DebugAds.Log("[MAX] SDK Initialized");
-                Status = MediationStatus.Inited;
-            };
-            MaxSdk.SetSdkKey(m_MaxAdConfig.SDKKey);
-            MaxSdk.InitializeSdk();
+            MaxSdkInitializer.EnsureInitialized(
+                m_MaxAdConfig.SDKKey,
+                success =>
+                {
+                    DebugAds.Log(success ? "[MAX] SDK Initialized" : "[MAX] SDK Initialize failed");
+                    Status = success ? MediationStatus.Inited : MediationStatus.FailedToInit;
+                });
         }
 
         private void OnAdRevenuePaidEvent(AdsType adsType, string adUnitId, MaxSdkBase.AdInfo impressionData)

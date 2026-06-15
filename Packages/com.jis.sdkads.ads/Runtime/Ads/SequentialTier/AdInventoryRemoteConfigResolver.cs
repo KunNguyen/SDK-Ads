@@ -104,6 +104,14 @@ namespace JisSDKAds.Ads.SequentialTier
         /// <summary>Reads RC when ready; otherwise keeps editor defaults on <paramref name="setup"/>.</summary>
         public static void ApplyInventoryModesFromRemoteConfig(SDKSetup setup)
         {
+            ApplyInventoryModesFromRemoteConfig(setup, profile: null, settings: null);
+        }
+
+        public static void ApplyInventoryModesFromRemoteConfig(
+            SDKSetup setup,
+            PlatformAdsProfile profile,
+            JisSDKAdsSettings settings)
+        {
             if (setup == null)
                 return;
 
@@ -114,15 +122,42 @@ namespace JisSDKAds.Ads.SequentialTier
                 return;
             }
 
-            var interstitialMediation = setup.GetAdsMediationType(AdsType.INTERSTITIAL);
-            var rewardedMediation = setup.GetAdsMediationType(AdsType.REWARDED);
+            var primaryInterstitialMediation = setup.GetAdsMediationType(AdsType.INTERSTITIAL);
+            var primaryRewardedMediation = setup.GetAdsMediationType(AdsType.REWARDED);
 
-            var interstitialMode = ReadInterstitialMode(interstitialMediation);
-            var rewardedMode = ReadRewardedMode(rewardedMediation);
+            ApplyInventoryMode(
+                setup,
+                primaryInterstitialMediation,
+                isInterstitial: true,
+                ReadInterstitialMode(primaryInterstitialMediation));
+            ApplyInventoryMode(
+                setup,
+                primaryRewardedMediation,
+                isInterstitial: false,
+                ReadRewardedMode(primaryRewardedMediation));
 
-            ApplyInventoryMode(setup, interstitialMediation, isInterstitial: true, interstitialMode);
-            ApplyInventoryMode(setup, rewardedMediation, isInterstitial: false, rewardedMode);
-            LogResolvedModes(interstitialMode, rewardedMode);
+            var secondInterstitialMediation = ResolveSecondMediation(profile, settings, AdsType.INTERSTITIAL, primaryInterstitialMediation);
+            var secondRewardedMediation = ResolveSecondMediation(profile, settings, AdsType.REWARDED, primaryRewardedMediation);
+
+            if (secondInterstitialMediation != AdsMediationType.NONE)
+            {
+                ApplyInventoryMode(
+                    setup,
+                    secondInterstitialMediation,
+                    isInterstitial: true,
+                    ReadInterstitialMode(secondInterstitialMediation));
+            }
+
+            if (secondRewardedMediation != AdsMediationType.NONE)
+            {
+                ApplyInventoryMode(
+                    setup,
+                    secondRewardedMediation,
+                    isInterstitial: false,
+                    ReadRewardedMode(secondRewardedMediation));
+            }
+
+            LogResolvedProviderModes(setup, primaryInterstitialMediation, secondInterstitialMediation, primaryRewardedMediation, secondRewardedMediation);
         }
 
         static void ApplyInventoryMode(
@@ -150,6 +185,55 @@ namespace JisSDKAds.Ads.SequentialTier
                     : setup.maxAdsSetup?.RewardedTierConfig,
                 _ => null
             };
+        }
+
+        static AdsMediationType ResolveSecondMediation(
+            PlatformAdsProfile profile,
+            JisSDKAdsSettings settings,
+            AdsType adsType,
+            AdsMediationType primary)
+        {
+            if (settings == null || !settings.IsMultipleMediationEnabled(adsType))
+                return AdsMediationType.NONE;
+
+            foreach (var mediation in settings.GetFullscreenAutoShowPriority(adsType))
+            {
+                if (mediation != AdsMediationType.NONE && mediation != primary)
+                    return mediation;
+            }
+
+            var active = profile?.mediation ?? settings.GetActiveMediation();
+            if (active != AdsMediationType.NONE && active != primary)
+                return active;
+
+            return primary == AdsMediationType.ADMOB
+                ? AdsMediationType.MAX
+                : primary == AdsMediationType.MAX
+                    ? AdsMediationType.ADMOB
+                    : AdsMediationType.NONE;
+        }
+
+        static void LogResolvedProviderModes(
+            SDKSetup setup,
+            AdsMediationType primaryInterstitial,
+            AdsMediationType secondInterstitial,
+            AdsMediationType primaryRewarded,
+            AdsMediationType secondRewarded)
+        {
+            DebugAds.Log(
+                "[RemoteConfig] Inventory mode - " +
+                $"interstitial {primaryInterstitial}: {ModeFor(setup, primaryInterstitial, true)}, " +
+                $"interstitial second {secondInterstitial}: {ModeFor(setup, secondInterstitial, true)}, " +
+                $"rewarded {primaryRewarded}: {ModeFor(setup, primaryRewarded, false)}, " +
+                $"rewarded second {secondRewarded}: {ModeFor(setup, secondRewarded, false)}");
+        }
+
+        static AdInventorySetupMode ModeFor(SDKSetup setup, AdsMediationType mediation, bool isInterstitial)
+        {
+            var tier = GetTierConfig(setup, mediation, isInterstitial);
+            return tier != null && tier.enableSequentialLadder
+                ? AdInventorySetupMode.Tiered
+                : AdInventorySetupMode.SingleUnit;
         }
 
         public static string GetInventoryModeKey(AdsMediationType mediation, AdsType adsType)

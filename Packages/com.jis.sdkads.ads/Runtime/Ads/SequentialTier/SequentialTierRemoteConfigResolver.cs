@@ -88,29 +88,41 @@ namespace JisSDKAds.Ads.SequentialTier
             var interstitialConfig = GetTierConfig(profile, mediation, SequentialTierAdFormat.Interstitial);
             var rewardedConfig = GetTierConfig(profile, mediation, SequentialTierAdFormat.Rewarded);
 
-            if (interstitialConfig != null
-                && interstitialConfig.enableSequentialLadder
-                && TryReadTierIds(SequentialTierAdFormat.Interstitial, profile, mediation, out var interIds))
+            ApplyResolvedIdsToFormat(
+                profile,
+                mediation,
+                SequentialTierAdFormat.Interstitial,
+                interstitialConfig);
+            ApplyResolvedIdsToFormat(
+                profile,
+                mediation,
+                SequentialTierAdFormat.Rewarded,
+                rewardedConfig);
+        }
+
+        static void ApplyResolvedIdsToFormat(
+            PlatformAdsProfile profile,
+            AdsMediationType mediation,
+            SequentialTierAdFormat format,
+            SequentialTierConfig config)
+        {
+            if (config == null)
+                return;
+
+            if (!config.enableSequentialLadder)
             {
-                ApplyToConfig(interstitialConfig, interIds);
-                LogAppliedIds(SequentialTierAdFormat.Interstitial, interstitialConfig);
-            }
-            else if (interstitialConfig != null && interstitialConfig.enableSequentialLadder)
-            {
-                ApplyToConfig(interstitialConfig, null);
+                ApplyToConfig(config, null);
+                return;
             }
 
-            if (rewardedConfig != null
-                && rewardedConfig.enableSequentialLadder
-                && TryReadTierIds(SequentialTierAdFormat.Rewarded, profile, mediation, out var rewardIds))
+            if (TryReadTierIds(format, profile, mediation, out var ids))
             {
-                ApplyToConfig(rewardedConfig, rewardIds);
-                LogAppliedIds(SequentialTierAdFormat.Rewarded, rewardedConfig);
+                ApplyToConfig(config, ids);
+                LogAppliedIds(format, config);
+                return;
             }
-            else if (rewardedConfig != null && rewardedConfig.enableSequentialLadder)
-            {
-                ApplyToConfig(rewardedConfig, null);
-            }
+
+            ApplyToConfig(config, null);
         }
 
         public static void ApplyToConfig(

@@ -30,6 +30,13 @@ namespace JisSDKAds.Common {
           public static readonly string key_remote_banner_auto_refresh = "banner_auto_refresh";
           public static readonly string key_remote_banner_auto_refresh_time = "banner_auto_refresh_time";
 
+          // Fullscreen mediation mode: "single" (default) | "multiple".
+          // Global key applies to interstitial + rewarded; format keys override global when set.
+          public static readonly string key_remote_fullscreen_mediation_mode = "fullscreen_mediation_mode";
+          public static readonly string key_remote_interstitial_mediation_mode = "interstitial_mediation_mode";
+          public static readonly string key_remote_rewarded_mediation_mode = "rewarded_mediation_mode";
+          public static readonly string key_remote_fullscreen_mediation_priority = "fullscreen_mediation_priority";
+
           // Interstitial / Rewarded inventory mode: "single" (default) | "tiered"
           public static readonly string key_remote_interstitial_inventory_mode = "interstitial_inventory_mode";
           public static readonly string key_remote_rewarded_inventory_mode = "rewarded_inventory_mode";

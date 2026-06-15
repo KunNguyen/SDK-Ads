@@ -68,7 +68,7 @@ namespace JisSDKAds.Providers.Max.SequentialTier
             onDisplayed = (id, info) =>
             {
                 if (id != _adUnitId) return;
-                Unsubscribe();
+                MaxSdkCallbacks.Interstitial.OnAdDisplayedEvent -= onDisplayed;
                 hooks.onOpened?.Invoke();
             };
             onDisplayFailed = (id, error, info) =>

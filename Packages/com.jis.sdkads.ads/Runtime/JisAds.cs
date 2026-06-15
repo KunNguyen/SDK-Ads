@@ -158,6 +158,7 @@ namespace JisSDKAds.Ads
             RefreshRemoveAdsFromPersistence();
             DebugAds.LogSdkInit("JisAds", "InitializeAsync", true, $"fetchRemoteConfig={fetchRemoteConfig}");
             AdMobSdkEarlyInitBridge.TryWarmUpFromSettings(settings);
+            MaxSdkEarlyInitBridge.TryWarmUpFromSettings(settings);
             await InitializeFirebaseAsync(fetchRemoteConfig);
             ApplyRemoteAdInventoryFromConfig();
             InitializeCoreFlow();
@@ -676,7 +677,8 @@ namespace JisSDKAds.Ads
             if (profile?.sdkSetup == null)
                 return;
 
-            AdInventoryRemoteConfigResolver.ApplyInventoryModesFromRemoteConfig(profile.sdkSetup);
+            AdMediationModeRemoteConfigResolver.ApplyMediationModesFromRemoteConfig(settings);
+            AdInventoryRemoteConfigResolver.ApplyInventoryModesFromRemoteConfig(profile.sdkSetup, profile, settings);
             SequentialTierRemoteConfigResolver.ApplyResolvedIdsToAllMediationSetups(profile);
         }
 
@@ -1125,6 +1127,15 @@ namespace JisSDKAds.Ads
 
             if (UseCoreForStandardFormats)
             {
+                if (!_pendingInterstitialHadLoadedAdAtShowRequest)
+                {
+                    DebugAds.LogWarning("[JisAds] Interstitial show skipped: no mediation has a loaded ad. Warm-loading for next request.");
+                    RequestInterstitialLoadIfNeeded();
+                    TrackPendingInterstitialShowFailure(isTracking);
+                    ConsumePendingInterstitialCallbacksOnFail();
+                    return;
+                }
+
                 SetAdsShowingState(true);
                 HideBannerForFullscreenAd("interstitial");
                 var provider = SelectProviderForShow(providerOrder, AdFormat.Interstitial);
@@ -1405,8 +1416,15 @@ namespace JisSDKAds.Ads
 
             if (UseCoreForStandardFormats)
             {
-                if (!IsRewardedVideoLoaded(providerOrder))
+                if (!_pendingRewardedHadLoadedAdAtShowRequest)
+                {
                     AdLoadCoordinator.Instance.PrepareUrgentRewarded();
+                    DebugAds.LogWarning("[JisAds] Rewarded show skipped: no mediation has a loaded ad. Warm-loading for next request.");
+                    RequestRewardedLoadIfNeeded();
+                    TrackPendingRewardedShowFailure();
+                    ConsumePendingRewardedCallbacksOnFail();
+                    return;
+                }
 
                 HideBannerForFullscreenAd("rewarded");
                 var provider = SelectProviderForShow(providerOrder, AdFormat.Rewarded);

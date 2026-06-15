@@ -56,7 +56,7 @@ namespace JisSDKAds.Ads
                     // IMPORTANT: Core AdMob provider cannot load with an empty/invalid unit id.
                     // Prefer:
                     // - legacy list[0] (if populated)
-                    // - Remote Config applied to SequentialTierConfig (Premium first; then High)
+                    // - Remote Config applied to SequentialTierConfig only when Tiered is enabled (Premium first; then High)
                     // - SequentialTier default fallback from settings
                     // This ensures Core preload uses the same RC-driven inventory as SequentialTier loader.
                     var fallbackInter = SequentialTierUnitIdResolver.ResolveDefaultFallbackUnitId(
@@ -82,11 +82,22 @@ namespace JisSDKAds.Ads
                     string interList0 = inter != null && inter.Count > 0 ? inter[0] : null;
                     string rewardList0 = reward != null && reward.Count > 0 ? reward[0] : null;
 
-                    // Pull the RC-resolved unit id from SequentialTierConfig entries (set via ApplyResolvedIdsToAdmobSetup).
-                    string interTierPremium = admob?.InterstitialTierConfig?.GetEntry(AdTier.Premium)?.ResolveAdUnitId();
-                    string interTierHigh = admob?.InterstitialTierConfig?.GetEntry(AdTier.High)?.ResolveAdUnitId();
-                    string rewardTierPremium = admob?.RewardedTierConfig?.GetEntry(AdTier.Premium)?.ResolveAdUnitId();
-                    string rewardTierHigh = admob?.RewardedTierConfig?.GetEntry(AdTier.High)?.ResolveAdUnitId();
+                    var useInterstitialTier = admob?.InterstitialTierConfig?.enableSequentialLadder == true;
+                    var useRewardedTier = admob?.RewardedTierConfig?.enableSequentialLadder == true;
+
+                    // Pull the RC-resolved unit id from SequentialTierConfig entries only for Tiered mode.
+                    string interTierPremium = useInterstitialTier
+                        ? admob?.InterstitialTierConfig?.GetEntry(AdTier.Premium)?.ResolveAdUnitId()
+                        : null;
+                    string interTierHigh = useInterstitialTier
+                        ? admob?.InterstitialTierConfig?.GetEntry(AdTier.High)?.ResolveAdUnitId()
+                        : null;
+                    string rewardTierPremium = useRewardedTier
+                        ? admob?.RewardedTierConfig?.GetEntry(AdTier.Premium)?.ResolveAdUnitId()
+                        : null;
+                    string rewardTierHigh = useRewardedTier
+                        ? admob?.RewardedTierConfig?.GetEntry(AdTier.High)?.ResolveAdUnitId()
+                        : null;
 
                     var interId = FirstNonEmpty(interList0, interTierPremium, interTierHigh, fallbackInter) ?? "";
                     var rewardId = FirstNonEmpty(rewardList0, rewardTierPremium, rewardTierHigh, fallbackReward) ?? "";
