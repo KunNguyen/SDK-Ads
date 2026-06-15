@@ -296,21 +296,34 @@ namespace JisSDKAds.Ads
             if (!UseCoreForStandardFormats || _core == null)
                 return;
 
-            foreach (var providerId in GetFullscreenShowProviderIds(AdFormat.Interstitial))
+            var providerIds = GetFullscreenShowProviderIds(AdFormat.Interstitial);
+            LogFullscreenLoadPlan(AdFormat.Interstitial, providerIds);
+
+            foreach (var providerId in providerIds)
             {
                 var provider = _core.GetProvider(providerId);
-                if (provider?.Interstitial == null || provider.Interstitial.IsLoaded)
+                if (provider?.Interstitial == null)
+                {
+                    DebugAds.LogWarning($"[JisAds][Interstitial][preload_skip] mediation={providerId} reason=provider_unavailable");
                     continue;
+                }
 
+                if (provider.Interstitial.IsLoaded)
+                {
+                    DebugAds.Log($"[JisAds][Interstitial][preload_skip] mediation={providerId} reason=already_loaded");
+                    continue;
+                }
+
+                DebugAds.Log($"[JisAds][Interstitial][preload_start] mediation={providerId}");
                 provider.Interstitial.Load(
                     onLoaded: () =>
                     {
                         OnPreloadSucceeded(StandardAdPreloadFormat.Interstitial);
-                        DebugAds.Log($"[JisAds] Preload Interstitial ({providerId}): loaded");
+                        DebugAds.Log($"[JisAds][Interstitial][preload_success] mediation={providerId}");
                     },
                     onFailed: err =>
                     {
-                        DebugAds.LogWarning($"[JisAds] Preload Interstitial ({providerId}) failed: {err}");
+                        DebugAds.LogWarning($"[JisAds][Interstitial][preload_fail] mediation={providerId} error={err}");
                         HandlePreloadFailed(StandardAdPreloadFormat.Interstitial);
                     });
             }
@@ -321,21 +334,34 @@ namespace JisSDKAds.Ads
             if (!UseCoreForStandardFormats || _core == null)
                 return;
 
-            foreach (var providerId in GetFullscreenShowProviderIds(AdFormat.Rewarded))
+            var providerIds = GetFullscreenShowProviderIds(AdFormat.Rewarded);
+            LogFullscreenLoadPlan(AdFormat.Rewarded, providerIds);
+
+            foreach (var providerId in providerIds)
             {
                 var provider = _core.GetProvider(providerId);
-                if (provider?.Rewarded == null || provider.Rewarded.IsLoaded)
+                if (provider?.Rewarded == null)
+                {
+                    DebugAds.LogWarning($"[JisAds][Rewarded][preload_skip] mediation={providerId} reason=provider_unavailable");
                     continue;
+                }
 
+                if (provider.Rewarded.IsLoaded)
+                {
+                    DebugAds.Log($"[JisAds][Rewarded][preload_skip] mediation={providerId} reason=already_loaded");
+                    continue;
+                }
+
+                DebugAds.Log($"[JisAds][Rewarded][preload_start] mediation={providerId}");
                 provider.Rewarded.Load(
                     onLoaded: () =>
                     {
                         OnPreloadSucceeded(StandardAdPreloadFormat.Rewarded);
-                        DebugAds.Log($"[JisAds] Preload Rewarded ({providerId}): loaded");
+                        DebugAds.Log($"[JisAds][Rewarded][preload_success] mediation={providerId}");
                     },
                     onFailed: err =>
                     {
-                        DebugAds.LogWarning($"[JisAds] Preload Rewarded ({providerId}) failed: {err}");
+                        DebugAds.LogWarning($"[JisAds][Rewarded][preload_fail] mediation={providerId} error={err}");
                         HandlePreloadFailed(StandardAdPreloadFormat.Rewarded);
                     });
             }
@@ -350,15 +376,22 @@ namespace JisSDKAds.Ads
             if (!UseCoreForStandardFormats || provider?.Interstitial == null)
                 return;
 
+            if (provider.Interstitial.IsLoaded)
+            {
+                DebugAds.Log($"[JisAds][Interstitial][preload_skip] mediation={providerId} reason=already_loaded");
+                return;
+            }
+
+            DebugAds.Log($"[JisAds][Interstitial][preload_start] mediation={providerId}");
             provider.Interstitial.Load(
                 onLoaded: () =>
                 {
                     OnPreloadSucceeded(StandardAdPreloadFormat.Interstitial);
-                    DebugAds.Log($"[JisAds] Preload Interstitial ({providerId}): loaded");
+                    DebugAds.Log($"[JisAds][Interstitial][preload_success] mediation={providerId}");
                 },
                 onFailed: err =>
                 {
-                    DebugAds.LogWarning($"[JisAds] Preload Interstitial ({providerId}) failed: {err}");
+                    DebugAds.LogWarning($"[JisAds][Interstitial][preload_fail] mediation={providerId} error={err}");
                     HandlePreloadFailed(StandardAdPreloadFormat.Interstitial);
                 });
         }
@@ -369,15 +402,22 @@ namespace JisSDKAds.Ads
             if (!UseCoreForStandardFormats || provider?.Rewarded == null)
                 return;
 
+            if (provider.Rewarded.IsLoaded)
+            {
+                DebugAds.Log($"[JisAds][Rewarded][preload_skip] mediation={providerId} reason=already_loaded");
+                return;
+            }
+
+            DebugAds.Log($"[JisAds][Rewarded][preload_start] mediation={providerId}");
             provider.Rewarded.Load(
                 onLoaded: () =>
                 {
                     OnPreloadSucceeded(StandardAdPreloadFormat.Rewarded);
-                    DebugAds.Log($"[JisAds] Preload Rewarded ({providerId}): loaded");
+                    DebugAds.Log($"[JisAds][Rewarded][preload_success] mediation={providerId}");
                 },
                 onFailed: err =>
                 {
-                    DebugAds.LogWarning($"[JisAds] Preload Rewarded ({providerId}) failed: {err}");
+                    DebugAds.LogWarning($"[JisAds][Rewarded][preload_fail] mediation={providerId} error={err}");
                     HandlePreloadFailed(StandardAdPreloadFormat.Rewarded);
                 });
         }
@@ -836,6 +876,17 @@ namespace JisSDKAds.Ads
             return list;
         }
 
+        void LogFullscreenLoadPlan(AdFormat format, List<AdProviderId> providerIds)
+        {
+            if (providerIds == null || providerIds.Count == 0)
+            {
+                DebugAds.LogWarning($"[JisAds][{format}][preload_plan] no mediation provider configured");
+                return;
+            }
+
+            DebugAds.Log($"[JisAds][{format}][preload_plan] mediations={string.Join(">", providerIds)}");
+        }
+
         List<AdProviderId> BuildFullscreenShowProviderOrder(AdsMediationType requestedMediation, AdFormat format)
         {
             var order = new List<AdProviderId>(2);
@@ -1257,12 +1308,26 @@ namespace JisSDKAds.Ads
         {
             AdEvents.OnInterstitialShown += OnCoreInterstitialShown;
             AdEvents.OnRewardEarned += OnCoreRewardEarned;
+            AdEvents.OnInterstitialLoaded += OnCoreInterstitialLoaded;
+            AdEvents.OnRewardedLoaded += OnCoreRewardedLoaded;
         }
 
         void UnbindCoreCappingEvents()
         {
             AdEvents.OnInterstitialShown -= OnCoreInterstitialShown;
             AdEvents.OnRewardEarned -= OnCoreRewardEarned;
+            AdEvents.OnInterstitialLoaded -= OnCoreInterstitialLoaded;
+            AdEvents.OnRewardedLoaded -= OnCoreRewardedLoaded;
+        }
+
+        void OnCoreInterstitialLoaded(AdFormat format, string providerId)
+        {
+            DebugAds.Log($"[JisAds][{format}][load_success] mediation={providerId}");
+        }
+
+        void OnCoreRewardedLoaded(AdFormat format, string providerId)
+        {
+            DebugAds.Log($"[JisAds][{format}][load_success] mediation={providerId}");
         }
 
         void OnCoreInterstitialShown(AdFormat format)

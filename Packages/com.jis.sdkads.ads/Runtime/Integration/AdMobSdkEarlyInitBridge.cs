@@ -19,6 +19,13 @@ namespace JisSDKAds.Ads.Integration
             if (settings == null || settings.GetActiveMediation() != AdsMediationType.ADMOB)
                 return;
 
+            if (settings.ShouldDelegateConsentToMax())
+            {
+                DebugAds.LogSdkInit("JisAds", "AdMob early SDK warm-up", true,
+                    "skipped because multiple mediation delegates consent to MAX");
+                return;
+            }
+
             var requestConsent = ShouldRequestConsent();
             var type = Type.GetType(InitializerTypeName);
             if (type == null)

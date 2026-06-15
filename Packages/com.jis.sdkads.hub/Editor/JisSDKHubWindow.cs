@@ -356,8 +356,50 @@ namespace JisSDKAds.Hub
             DrawMediationToggle(MediationProvider.Max);
             DrawMediationToggle(MediationProvider.AdMob);
 
+            EditorGUILayout.Space(4);
+            DrawAdsProjectSetupTools(status != ModuleInstallStatus.NotInstalled);
+
             EditorGUILayout.EndVertical();
             EditorGUILayout.Space(4);
+        }
+
+        private void DrawAdsProjectSetupTools(bool adsReady)
+        {
+            EditorGUILayout.LabelField("Project setup", EditorStyles.miniBoldLabel);
+
+            if (!adsReady)
+            {
+                EditorGUILayout.HelpBox("Import Ads module first to create JisSDKAdsSettings.", MessageType.None);
+                return;
+            }
+
+            EditorGUILayout.HelpBox(JisSDKHubProjectSetup.GetAdsSettingsSummary(), MessageType.None);
+
+            EditorGUILayout.BeginHorizontal();
+            if (GUILayout.Button("Create/Repair Ads Settings", GUILayout.Height(22)))
+            {
+                JisSDKHubProjectSetup.EnsureAdsSettingsAsset();
+                JisSDKHubProjectSetup.EnsurePlatformSdkSetupStubs();
+                AssetDatabase.SaveAssets();
+                EditorUtility.DisplayDialog(
+                    "JIS SDK Hub",
+                    "Ads settings and Android/iOS SDKSetup assets are ready.",
+                    "OK");
+                Repaint();
+            }
+
+            if (GUILayout.Button("Open Ads Settings", GUILayout.Height(22)))
+            {
+                JisSDKHubProjectSetup.OpenAdsSettingsAsset();
+            }
+            EditorGUILayout.EndHorizontal();
+
+            if (GUILayout.Button("Apply Ads Settings To Scene", GUILayout.Height(22)))
+            {
+                var ok = JisSDKHubProjectSetup.TryApplyAdsSettingsToScene(out var message);
+                EditorUtility.DisplayDialog("JIS SDK Hub", message, "OK");
+                if (ok) Repaint();
+            }
         }
 
         private void DrawMediationToggle(MediationProvider provider)

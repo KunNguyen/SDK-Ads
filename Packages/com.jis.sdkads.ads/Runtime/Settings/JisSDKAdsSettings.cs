@@ -80,6 +80,14 @@ namespace JisSDKAds.Ads.Settings
         public bool UsesAnyFullscreenMultipleMediation() =>
             IsMultipleMediationEnabled(AdsType.INTERSTITIAL) || IsMultipleMediationEnabled(AdsType.REWARDED);
 
+        public bool ShouldDelegateConsentToMax()
+        {
+            if (!UsesAnyFullscreenMultipleMediation())
+                return false;
+
+            return GetFullscreenAutoShowPriority().Contains(AdsMediationType.MAX);
+        }
+
         public List<AdsMediationType> GetFullscreenAutoShowPriority()
         {
             var result = new List<AdsMediationType>(2);

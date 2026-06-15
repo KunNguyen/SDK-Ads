@@ -85,8 +85,6 @@ namespace JisSDKAds.Providers.Max
             }
 
             MaxSdk.SetSdkKey(_sdkKey);
-            MaxSdk.SetHasUserConsent(true);
-            MaxSdk.SetDoNotSell(false);
 
             MaxSdkCallbacks.OnSdkInitializedEvent += _ =>
             {

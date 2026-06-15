@@ -390,7 +390,10 @@ namespace JisSDKAds.Ads
             if (mainAdsMediation != null)
             {
 #if !UNITY_EDITOR
-                mainAdsMediation.IsActiveConsent = true;
+                mainAdsMediation.IsActiveConsent =
+                    MainAdsMediationType == AdsMediationType.ADMOB && SdkSettings != null && SdkSettings.ShouldDelegateConsentToMax()
+                        ? false
+                        : true;
 #endif
             }
         }

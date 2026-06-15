@@ -23,8 +23,6 @@ namespace JisSDKAds.Ads
                 Status = MediationStatus.Inited;
             };
             MaxSdk.SetSdkKey(m_MaxAdConfig.SDKKey);
-            MaxSdk.SetHasUserConsent(true);
-            MaxSdk.SetDoNotSell(false);
             MaxSdk.InitializeSdk();
         }
 

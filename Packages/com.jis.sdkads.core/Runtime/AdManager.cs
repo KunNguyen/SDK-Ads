@@ -227,19 +227,27 @@ namespace JisSDKAds.Core
                 if (attempt < maxRetries)
                 {
                     provider.Interstitial.Load(
-                        onLoaded: () => provider.Interstitial.Show(
-                            onShown: () => AdEvents.RaiseInterstitialShown(AdFormat.Interstitial),
-                            onClosed: () =>
-                            {
-                                AdEvents.RaiseInterstitialClosed(AdFormat.Interstitial);
-                                onClosed?.Invoke();
-                            },
-                            onFailed: err =>
-                            {
-                                AdEvents.RaiseInterstitialFailed(AdFormat.Interstitial, err);
-                                TryFallbackOrRetryInterstitial(attempt, primary, fallback, onClosed, onFailed, forceProviderFallback);
-                            }),
-                        onFailed: _ => TryFallbackOrRetryInterstitial(attempt, primary, fallback, onClosed, onFailed, forceProviderFallback)
+                        onLoaded: () =>
+                        {
+                            AdEvents.RaiseInterstitialLoaded(AdFormat.Interstitial, primary.ToString());
+                            provider.Interstitial.Show(
+                                onShown: () => AdEvents.RaiseInterstitialShown(AdFormat.Interstitial),
+                                onClosed: () =>
+                                {
+                                    AdEvents.RaiseInterstitialClosed(AdFormat.Interstitial);
+                                    onClosed?.Invoke();
+                                },
+                                onFailed: err =>
+                                {
+                                    AdEvents.RaiseInterstitialFailed(AdFormat.Interstitial, err);
+                                    TryFallbackOrRetryInterstitial(attempt, primary, fallback, onClosed, onFailed, forceProviderFallback);
+                                });
+                        },
+                        onFailed: err =>
+                        {
+                            AdEvents.RaiseInterstitialFailed(AdFormat.Interstitial, err);
+                            TryFallbackOrRetryInterstitial(attempt, primary, fallback, onClosed, onFailed, forceProviderFallback);
+                        }
                     );
                     return;
                 }
@@ -314,23 +322,31 @@ namespace JisSDKAds.Core
                 if (attempt < maxRetries)
                 {
                     provider.Rewarded.Load(
-                        onLoaded: () => provider.Rewarded.Show(
-                            onRewardEarned: () =>
-                            {
-                                AdEvents.RaiseRewardEarned(AdFormat.Rewarded);
-                                onRewardEarned?.Invoke();
-                            },
-                            onClosed: () =>
-                            {
-                                AdEvents.RaiseRewardedClosed(AdFormat.Rewarded);
-                                onClosed?.Invoke();
-                            },
-                            onFailed: err =>
-                            {
-                                AdEvents.RaiseRewardedFailed(AdFormat.Rewarded, err);
-                                TryFallbackOrRetryRewarded(attempt, primary, fallback, onRewardEarned, onClosed, onFailed, forceProviderFallback);
-                            }),
-                        onFailed: _ => TryFallbackOrRetryRewarded(attempt, primary, fallback, onRewardEarned, onClosed, onFailed, forceProviderFallback)
+                        onLoaded: () =>
+                        {
+                            AdEvents.RaiseRewardedLoaded(AdFormat.Rewarded, primary.ToString());
+                            provider.Rewarded.Show(
+                                onRewardEarned: () =>
+                                {
+                                    AdEvents.RaiseRewardEarned(AdFormat.Rewarded);
+                                    onRewardEarned?.Invoke();
+                                },
+                                onClosed: () =>
+                                {
+                                    AdEvents.RaiseRewardedClosed(AdFormat.Rewarded);
+                                    onClosed?.Invoke();
+                                },
+                                onFailed: err =>
+                                {
+                                    AdEvents.RaiseRewardedFailed(AdFormat.Rewarded, err);
+                                    TryFallbackOrRetryRewarded(attempt, primary, fallback, onRewardEarned, onClosed, onFailed, forceProviderFallback);
+                                });
+                        },
+                        onFailed: err =>
+                        {
+                            AdEvents.RaiseRewardedFailed(AdFormat.Rewarded, err);
+                            TryFallbackOrRetryRewarded(attempt, primary, fallback, onRewardEarned, onClosed, onFailed, forceProviderFallback);
+                        }
                     );
                     return;
                 }
