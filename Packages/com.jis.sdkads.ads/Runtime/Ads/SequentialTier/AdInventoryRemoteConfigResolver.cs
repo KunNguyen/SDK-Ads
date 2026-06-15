@@ -26,6 +26,18 @@ namespace JisSDKAds.Ads.SequentialTier
                 FirebaseManager.Instance.GetConfigString(Keys.key_remote_interstitial_inventory_mode));
         }
 
+        public static AdInventorySetupMode ReadInterstitialMode(AdsMediationType mediation)
+        {
+            if (FirebaseManager.Instance == null || !FirebaseManager.Instance.IsRemoteConfigReady)
+                return AdInventorySetupMode.SingleUnit;
+
+            var providerValue = FirebaseManager.Instance.GetConfigString(GetInventoryModeKey(mediation, AdsType.INTERSTITIAL));
+            if (!string.IsNullOrWhiteSpace(providerValue))
+                return ParseInventoryMode(providerValue);
+
+            return ReadInterstitialMode();
+        }
+
         public static AdInventorySetupMode ReadRewardedMode()
         {
             if (FirebaseManager.Instance == null || !FirebaseManager.Instance.IsRemoteConfigReady)
@@ -33,6 +45,18 @@ namespace JisSDKAds.Ads.SequentialTier
 
             return ParseInventoryMode(
                 FirebaseManager.Instance.GetConfigString(Keys.key_remote_rewarded_inventory_mode));
+        }
+
+        public static AdInventorySetupMode ReadRewardedMode(AdsMediationType mediation)
+        {
+            if (FirebaseManager.Instance == null || !FirebaseManager.Instance.IsRemoteConfigReady)
+                return AdInventorySetupMode.SingleUnit;
+
+            var providerValue = FirebaseManager.Instance.GetConfigString(GetInventoryModeKey(mediation, AdsType.REWARDED));
+            if (!string.IsNullOrWhiteSpace(providerValue))
+                return ParseInventoryMode(providerValue);
+
+            return ReadRewardedMode();
         }
 
         public static AdInventorySetupMode ParseInventoryMode(string value)
@@ -69,12 +93,11 @@ namespace JisSDKAds.Ads.SequentialTier
             AdInventorySetupMode interstitialMode,
             AdInventorySetupMode rewardedMode)
         {
-            if (setup?.admobAdsSetup == null)
+            if (setup == null)
                 return;
 
-            var admob = setup.admobAdsSetup;
-            ApplyInventoryMode(setup, admob, isInterstitial: true, interstitialMode);
-            ApplyInventoryMode(setup, admob, isInterstitial: false, rewardedMode);
+            ApplyInventoryMode(setup, setup.GetAdsMediationType(AdsType.INTERSTITIAL), isInterstitial: true, interstitialMode);
+            ApplyInventoryMode(setup, setup.GetAdsMediationType(AdsType.REWARDED), isInterstitial: false, rewardedMode);
             LogResolvedModes(interstitialMode, rewardedMode);
         }
 
@@ -91,34 +114,56 @@ namespace JisSDKAds.Ads.SequentialTier
                 return;
             }
 
-            ApplyInventoryModesToSdkSetup(
-                setup,
-                ReadInterstitialMode(),
-                ReadRewardedMode());
+            var interstitialMediation = setup.GetAdsMediationType(AdsType.INTERSTITIAL);
+            var rewardedMediation = setup.GetAdsMediationType(AdsType.REWARDED);
+
+            var interstitialMode = ReadInterstitialMode(interstitialMediation);
+            var rewardedMode = ReadRewardedMode(rewardedMediation);
+
+            ApplyInventoryMode(setup, interstitialMediation, isInterstitial: true, interstitialMode);
+            ApplyInventoryMode(setup, rewardedMediation, isInterstitial: false, rewardedMode);
+            LogResolvedModes(interstitialMode, rewardedMode);
         }
 
         static void ApplyInventoryMode(
             SDKSetup setup,
-            AdmobAdSetup admob,
+            AdsMediationType mediation,
             bool isInterstitial,
             AdInventorySetupMode mode)
         {
-            var tierConfig = isInterstitial
-                ? admob.InterstitialTierConfig
-                : admob.RewardedTierConfig;
+            var tierConfig = GetTierConfig(setup, mediation, isInterstitial);
             if (tierConfig == null)
                 return;
 
-            var tiered = mode == AdInventorySetupMode.Tiered;
-            tierConfig.enableSequentialLadder = tiered;
+            tierConfig.enableSequentialLadder = mode == AdInventorySetupMode.Tiered;
+        }
 
-            if (!tiered)
-                return;
+        static SequentialTierConfig GetTierConfig(SDKSetup setup, AdsMediationType mediation, bool isInterstitial)
+        {
+            return mediation switch
+            {
+                AdsMediationType.ADMOB => isInterstitial
+                    ? setup.admobAdsSetup?.InterstitialTierConfig
+                    : setup.admobAdsSetup?.RewardedTierConfig,
+                AdsMediationType.MAX => isInterstitial
+                    ? setup.maxAdsSetup?.InterstitialTierConfig
+                    : setup.maxAdsSetup?.RewardedTierConfig,
+                _ => null
+            };
+        }
 
-            if (isInterstitial)
-                setup.interstitialAdsMediationType = AdsMediationType.ADMOB;
-            else
-                setup.rewardedAdsMediationType = AdsMediationType.ADMOB;
+        public static string GetInventoryModeKey(AdsMediationType mediation, AdsType adsType)
+        {
+            return mediation switch
+            {
+                AdsMediationType.MAX when adsType == AdsType.INTERSTITIAL => Keys.key_remote_max_interstitial_inventory_mode,
+                AdsMediationType.MAX when adsType == AdsType.REWARDED => Keys.key_remote_max_rewarded_inventory_mode,
+                AdsMediationType.ADMOB when adsType == AdsType.INTERSTITIAL => Keys.key_remote_admob_interstitial_inventory_mode,
+                AdsMediationType.ADMOB when adsType == AdsType.REWARDED => Keys.key_remote_admob_rewarded_inventory_mode,
+                _ => adsType == AdsType.REWARDED
+                    ? Keys.key_remote_rewarded_inventory_mode
+                    : Keys.key_remote_interstitial_inventory_mode
+            };
         }
     }
 }

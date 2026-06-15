@@ -1,9 +1,14 @@
 #if UNITY_AD_MAX
 using System;
+using JisSDKAds.Ads;
+using JisSDKAds.Ads.Integration;
 using JisSDKAds.Ads.SequentialTier;
 using JisSDKAds.Core.Interfaces;
 using JisSDKAds.Core.Models;
 using UnityEngine;
+#if UNITY_APPSFLYER
+using JisSDKAds.Ads.Tracking;
+#endif
 
 namespace JisSDKAds.Providers.Max
 {
@@ -586,6 +591,287 @@ namespace JisSDKAds.Providers.Max
             _pendingOnShown = null;
             _pendingOnClosed = null;
             _pendingOnShowFailed = null;
+        }
+    }
+}
+
+namespace JisSDKAds.Providers.Max.SequentialTier
+{
+    public static class MaxSequentialTierBridge
+    {
+        public static IAdService TryDecorate(
+            IAdService provider,
+            MonoBehaviour host,
+            SequentialTierConfig interstitialConfig,
+            SequentialTierConfig rewardedConfig)
+        {
+            if (provider == null || host == null)
+                return provider;
+
+            IInterstitialAd interstitial = null;
+            if (interstitialConfig != null && interstitialConfig.enableSequentialLadder)
+                interstitial = new MaxSequentialTierInterstitialAd(host, interstitialConfig);
+
+            IRewardedAd rewarded = null;
+            if (rewardedConfig != null && rewardedConfig.enableSequentialLadder)
+                rewarded = new MaxSequentialTierRewardedAd(host, rewardedConfig);
+
+            if (interstitial == null && rewarded == null)
+                return provider;
+
+            return new MaxSequentialTierAdServiceDecorator(provider, interstitial, rewarded);
+        }
+    }
+
+    sealed class MaxSequentialTierAdServiceDecorator : IAdService
+    {
+        readonly IAdService _inner;
+
+        public MaxSequentialTierAdServiceDecorator(
+            IAdService inner,
+            IInterstitialAd sequentialInterstitial,
+            IRewardedAd sequentialRewarded)
+        {
+            _inner = inner;
+            Interstitial = sequentialInterstitial ?? inner.Interstitial;
+            Rewarded = sequentialRewarded ?? inner.Rewarded;
+            Banner = inner.Banner;
+            AppOpen = inner.AppOpen;
+        }
+
+        public string ProviderId => _inner.ProviderId;
+        public bool IsInitialized => _inner.IsInitialized;
+        public IInterstitialAd Interstitial { get; }
+        public IRewardedAd Rewarded { get; }
+        public IBannerAd Banner { get; }
+        public IAppOpenAd AppOpen { get; }
+        public void Initialize(Action onSuccess, Action<string> onFailure) => _inner.Initialize(onSuccess, onFailure);
+        public void SetConsent(bool hasConsent) => _inner.SetConsent(hasConsent);
+    }
+
+    sealed class MaxSequentialTierInterstitialAd : IInterstitialAd
+    {
+        readonly SequentialTierLoader _loader;
+        Action _pendingOnLoaded;
+        Action<string> _pendingOnFailed;
+        Action _pendingOnShown;
+        Action _pendingOnClosed;
+        Action<string> _pendingOnShowFailed;
+
+        public MaxSequentialTierInterstitialAd(MonoBehaviour host, SequentialTierConfig config)
+        {
+            _loader = new SequentialTierLoader(
+                host,
+                "max_int",
+                "interstitial",
+                AdLoadFormat.Interstitial,
+                config,
+                () => new MaxInterstitialAdapter());
+            RefreshLoaderCallbacks();
+        }
+
+        public bool IsLoaded => _loader.IsReady;
+
+        public void Load(Action onLoaded = null, Action<string> onFailed = null)
+        {
+            _pendingOnLoaded = onLoaded;
+            _pendingOnFailed = onFailed;
+            RefreshLoaderCallbacks();
+            _loader.Load();
+        }
+
+        public void Show(Action onShown = null, Action onClosed = null, Action<string> onFailed = null)
+        {
+            _pendingOnShown = onShown;
+            _pendingOnClosed = onClosed;
+            _pendingOnShowFailed = onFailed;
+            RefreshLoaderCallbacks();
+
+            if (_loader.Show())
+                return;
+
+            _pendingOnShowFailed?.Invoke("Interstitial not ready");
+            _loader.Load(forceReload: true);
+        }
+
+        void RefreshLoaderCallbacks()
+        {
+            _loader.SetCallbacks(
+                OnLoadSuccess,
+                OnLoadFailed,
+                new SequentialTierShowHooks
+                {
+                    onOpened = OnShowOpened,
+                    onClosed = OnShowClosed,
+                    onFailed = OnShowFailed,
+                    onPaid = paid => MaxCorePaidTracker.Track("INTERSTITIAL", paid)
+                });
+        }
+
+        void OnLoadSuccess()
+        {
+            var cb = _pendingOnLoaded;
+            _pendingOnLoaded = null;
+            cb?.Invoke();
+        }
+
+        void OnLoadFailed()
+        {
+            var cb = _pendingOnFailed;
+            _pendingOnFailed = null;
+            cb?.Invoke("Sequential tier ladder failed");
+        }
+
+        void OnShowOpened()
+        {
+            var cb = _pendingOnShown;
+            _pendingOnShown = null;
+            cb?.Invoke();
+        }
+
+        void OnShowClosed()
+        {
+            var cb = _pendingOnClosed;
+            _pendingOnClosed = null;
+            cb?.Invoke();
+            _loader.Load(forceReload: true);
+        }
+
+        void OnShowFailed(SequentialTierShowError? error)
+        {
+            var cb = _pendingOnShowFailed;
+            _pendingOnShowFailed = null;
+            cb?.Invoke(string.IsNullOrEmpty(error?.Message) ? "show_failed" : error.Value.Message);
+            _loader.Load(forceReload: true);
+        }
+    }
+
+    sealed class MaxSequentialTierRewardedAd : IRewardedAd
+    {
+        readonly SequentialTierLoader _loader;
+        Action _pendingOnLoaded;
+        Action<string> _pendingOnFailed;
+        Action _pendingOnRewardGranted;
+        Action _pendingOnClosed;
+        Action<string> _pendingOnShowFailed;
+
+        public MaxSequentialTierRewardedAd(MonoBehaviour host, SequentialTierConfig config)
+        {
+            _loader = new SequentialTierLoader(
+                host,
+                "max_reward",
+                "rewarded",
+                AdLoadFormat.Rewarded,
+                config,
+                () => new MaxRewardedAdapter());
+            RefreshLoaderCallbacks();
+        }
+
+        public bool IsLoaded => _loader.IsReady;
+
+        public void Load(Action onLoaded = null, Action<string> onFailed = null)
+        {
+            _pendingOnLoaded = onLoaded;
+            _pendingOnFailed = onFailed;
+            RefreshLoaderCallbacks();
+            _loader.Load();
+        }
+
+        public void Show(Action onRewardEarned = null, Action onClosed = null, Action<string> onFailed = null)
+        {
+            _pendingOnRewardGranted = onRewardEarned;
+            _pendingOnClosed = onClosed;
+            _pendingOnShowFailed = onFailed;
+            RefreshLoaderCallbacks();
+
+            if (_loader.Show())
+                return;
+
+            _pendingOnShowFailed?.Invoke("Rewarded not ready");
+            _loader.Load(urgent: true);
+        }
+
+        void RefreshLoaderCallbacks()
+        {
+            _loader.SetCallbacks(
+                OnLoadSuccess,
+                OnLoadFailed,
+                new SequentialTierShowHooks
+                {
+                    onClosed = OnShowClosed,
+                    onFailed = OnShowFailed,
+                    onRewardGranted = OnRewardGranted,
+                    onPaid = paid => MaxCorePaidTracker.Track("REWARDED", paid)
+                });
+        }
+
+        void OnLoadSuccess()
+        {
+            var cb = _pendingOnLoaded;
+            _pendingOnLoaded = null;
+            cb?.Invoke();
+        }
+
+        void OnLoadFailed()
+        {
+            var cb = _pendingOnFailed;
+            _pendingOnFailed = null;
+            cb?.Invoke("Sequential tier ladder failed");
+        }
+
+        void OnRewardGranted()
+        {
+            var cb = _pendingOnRewardGranted;
+            _pendingOnRewardGranted = null;
+            cb?.Invoke();
+        }
+
+        void OnShowClosed()
+        {
+            var cb = _pendingOnClosed;
+            _pendingOnClosed = null;
+            cb?.Invoke();
+            _loader.Load(forceReload: true);
+        }
+
+        void OnShowFailed(SequentialTierShowError? error)
+        {
+            var cb = _pendingOnShowFailed;
+            _pendingOnShowFailed = null;
+            cb?.Invoke(string.IsNullOrEmpty(error?.Message) ? "show_failed" : error.Value.Message);
+            _loader.Load(forceReload: true);
+        }
+    }
+
+    static class MaxCorePaidTracker
+    {
+        public static void Track(string adFormat, SequentialTierPaidEvent paid)
+        {
+            var impression = new ImpressionData
+            {
+                ad_mediation = AdsMediationType.MAX,
+                ad_source = paid.AdSource,
+                ad_sourceID = paid.AdSourceId,
+                ad_unit_name = string.IsNullOrEmpty(paid.AdSourceInstanceId)
+                    ? paid.AdUnitId
+                    : paid.AdSourceInstanceId,
+                ad_format = adFormat,
+                ad_currency = string.IsNullOrEmpty(paid.Currency) ? "USD" : paid.Currency,
+                ad_revenue = paid.Revenue,
+                ad_type = adFormat
+            };
+
+            var setup = JisAds.Instance?.Settings?.GetActiveProfile()?.sdkSetup;
+            AdsTracker.TrackAdImpression(
+                impression,
+                setup == null || setup.IsActiveAdImpressionTracking,
+                setup != null && setup.IsActiveCustomAdImpressionTracking,
+                setup?.CustomAdImpressionEventName ?? "");
+
+#if UNITY_APPSFLYER
+            AppsflyerManager.TrackAppsflyerAdRevenue(impression);
+#endif
+            AdsAnalyticsBridge.PublishAdImpression(impression);
         }
     }
 }

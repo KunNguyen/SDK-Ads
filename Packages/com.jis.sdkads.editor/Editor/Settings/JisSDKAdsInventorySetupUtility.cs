@@ -13,8 +13,16 @@ namespace JisSDKAds.Editor
         public static AdInventorySetupMode GetInterstitialMode(PlatformAdsProfile profile)
         {
             var setup = profile?.sdkSetup;
-            if (setup?.admobAdsSetup == null) return AdInventorySetupMode.SingleUnit;
-            return setup.admobAdsSetup.InterstitialTierConfig.enableSequentialLadder
+            var tier = GetTierConfig(setup, setup?.GetAdsMediationType(AdsType.INTERSTITIAL) ?? AdsMediationType.NONE, isInterstitial: true);
+            return tier != null && tier.enableSequentialLadder
+                ? AdInventorySetupMode.Tiered
+                : AdInventorySetupMode.SingleUnit;
+        }
+
+        public static AdInventorySetupMode GetInterstitialMode(PlatformAdsProfile profile, AdsMediationType mediation)
+        {
+            var tier = GetTierConfig(profile?.sdkSetup, mediation, isInterstitial: true);
+            return tier != null && tier.enableSequentialLadder
                 ? AdInventorySetupMode.Tiered
                 : AdInventorySetupMode.SingleUnit;
         }
@@ -22,8 +30,16 @@ namespace JisSDKAds.Editor
         public static AdInventorySetupMode GetRewardedMode(PlatformAdsProfile profile)
         {
             var setup = profile?.sdkSetup;
-            if (setup?.admobAdsSetup == null) return AdInventorySetupMode.SingleUnit;
-            return setup.admobAdsSetup.RewardedTierConfig.enableSequentialLadder
+            var tier = GetTierConfig(setup, setup?.GetAdsMediationType(AdsType.REWARDED) ?? AdsMediationType.NONE, isInterstitial: false);
+            return tier != null && tier.enableSequentialLadder
+                ? AdInventorySetupMode.Tiered
+                : AdInventorySetupMode.SingleUnit;
+        }
+
+        public static AdInventorySetupMode GetRewardedMode(PlatformAdsProfile profile, AdsMediationType mediation)
+        {
+            var tier = GetTierConfig(profile?.sdkSetup, mediation, isInterstitial: false);
+            return tier != null && tier.enableSequentialLadder
                 ? AdInventorySetupMode.Tiered
                 : AdInventorySetupMode.SingleUnit;
         }
@@ -34,11 +50,25 @@ namespace JisSDKAds.Editor
             AdInventorySetupMode mode) =>
             SetFormatMode(settings, platform, isInterstitial: true, mode);
 
+        public static void SetInterstitialMode(
+            JisSDKAdsSettings settings,
+            BuildTargetPlatform platform,
+            AdsMediationType mediation,
+            AdInventorySetupMode mode) =>
+            SetFormatMode(settings, platform, mediation, isInterstitial: true, mode);
+
         public static void SetRewardedMode(
             JisSDKAdsSettings settings,
             BuildTargetPlatform platform,
             AdInventorySetupMode mode) =>
             SetFormatMode(settings, platform, isInterstitial: false, mode);
+
+        public static void SetRewardedMode(
+            JisSDKAdsSettings settings,
+            BuildTargetPlatform platform,
+            AdsMediationType mediation,
+            AdInventorySetupMode mode) =>
+            SetFormatMode(settings, platform, mediation, isInterstitial: false, mode);
 
         static void SetFormatMode(
             JisSDKAdsSettings settings,
@@ -49,27 +79,75 @@ namespace JisSDKAds.Editor
             if (settings == null) return;
 
             var setup = settings.GetProfile(platform)?.sdkSetup;
-            if (setup?.admobAdsSetup == null) return;
+            if (setup == null) return;
 
-            var tierConfig = isInterstitial
-                ? setup.admobAdsSetup.InterstitialTierConfig
-                : setup.admobAdsSetup.RewardedTierConfig;
+            var mediation = setup.GetAdsMediationType(isInterstitial ? AdsType.INTERSTITIAL : AdsType.REWARDED);
+            var tierConfig = GetTierConfig(setup, mediation, isInterstitial);
+            if (tierConfig == null) return;
 
             if (mode == AdInventorySetupMode.Tiered)
-            {
-                if (isInterstitial)
-                    setup.interstitialAdsMediationType = AdsMediationType.ADMOB;
-                else
-                    setup.rewardedAdsMediationType = AdsMediationType.ADMOB;
-
                 tierConfig.enableSequentialLadder = true;
-            }
             else
-            {
                 tierConfig.enableSequentialLadder = false;
-            }
 
             EditorUtility.SetDirty(setup);
+        }
+
+        static void SetFormatMode(
+            JisSDKAdsSettings settings,
+            BuildTargetPlatform platform,
+            AdsMediationType mediation,
+            bool isInterstitial,
+            AdInventorySetupMode mode)
+        {
+            if (settings == null) return;
+
+            var setup = settings.GetProfile(platform)?.sdkSetup;
+            var tierConfig = GetTierConfig(setup, mediation, isInterstitial);
+            if (tierConfig == null) return;
+
+            tierConfig.enableSequentialLadder = mode == AdInventorySetupMode.Tiered;
+            EditorUtility.SetDirty(setup);
+        }
+
+        public static JisSDKAds.Ads.SequentialTier.SequentialTierConfig GetInterstitialTierConfig(PlatformAdsProfile profile)
+        {
+            var setup = profile?.sdkSetup;
+            return GetTierConfig(setup, setup?.GetAdsMediationType(AdsType.INTERSTITIAL) ?? AdsMediationType.NONE, isInterstitial: true);
+        }
+
+        public static JisSDKAds.Ads.SequentialTier.SequentialTierConfig GetInterstitialTierConfig(
+            PlatformAdsProfile profile,
+            AdsMediationType mediation) =>
+            GetTierConfig(profile?.sdkSetup, mediation, isInterstitial: true);
+
+        public static JisSDKAds.Ads.SequentialTier.SequentialTierConfig GetRewardedTierConfig(PlatformAdsProfile profile)
+        {
+            var setup = profile?.sdkSetup;
+            return GetTierConfig(setup, setup?.GetAdsMediationType(AdsType.REWARDED) ?? AdsMediationType.NONE, isInterstitial: false);
+        }
+
+        public static JisSDKAds.Ads.SequentialTier.SequentialTierConfig GetRewardedTierConfig(
+            PlatformAdsProfile profile,
+            AdsMediationType mediation) =>
+            GetTierConfig(profile?.sdkSetup, mediation, isInterstitial: false);
+
+        static JisSDKAds.Ads.SequentialTier.SequentialTierConfig GetTierConfig(
+            SDKSetup setup,
+            AdsMediationType mediation,
+            bool isInterstitial)
+        {
+            if (setup == null) return null;
+            return mediation switch
+            {
+                AdsMediationType.MAX => isInterstitial
+                    ? setup.maxAdsSetup?.InterstitialTierConfig
+                    : setup.maxAdsSetup?.RewardedTierConfig,
+                AdsMediationType.ADMOB => isInterstitial
+                    ? setup.admobAdsSetup?.InterstitialTierConfig
+                    : setup.admobAdsSetup?.RewardedTierConfig,
+                _ => null
+            };
         }
 
         public static SDKSetup EnsureSdkSetup(JisSDKAdsSettings settings, BuildTargetPlatform platform)

@@ -29,9 +29,16 @@ namespace JisSDKAds.Ads.SequentialTier
             SequentialTierAdFormat format,
             PlatformAdsProfile profile,
             out Dictionary<AdTier, string> tierIds)
+            => TryReadTierIds(format, profile, profile?.mediation ?? AdsMediationType.NONE, out tierIds);
+
+        public static bool TryReadTierIds(
+            SequentialTierAdFormat format,
+            PlatformAdsProfile profile,
+            AdsMediationType mediation,
+            out Dictionary<AdTier, string> tierIds)
         {
             if (profile != null)
-                return SequentialTierUnitIdResolver.TryBuildTierIds(format, profile, out tierIds);
+                return SequentialTierUnitIdResolver.TryBuildTierIds(format, profile, mediation, out tierIds);
 
             tierIds = new Dictionary<AdTier, string>();
             if (FirebaseManager.Instance == null || !FirebaseManager.Instance.IsRemoteConfigReady)
@@ -64,34 +71,46 @@ namespace JisSDKAds.Ads.SequentialTier
         /// <summary>Applies RC + settings fallback to AdMob sequential tier configs (Core / JisAds path without AdsManager).</summary>
         public static void ApplyResolvedIdsToAdmobSetup(PlatformAdsProfile profile)
         {
-#if UNITY_AD_ADMOB
-            var admob = profile?.sdkSetup?.admobAdsSetup;
-            if (admob == null) return;
+            ApplyResolvedIdsToMediationSetup(profile, AdsMediationType.ADMOB);
+        }
+
+        public static void ApplyResolvedIdsToAllMediationSetups(PlatformAdsProfile profile)
+        {
+            ApplyResolvedIdsToMediationSetup(profile, AdsMediationType.ADMOB);
+            ApplyResolvedIdsToMediationSetup(profile, AdsMediationType.MAX);
+        }
+
+        public static void ApplyResolvedIdsToMediationSetup(PlatformAdsProfile profile, AdsMediationType mediation)
+        {
             if (FirebaseManager.Instance == null || !FirebaseManager.Instance.IsRemoteConfigReady)
                 return;
 
-            if (admob.InterstitialTierConfig.enableSequentialLadder
-                && TryReadTierIds(SequentialTierAdFormat.Interstitial, profile, out var interIds))
+            var interstitialConfig = GetTierConfig(profile, mediation, SequentialTierAdFormat.Interstitial);
+            var rewardedConfig = GetTierConfig(profile, mediation, SequentialTierAdFormat.Rewarded);
+
+            if (interstitialConfig != null
+                && interstitialConfig.enableSequentialLadder
+                && TryReadTierIds(SequentialTierAdFormat.Interstitial, profile, mediation, out var interIds))
             {
-                ApplyToConfig(admob.InterstitialTierConfig, interIds);
-                LogAppliedIds(SequentialTierAdFormat.Interstitial, admob.InterstitialTierConfig);
+                ApplyToConfig(interstitialConfig, interIds);
+                LogAppliedIds(SequentialTierAdFormat.Interstitial, interstitialConfig);
             }
-            else if (admob.InterstitialTierConfig.enableSequentialLadder)
+            else if (interstitialConfig != null && interstitialConfig.enableSequentialLadder)
             {
-                ApplyToConfig(admob.InterstitialTierConfig, null);
+                ApplyToConfig(interstitialConfig, null);
             }
 
-            if (admob.RewardedTierConfig.enableSequentialLadder
-                && TryReadTierIds(SequentialTierAdFormat.Rewarded, profile, out var rewardIds))
+            if (rewardedConfig != null
+                && rewardedConfig.enableSequentialLadder
+                && TryReadTierIds(SequentialTierAdFormat.Rewarded, profile, mediation, out var rewardIds))
             {
-                ApplyToConfig(admob.RewardedTierConfig, rewardIds);
-                LogAppliedIds(SequentialTierAdFormat.Rewarded, admob.RewardedTierConfig);
+                ApplyToConfig(rewardedConfig, rewardIds);
+                LogAppliedIds(SequentialTierAdFormat.Rewarded, rewardedConfig);
             }
-            else if (admob.RewardedTierConfig.enableSequentialLadder)
+            else if (rewardedConfig != null && rewardedConfig.enableSequentialLadder)
             {
-                ApplyToConfig(admob.RewardedTierConfig, null);
+                ApplyToConfig(rewardedConfig, null);
             }
-#endif
         }
 
         public static void ApplyToConfig(
@@ -137,6 +156,84 @@ namespace JisSDKAds.Ads.SequentialTier
                 },
                 _ => null
             };
+
+        public static string GetRemoteConfigKey(SequentialTierAdFormat format, AdTier tier, AdsMediationType mediation)
+        {
+            if (mediation == AdsMediationType.MAX)
+            {
+                return format switch
+                {
+                    SequentialTierAdFormat.Interstitial => tier switch
+                    {
+                        AdTier.Premium => Keys.key_remote_max_inter_premium_id,
+                        AdTier.High => Keys.key_remote_max_inter_high_id,
+                        AdTier.Mid => Keys.key_remote_max_inter_mid_id,
+                        AdTier.Low => Keys.key_remote_max_inter_low_id,
+                        AdTier.Fill => Keys.key_remote_max_inter_fill_id,
+                        _ => null
+                    },
+                    SequentialTierAdFormat.Rewarded => tier switch
+                    {
+                        AdTier.Premium => Keys.key_remote_max_reward_premium_id,
+                        AdTier.High => Keys.key_remote_max_reward_high_id,
+                        AdTier.Mid => Keys.key_remote_max_reward_mid_id,
+                        AdTier.Low => Keys.key_remote_max_reward_low_id,
+                        AdTier.Fill => Keys.key_remote_max_reward_fill_id,
+                        _ => null
+                    },
+                    _ => null
+                };
+            }
+
+            if (mediation == AdsMediationType.ADMOB)
+            {
+                return format switch
+                {
+                    SequentialTierAdFormat.Interstitial => tier switch
+                    {
+                        AdTier.Premium => Keys.key_remote_admob_inter_premium_id,
+                        AdTier.High => Keys.key_remote_admob_inter_high_id,
+                        AdTier.Mid => Keys.key_remote_admob_inter_mid_id,
+                        AdTier.Low => Keys.key_remote_admob_inter_low_id,
+                        AdTier.Fill => Keys.key_remote_admob_inter_fill_id,
+                        _ => null
+                    },
+                    SequentialTierAdFormat.Rewarded => tier switch
+                    {
+                        AdTier.Premium => Keys.key_remote_admob_reward_premium_id,
+                        AdTier.High => Keys.key_remote_admob_reward_high_id,
+                        AdTier.Mid => Keys.key_remote_admob_reward_mid_id,
+                        AdTier.Low => Keys.key_remote_admob_reward_low_id,
+                        AdTier.Fill => Keys.key_remote_admob_reward_fill_id,
+                        _ => null
+                    },
+                    _ => null
+                };
+            }
+
+            return GetRemoteConfigKey(format, tier);
+        }
+
+        static SequentialTierConfig GetTierConfig(
+            PlatformAdsProfile profile,
+            AdsMediationType mediation,
+            SequentialTierAdFormat format)
+        {
+            var setup = profile?.sdkSetup;
+            if (setup == null)
+                return null;
+
+            return mediation switch
+            {
+                AdsMediationType.ADMOB => format == SequentialTierAdFormat.Interstitial
+                    ? setup.admobAdsSetup?.InterstitialTierConfig
+                    : setup.admobAdsSetup?.RewardedTierConfig,
+                AdsMediationType.MAX => format == SequentialTierAdFormat.Interstitial
+                    ? setup.maxAdsSetup?.InterstitialTierConfig
+                    : setup.maxAdsSetup?.RewardedTierConfig,
+                _ => null
+            };
+        }
 
         public static void LogAppliedIds(SequentialTierAdFormat format, SequentialTierConfig config)
         {

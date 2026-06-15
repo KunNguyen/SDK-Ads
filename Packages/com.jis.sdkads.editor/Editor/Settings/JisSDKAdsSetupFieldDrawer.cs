@@ -17,14 +17,16 @@ namespace JisSDKAds.Editor
         public static void DrawInterstitialSingleUnit(
             SDKSetup setup,
             AdsMediationType primaryMediation,
-            BuildTargetPlatform platform)
+            BuildTargetPlatform platform,
+            bool allowMediationSelection = true)
         {
             DrawSetupFields(setup, () =>
             {
                 setup.interstitialAdsMediationType = DrawMediationField(
                     "Mediation",
                     setup.interstitialAdsMediationType,
-                    primaryMediation);
+                    primaryMediation,
+                    allowMediationSelection);
 
                 setup.IsActiveCooldownInterstitialFromStart = EditorGUILayout.Toggle(
                     new GUIContent("Cooldown from start", "Apply interstitial cooldown when the app starts."),
@@ -40,17 +42,46 @@ namespace JisSDKAds.Editor
             });
         }
 
+        public static void DrawInterstitialFormatOptions(SDKSetup setup)
+        {
+            DrawSetupFields(setup, () =>
+            {
+                setup.IsActiveCooldownInterstitialFromStart = EditorGUILayout.Toggle(
+                    new GUIContent("Cooldown from start", "Apply interstitial cooldown when the app starts."),
+                    setup.IsActiveCooldownInterstitialFromStart);
+            });
+        }
+
+        public static void DrawInterstitialSingleUnitForMediation(
+            SDKSetup setup,
+            AdsMediationType mediation,
+            BuildTargetPlatform platform)
+        {
+            DrawSetupFields(setup, () =>
+            {
+                DrawUnitIds(
+                    mediation,
+                    platform,
+                    "Default ad unit ID (single)",
+                    () => setup.interstitialAdUnitID_MAX,
+                    v => setup.interstitialAdUnitID_MAX = v,
+                    setup.admobAdsSetup.InterstitialAdUnitID);
+            });
+        }
+
         public static void DrawRewardedSingleUnit(
             SDKSetup setup,
             AdsMediationType primaryMediation,
-            BuildTargetPlatform platform)
+            BuildTargetPlatform platform,
+            bool allowMediationSelection = true)
         {
             DrawSetupFields(setup, () =>
             {
                 setup.rewardedAdsMediationType = DrawMediationField(
                     "Mediation",
                     setup.rewardedAdsMediationType,
-                    primaryMediation);
+                    primaryMediation,
+                    allowMediationSelection);
 
                 if (setup.rewardedAdsMediationType != AdsMediationType.NONE)
                 {
@@ -69,10 +100,38 @@ namespace JisSDKAds.Editor
             });
         }
 
+        public static void DrawRewardedFormatOptions(SDKSetup setup)
+        {
+            DrawSetupFields(setup, () =>
+            {
+                setup.IsLinkToRemoveAds = EditorGUILayout.Toggle(
+                    new GUIContent("Link to remove ads", "Rewarded completion can grant remove-ads state."),
+                    setup.IsLinkToRemoveAds);
+            });
+        }
+
+        public static void DrawRewardedSingleUnitForMediation(
+            SDKSetup setup,
+            AdsMediationType mediation,
+            BuildTargetPlatform platform)
+        {
+            DrawSetupFields(setup, () =>
+            {
+                DrawUnitIds(
+                    mediation,
+                    platform,
+                    "Default ad unit ID (single)",
+                    () => setup.rewardedAdUnitID_MAX,
+                    v => setup.rewardedAdUnitID_MAX = v,
+                    setup.admobAdsSetup.RewardedAdUnitID);
+            });
+        }
+
         public static void DrawSequentialTierConfig(
             SequentialTierConfig tier,
             BuildTargetPlatform platform,
-            SequentialTierAdFormat format)
+            SequentialTierAdFormat format,
+            AdsMediationType mediation)
         {
             if (tier == null) return;
             tier.EnsureDefaultTierSlots();
@@ -87,8 +146,9 @@ namespace JisSDKAds.Editor
             EditorGUILayout.HelpBox(
                 $"Remote Config overrides Single/Tiered at runtime (default: single).\n" +
                 $"Mode key: {modeKey} — values: single | tiered\n" +
+                $"Provider-specific mode key: {AdInventoryRemoteConfigResolver.GetInventoryModeKey(mediation, ToAdsType(format))}\n" +
                 $"Tier IDs (tiered only): {tierKeys}\n" +
-                $"Platform: {platformLabel}, AdMob. Editor toolbar = local default before RC fetch.",
+                $"Provider: {mediation}, Platform: {platformLabel}. Editor toolbar = local default before RC fetch.",
                 MessageType.Info);
             EditorGUILayout.HelpBox(
                 "Tier ad unit IDs are read from Remote Config only. Local setup only stores fallback, " +
@@ -120,14 +180,19 @@ namespace JisSDKAds.Editor
             }
         }
 
-        public static void DrawBannerSingle(SDKSetup setup, AdsMediationType primaryMediation, BuildTargetPlatform platform)
+        public static void DrawBannerSingle(
+            SDKSetup setup,
+            AdsMediationType primaryMediation,
+            BuildTargetPlatform platform,
+            bool allowMediationSelection = true)
         {
             DrawSetupFields(setup, () =>
             {
                 setup.bannerAdsMediationType = DrawMediationField(
                     "Mediation",
                     setup.bannerAdsMediationType,
-                    primaryMediation);
+                    primaryMediation,
+                    allowMediationSelection);
 
                 if (setup.bannerAdsMediationType == AdsMediationType.NONE)
                     return;
@@ -166,14 +231,19 @@ namespace JisSDKAds.Editor
             });
         }
 
-        public static void DrawAppOpenSingle(SDKSetup setup, AdsMediationType primaryMediation, BuildTargetPlatform platform)
+        public static void DrawAppOpenSingle(
+            SDKSetup setup,
+            AdsMediationType primaryMediation,
+            BuildTargetPlatform platform,
+            bool allowMediationSelection = true)
         {
             DrawSetupFields(setup, () =>
             {
                 setup.appOpenAdsMediationType = DrawMediationField(
                     "Mediation",
                     setup.appOpenAdsMediationType,
-                    primaryMediation);
+                    primaryMediation,
+                    allowMediationSelection);
 
                 DrawUnitIds(
                     setup.appOpenAdsMediationType,
@@ -229,8 +299,24 @@ namespace JisSDKAds.Editor
         static AdsMediationType DrawMediationField(
             string label,
             AdsMediationType current,
-            AdsMediationType primaryMediation)
+            AdsMediationType primaryMediation,
+            bool allowSelection = true)
         {
+            if (!allowSelection)
+            {
+                var lockedMediation = primaryMediation != AdsMediationType.NONE
+                    ? primaryMediation
+                    : current;
+
+                using (new EditorGUI.DisabledScope(true))
+                    EditorGUILayout.EnumPopup(label, lockedMediation);
+
+                if (current != lockedMediation)
+                    GUI.changed = true;
+
+                return lockedMediation;
+            }
+
             var mediation = (AdsMediationType)EditorGUILayout.EnumPopup(label, current);
 
             if (mediation == AdsMediationType.NONE && primaryMediation != AdsMediationType.NONE)
@@ -272,6 +358,9 @@ namespace JisSDKAds.Editor
                     break;
             }
         }
+
+        static AdsType ToAdsType(SequentialTierAdFormat format) =>
+            format == SequentialTierAdFormat.Rewarded ? AdsType.REWARDED : AdsType.INTERSTITIAL;
 
         static void DrawAdMobSingleUnitId(BuildTargetPlatform platform, AdScheduleUnitID schedule, string label)
         {

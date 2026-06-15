@@ -631,7 +631,10 @@ namespace JisSDKAds.Ads
                 return;
             }
 
+            AdInventoryRemoteConfigResolver.ApplyInventoryModesFromRemoteConfig(setup);
+            SequentialTierRemoteConfigResolver.ApplyResolvedIdsToAllMediationSetups(SdkSettings?.GetActiveProfile());
             AdMobMediationReflection.ApplyRemoteAdInventorySettings(this, setup);
+            MaxMediationReflection.ApplyRemoteAdInventorySettings(this, setup);
         }
 
         void ApplyAllUnitAdManagerRemoteConfigs()

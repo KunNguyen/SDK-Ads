@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using JisSDKAds.Ads.AppOpen;
 using JisSDKAds.Ads.Integration;
@@ -93,7 +94,7 @@ namespace JisSDKAds.Ads
         public bool HasAppOpenSupport =>
             _core != null
             && _core.IsInitialized
-            && _core.PrimaryProvider?.AppOpen is not NullAppOpenAd;
+            && _core.GetProviderForFormat(AdFormat.AppOpen)?.AppOpen is not NullAppOpenAd;
         public JisSDKAdsSettings Settings => settings;
         public AdManager Core => _core;
         public AppOpenAdService AppOpen => _appOpen;
@@ -268,11 +269,12 @@ namespace JisSDKAds.Ads
 
         void PreloadBannerAd(bool isStartup = false)
         {
-            if (!UseCoreForStandardFormats || _core?.PrimaryProvider?.Banner == null)
+            var provider = _core?.GetProviderForFormat(AdFormat.Banner);
+            if (!UseCoreForStandardFormats || provider?.Banner == null)
                 return;
 
             var preserveVisible = _bannerWantsVisible;
-            _core.PrimaryProvider.Banner.Load(
+            provider.Banner.Load(
                 onLoaded: () =>
                 {
                     OnPreloadSucceeded(StandardAdPreloadFormat.Banner);
@@ -291,36 +293,91 @@ namespace JisSDKAds.Ads
 
         void PreloadInterstitialAd()
         {
-            if (!UseCoreForStandardFormats || _core?.PrimaryProvider?.Interstitial == null)
+            if (!UseCoreForStandardFormats || _core == null)
                 return;
 
-            _core.PrimaryProvider.Interstitial.Load(
-                onLoaded: () =>
-                {
-                    OnPreloadSucceeded(StandardAdPreloadFormat.Interstitial);
-                    DebugAds.Log("[JisAds] Preload Interstitial: loaded");
-                },
-                onFailed: err =>
-                {
-                    DebugAds.LogWarning($"[JisAds] Preload Interstitial failed: {err}");
-                    HandlePreloadFailed(StandardAdPreloadFormat.Interstitial);
-                });
+            foreach (var providerId in GetFullscreenShowProviderIds(AdFormat.Interstitial))
+            {
+                var provider = _core.GetProvider(providerId);
+                if (provider?.Interstitial == null || provider.Interstitial.IsLoaded)
+                    continue;
+
+                provider.Interstitial.Load(
+                    onLoaded: () =>
+                    {
+                        OnPreloadSucceeded(StandardAdPreloadFormat.Interstitial);
+                        DebugAds.Log($"[JisAds] Preload Interstitial ({providerId}): loaded");
+                    },
+                    onFailed: err =>
+                    {
+                        DebugAds.LogWarning($"[JisAds] Preload Interstitial ({providerId}) failed: {err}");
+                        HandlePreloadFailed(StandardAdPreloadFormat.Interstitial);
+                    });
+            }
         }
 
         void PreloadRewardedAd()
         {
-            if (!UseCoreForStandardFormats || _core?.PrimaryProvider?.Rewarded == null)
+            if (!UseCoreForStandardFormats || _core == null)
                 return;
 
-            _core.PrimaryProvider.Rewarded.Load(
+            foreach (var providerId in GetFullscreenShowProviderIds(AdFormat.Rewarded))
+            {
+                var provider = _core.GetProvider(providerId);
+                if (provider?.Rewarded == null || provider.Rewarded.IsLoaded)
+                    continue;
+
+                provider.Rewarded.Load(
+                    onLoaded: () =>
+                    {
+                        OnPreloadSucceeded(StandardAdPreloadFormat.Rewarded);
+                        DebugAds.Log($"[JisAds] Preload Rewarded ({providerId}): loaded");
+                    },
+                    onFailed: err =>
+                    {
+                        DebugAds.LogWarning($"[JisAds] Preload Rewarded ({providerId}) failed: {err}");
+                        HandlePreloadFailed(StandardAdPreloadFormat.Rewarded);
+                    });
+            }
+        }
+
+        /*
+         * Kept in this region because preload retries call the method by format.
+         */
+        void PreloadSingleProviderInterstitial(AdProviderId providerId)
+        {
+            var provider = _core?.GetProvider(providerId);
+            if (!UseCoreForStandardFormats || provider?.Interstitial == null)
+                return;
+
+            provider.Interstitial.Load(
                 onLoaded: () =>
                 {
-                    OnPreloadSucceeded(StandardAdPreloadFormat.Rewarded);
-                    DebugAds.Log("[JisAds] Preload Rewarded: loaded");
+                    OnPreloadSucceeded(StandardAdPreloadFormat.Interstitial);
+                    DebugAds.Log($"[JisAds] Preload Interstitial ({providerId}): loaded");
                 },
                 onFailed: err =>
                 {
-                    DebugAds.LogWarning($"[JisAds] Preload Rewarded failed: {err}");
+                    DebugAds.LogWarning($"[JisAds] Preload Interstitial ({providerId}) failed: {err}");
+                    HandlePreloadFailed(StandardAdPreloadFormat.Interstitial);
+                });
+        }
+
+        void PreloadSingleProviderRewarded(AdProviderId providerId)
+        {
+            var provider = _core?.GetProvider(providerId);
+            if (!UseCoreForStandardFormats || provider?.Rewarded == null)
+                return;
+
+            provider.Rewarded.Load(
+                onLoaded: () =>
+                {
+                    OnPreloadSucceeded(StandardAdPreloadFormat.Rewarded);
+                    DebugAds.Log($"[JisAds] Preload Rewarded ({providerId}): loaded");
+                },
+                onFailed: err =>
+                {
+                    DebugAds.LogWarning($"[JisAds] Preload Rewarded ({providerId}) failed: {err}");
                     HandlePreloadFailed(StandardAdPreloadFormat.Rewarded);
                 });
         }
@@ -488,11 +545,12 @@ namespace JisSDKAds.Ads
 
         void RefreshVisibleBanner()
         {
-            if (!UseCoreForStandardFormats || _core?.PrimaryProvider?.Banner == null)
+            var provider = _core?.GetProviderForFormat(AdFormat.Banner);
+            if (!UseCoreForStandardFormats || provider?.Banner == null)
                 return;
 
             DebugAds.Log("[JisAds] Banner auto-refresh reload");
-            _core.PrimaryProvider.Banner.Load(
+            provider.Banner.Load(
                 onLoaded: () =>
                 {
                     if (_bannerWantsVisible)
@@ -579,7 +637,7 @@ namespace JisSDKAds.Ads
                 return;
 
             AdInventoryRemoteConfigResolver.ApplyInventoryModesFromRemoteConfig(profile.sdkSetup);
-            SequentialTierRemoteConfigResolver.ApplyResolvedIdsToAdmobSetup(profile);
+            SequentialTierRemoteConfigResolver.ApplyResolvedIdsToAllMediationSetups(profile);
         }
 
         void InitializeCoreFlow()
@@ -593,18 +651,38 @@ namespace JisSDKAds.Ads
                 go.transform.SetParent(transform);
                 _core = go.AddComponent<AdManager>();
             }
-            var providerId = profile.ProviderId;
-            _core.ConfigureSingleMediation(providerId, settings.singleMediationOnly);
-            var providerConfig = ProviderConfigFactory.CreateFromSdkSetup(profile);
-            if (providerConfig == null)
+            var primaryProviderId = ToProviderId(profile.mediation);
+            var usesFullscreenMultipleMediation = settings != null && settings.UsesAnyFullscreenMultipleMediation();
+            _core.ConfigureSingleMediation(primaryProviderId, !usesFullscreenMultipleMediation);
+
+            var fallbackProviderId = usesFullscreenMultipleMediation ? GetOppositeProvider(primaryProviderId) : AdProviderId.None;
+            if (fallbackProviderId != AdProviderId.None)
+                _core.SetProviderPriority(primaryProviderId, fallbackProviderId);
+
+            var providerMediations = CollectCoreProviderMediations(profile);
+            var registeredAny = false;
+            foreach (var mediation in providerMediations)
             {
-                Debug.LogWarning($"[JisAds] No Core provider for {profile.mediation}.");
+                var providerConfig = ProviderConfigFactory.CreateFromSdkSetup(profile, mediation);
+                if (providerConfig == null)
+                {
+                    Debug.LogWarning($"[JisAds] No Core provider for {mediation}.");
+                    continue;
+                }
+
+                var provider = providerConfig.CreateProvider();
+                provider = DecorateSequentialAdsIfEnabled(provider, profile, mediation);
+                _core.RegisterProvider(providerConfig.ProviderId, provider);
+                registeredAny = true;
+            }
+
+            if (!registeredAny)
+            {
                 useCoreForStandardFormats = false;
                 return;
             }
-            var provider = providerConfig.CreateProvider();
-            provider = DecorateSequentialAdsIfEnabled(provider, profile);
-            _core.RegisterProvider(providerConfig.ProviderId, provider);
+
+            ConfigureCoreFormatRoutes(profile);
             _core.Initialize(
                 onSuccess: () => DebugAds.LogSdkInit("JisAds", "Core AdManager", true),
                 onFailure: err =>
@@ -614,12 +692,86 @@ namespace JisSDKAds.Ads
                 });
         }
 
-        IAdService DecorateSequentialAdsIfEnabled(IAdService provider, PlatformAdsProfile profile)
+        HashSet<AdsMediationType> CollectCoreProviderMediations(PlatformAdsProfile profile)
+        {
+            var providers = new HashSet<AdsMediationType>();
+            if (profile == null)
+                return providers;
+
+            AddProviderMediation(providers, profile.mediation);
+            var setup = profile.sdkSetup;
+            if (setup != null)
+            {
+                AddProviderMediation(providers, setup.GetAdsMediationType(AdsType.BANNER));
+                AddProviderMediation(providers, setup.GetAdsMediationType(AdsType.INTERSTITIAL));
+                AddProviderMediation(providers, setup.GetAdsMediationType(AdsType.REWARDED));
+                AddProviderMediation(providers, setup.GetAdsMediationType(AdsType.APP_OPEN));
+            }
+
+            foreach (var mediation in settings.GetFullscreenAutoShowPriority(AdsType.INTERSTITIAL))
+                AddProviderMediation(providers, mediation);
+
+            foreach (var mediation in settings.GetFullscreenAutoShowPriority(AdsType.REWARDED))
+                AddProviderMediation(providers, mediation);
+
+            return providers;
+        }
+
+        static void AddProviderMediation(HashSet<AdsMediationType> providers, AdsMediationType mediation)
+        {
+            if (mediation == AdsMediationType.MAX || mediation == AdsMediationType.ADMOB)
+                providers.Add(mediation);
+        }
+
+        void ConfigureCoreFormatRoutes(PlatformAdsProfile profile)
+        {
+            var setup = profile?.sdkSetup;
+            if (setup == null || _core == null)
+                return;
+
+            _core.SetFormatProvider(AdFormat.Banner, ToProviderId(setup.GetAdsMediationType(AdsType.BANNER)));
+            _core.SetFormatProvider(AdFormat.Interstitial, ToProviderId(setup.GetAdsMediationType(AdsType.INTERSTITIAL)));
+            _core.SetFormatProvider(AdFormat.Rewarded, ToProviderId(setup.GetAdsMediationType(AdsType.REWARDED)));
+            _core.SetFormatProvider(AdFormat.AppOpen, ToProviderId(setup.GetAdsMediationType(AdsType.APP_OPEN)));
+        }
+
+        static AdProviderId ToProviderId(AdsMediationType mediation) => mediation switch
+        {
+            AdsMediationType.MAX => AdProviderId.Max,
+            AdsMediationType.ADMOB => AdProviderId.AdMob,
+            _ => AdProviderId.None
+        };
+
+        static AdsMediationType ToMediation(AdProviderId provider) => provider switch
+        {
+            AdProviderId.Max => AdsMediationType.MAX,
+            AdProviderId.AdMob => AdsMediationType.ADMOB,
+            _ => AdsMediationType.NONE
+        };
+
+        static AdProviderId GetOppositeProvider(AdProviderId provider) => provider switch
+        {
+            AdProviderId.Max => AdProviderId.AdMob,
+            AdProviderId.AdMob => AdProviderId.Max,
+            _ => AdProviderId.None
+        };
+
+        IAdService DecorateSequentialAdsIfEnabled(IAdService provider, PlatformAdsProfile profile, AdsMediationType mediation)
+        {
+            switch (mediation)
+            {
+                case AdsMediationType.ADMOB:
+                    return DecorateAdMobSequentialAdsIfEnabled(provider, profile);
+                case AdsMediationType.MAX:
+                    return DecorateMaxSequentialAdsIfEnabled(provider, profile);
+                default:
+                    return provider;
+            }
+        }
+
+        IAdService DecorateAdMobSequentialAdsIfEnabled(IAdService provider, PlatformAdsProfile profile)
         {
 #if UNITY_AD_ADMOB
-            if (profile?.mediation != AdsMediationType.ADMOB)
-                return provider;
-
             var admob = profile.sdkSetup?.admobAdsSetup;
             var interstitialConfig = admob?.InterstitialTierConfig;
             var rewardedConfig = admob?.RewardedTierConfig;
@@ -642,6 +794,163 @@ namespace JisSDKAds.Ads
 #else
             return provider;
 #endif
+        }
+
+        IAdService DecorateMaxSequentialAdsIfEnabled(IAdService provider, PlatformAdsProfile profile)
+        {
+#if UNITY_AD_MAX
+            var max = profile.sdkSetup?.maxAdsSetup;
+            var interstitialConfig = max?.InterstitialTierConfig;
+            var rewardedConfig = max?.RewardedTierConfig;
+
+            var decorated = MaxSequentialTierReflection.TryDecorate(
+                provider,
+                this,
+                interstitialConfig,
+                rewardedConfig);
+
+            if (!ReferenceEquals(decorated, provider))
+            {
+                if (interstitialConfig != null && interstitialConfig.enableSequentialLadder)
+                    DebugAds.Log("[JisAds] MAX interstitial uses SequentialTier ladder via Core.");
+                if (rewardedConfig != null && rewardedConfig.enableSequentialLadder)
+                    DebugAds.Log("[JisAds] MAX rewarded uses SequentialTier ladder via Core.");
+            }
+
+            return decorated;
+#else
+            return provider;
+#endif
+        }
+
+        List<AdProviderId> GetFullscreenShowProviderIds(AdFormat format)
+        {
+            var list = new List<AdProviderId>(2);
+            if (settings != null)
+            {
+                foreach (var mediation in settings.GetFullscreenAutoShowPriority(ToAdsType(format)))
+                    AddProviderIfValid(list, ToProviderId(mediation));
+            }
+
+            AddProviderIfValid(list, _core != null ? _core.GetProviderIdForFormat(format) : AdProviderId.None);
+            return list;
+        }
+
+        List<AdProviderId> BuildFullscreenShowProviderOrder(AdsMediationType requestedMediation, AdFormat format)
+        {
+            var order = new List<AdProviderId>(2);
+            AddProviderIfValid(order, ToProviderId(requestedMediation));
+
+            var isMultipleForFormat = settings != null && settings.IsMultipleMediationEnabled(ToAdsType(format));
+            if (settings != null && isMultipleForFormat)
+            {
+                foreach (var mediation in settings.GetFullscreenAutoShowPriority(ToAdsType(format)))
+                    AddProviderIfValid(order, ToProviderId(mediation));
+            }
+            else if (requestedMediation == AdsMediationType.NONE)
+            {
+                AddProviderIfValid(order, _core != null ? _core.GetProviderIdForFormat(format) : AdProviderId.None);
+            }
+
+            if (isMultipleForFormat && requestedMediation == AdsMediationType.ADMOB)
+                AddProviderIfValid(order, AdProviderId.Max);
+            else if (isMultipleForFormat && requestedMediation == AdsMediationType.MAX)
+                AddProviderIfValid(order, AdProviderId.AdMob);
+
+            return order;
+        }
+
+        static AdsType ToAdsType(AdFormat format) => format switch
+        {
+            AdFormat.Interstitial => AdsType.INTERSTITIAL,
+            AdFormat.Rewarded => AdsType.REWARDED,
+            AdFormat.Banner => AdsType.BANNER,
+            AdFormat.AppOpen => AdsType.APP_OPEN,
+            _ => AdsType.BANNER
+        };
+
+        static void AddProviderIfValid(List<AdProviderId> order, AdProviderId provider)
+        {
+            if (provider == AdProviderId.None || order.Contains(provider))
+                return;
+            order.Add(provider);
+        }
+
+        AdProviderId SelectProviderForShow(List<AdProviderId> order, AdFormat format)
+        {
+            if (_core == null || order == null)
+                return AdProviderId.None;
+
+            foreach (var provider in order)
+            {
+                if (!_core.HasProvider(provider))
+                    continue;
+                if (IsProviderLoaded(provider, format))
+                    return provider;
+            }
+
+            foreach (var provider in order)
+            {
+                if (_core.HasProvider(provider))
+                    return provider;
+            }
+
+            return AdProviderId.None;
+        }
+
+        AdProviderId SelectFallbackProvider(List<AdProviderId> order, AdProviderId primary)
+        {
+            if (_core == null || order == null)
+                return AdProviderId.None;
+
+            foreach (var provider in order)
+            {
+                if (provider != primary && _core.HasProvider(provider))
+                    return provider;
+            }
+
+            return AdProviderId.None;
+        }
+
+        bool IsProviderLoaded(AdProviderId provider, AdFormat format)
+        {
+            if (_core == null)
+                return false;
+
+            return format switch
+            {
+                AdFormat.Interstitial => _core.IsInterstitialLoaded(provider),
+                AdFormat.Rewarded => _core.IsRewardedLoaded(provider),
+                _ => false
+            };
+        }
+
+        bool IsInterstitialAdLoaded(List<AdProviderId> order)
+        {
+            if (!UseCoreForStandardFormats || order == null)
+                return false;
+
+            foreach (var provider in order)
+            {
+                if (_core.IsInterstitialLoaded(provider))
+                    return true;
+            }
+
+            return false;
+        }
+
+        bool IsRewardedVideoLoaded(List<AdProviderId> order)
+        {
+            if (!UseCoreForStandardFormats || order == null)
+                return false;
+
+            foreach (var provider in order)
+            {
+                if (_core.IsRewardedLoaded(provider))
+                    return true;
+            }
+
+            return false;
         }
         #region State helpers
         public bool CanShowAds() => !_isRemoveAds;
@@ -696,9 +1005,37 @@ namespace JisSDKAds.Ads
             UnityAction showFailCallback = null,
             bool isTracking = true,
             bool isSkipCapping = false) =>
-            ShowInterstitial("", closedCallback, showSuccessCallback, showFailCallback, isTracking, isSkipCapping);
+            ShowInterstitial("", AdsMediationType.NONE, closedCallback, showSuccessCallback, showFailCallback, isTracking, isSkipCapping);
+
+        public void ShowInterstitial(
+            AdsMediationType mediation,
+            UnityAction closedCallback = null,
+            UnityAction showSuccessCallback = null,
+            UnityAction showFailCallback = null,
+            bool isTracking = true,
+            bool isSkipCapping = false) =>
+            ShowInterstitial("", mediation, closedCallback, showSuccessCallback, showFailCallback, isTracking, isSkipCapping);
+
+        public void ShowInterstitialAuto(
+            UnityAction closedCallback = null,
+            UnityAction showSuccessCallback = null,
+            UnityAction showFailCallback = null,
+            bool isTracking = true,
+            bool isSkipCapping = false) =>
+            ShowInterstitial("", AdsMediationType.NONE, closedCallback, showSuccessCallback, showFailCallback, isTracking, isSkipCapping);
+
         public void ShowInterstitial(
             string interstitialPlacement,
+            UnityAction closedCallback = null,
+            UnityAction showSuccessCallback = null,
+            UnityAction showFailCallback = null,
+            bool isTracking = true,
+            bool isSkipCapping = false) =>
+            ShowInterstitial(interstitialPlacement, AdsMediationType.NONE, closedCallback, showSuccessCallback, showFailCallback, isTracking, isSkipCapping);
+
+        public void ShowInterstitial(
+            string interstitialPlacement,
+            AdsMediationType mediation,
             UnityAction closedCallback = null,
             UnityAction showSuccessCallback = null,
             UnityAction showFailCallback = null,
@@ -725,7 +1062,8 @@ namespace JisSDKAds.Ads
             _interstitialShowAttemptId++;
             StartInterstitialInFlightWatchdog(_interstitialShowAttemptId);
             _pendingInterstitialWasShown = false;
-            _pendingInterstitialHadLoadedAdAtShowRequest = IsInterstitialAdLoaded();
+            var providerOrder = BuildFullscreenShowProviderOrder(mediation, AdFormat.Interstitial);
+            _pendingInterstitialHadLoadedAdAtShowRequest = IsInterstitialAdLoaded(providerOrder);
             _pendingInterstitialIsTracking = isTracking;
             _pendingInterstitialPlacement = interstitialPlacement;
             _pendingInterstitialClosedCallback = closedCallback;
@@ -738,7 +1076,19 @@ namespace JisSDKAds.Ads
             {
                 SetAdsShowingState(true);
                 HideBannerForFullscreenAd("interstitial");
+                var provider = SelectProviderForShow(providerOrder, AdFormat.Interstitial);
+                var fallback = SelectFallbackProvider(providerOrder, provider);
+                if (provider == AdProviderId.None)
+                {
+                    Debug.LogWarning("[JisAds] Core interstitial failed: no mediation provider registered.");
+                    TrackPendingInterstitialShowFailure(isTracking);
+                    ConsumePendingInterstitialCallbacksOnFail();
+                    return;
+                }
+
                 _core.ShowInterstitial(
+                    provider,
+                    fallback,
                     onClosed: () =>
                     {
                         ConsumePendingInterstitialCallbacksOnClose();
@@ -949,6 +1299,21 @@ namespace JisSDKAds.Ads
             string rewardedPlacement,
             UnityAction successCallback,
             UnityAction<bool> closedCallback = null,
+            UnityAction failedCallback = null) =>
+            ShowRewardVideo(rewardedPlacement, AdsMediationType.NONE, successCallback, closedCallback, failedCallback);
+
+        public void ShowRewardVideoAuto(
+            string rewardedPlacement,
+            UnityAction successCallback,
+            UnityAction<bool> closedCallback = null,
+            UnityAction failedCallback = null) =>
+            ShowRewardVideo(rewardedPlacement, AdsMediationType.NONE, successCallback, closedCallback, failedCallback);
+
+        public void ShowRewardVideo(
+            string rewardedPlacement,
+            AdsMediationType mediation,
+            UnityAction successCallback,
+            UnityAction<bool> closedCallback = null,
             UnityAction failedCallback = null)
         {
             if (_rewardedCallbacksInFlight)
@@ -963,7 +1328,8 @@ namespace JisSDKAds.Ads
             StartRewardedInFlightWatchdog(_rewardedShowAttemptId);
             _pendingRewardedWasShown = false;
             _pendingRewardedRewardGranted = false;
-            _pendingRewardedHadLoadedAdAtShowRequest = IsRewardedVideoLoaded();
+            var providerOrder = BuildFullscreenShowProviderOrder(mediation, AdFormat.Rewarded);
+            _pendingRewardedHadLoadedAdAtShowRequest = IsRewardedVideoLoaded(providerOrder);
             _pendingRewardedPlacement = rewardedPlacement;
             _pendingRewardedRewardCallback = successCallback;
             _pendingRewardedClosedCallback = closedCallback;
@@ -974,11 +1340,23 @@ namespace JisSDKAds.Ads
 
             if (UseCoreForStandardFormats)
             {
-                if (!IsRewardedVideoLoaded())
+                if (!IsRewardedVideoLoaded(providerOrder))
                     AdLoadCoordinator.Instance.PrepareUrgentRewarded();
 
                 HideBannerForFullscreenAd("rewarded");
+                var provider = SelectProviderForShow(providerOrder, AdFormat.Rewarded);
+                var fallback = SelectFallbackProvider(providerOrder, provider);
+                if (provider == AdProviderId.None)
+                {
+                    Debug.LogWarning("[JisAds] Core rewarded failed: no mediation provider registered.");
+                    TrackPendingRewardedShowFailure();
+                    ConsumePendingRewardedCallbacksOnFail();
+                    return;
+                }
+
                 _core.ShowRewarded(
+                    provider,
+                    fallback,
                     onRewardEarned: ConsumePendingRewardedCallbacksOnRewardGranted,
                     onClosed: () => ConsumePendingRewardedCallbacksOnClose(_pendingRewardedRewardGranted),
                     onFailed: err =>
@@ -1262,7 +1640,14 @@ namespace JisSDKAds.Ads
 
                 var done = false;
                 var succeeded = false;
-                _core.PrimaryProvider.Banner.Load(
+                var bannerProvider = _core.GetProviderForFormat(AdFormat.Banner);
+                if (bannerProvider?.Banner == null)
+                {
+                    _bannerRestoreCoroutine = null;
+                    yield break;
+                }
+
+                bannerProvider.Banner.Load(
                     onLoaded: () =>
                     {
                         if (!_bannerWantsVisible || !CanShowAds())
@@ -1351,16 +1736,16 @@ namespace JisSDKAds.Ads
         }
 
         public bool IsInterstitialAdLoaded() =>
-            UseCoreForStandardFormats && (_core.PrimaryProvider?.Interstitial.IsLoaded ?? false);
+            IsInterstitialAdLoaded(BuildFullscreenShowProviderOrder(AdsMediationType.NONE, AdFormat.Interstitial));
 
         public bool CanShowInterstitialAd() => IsInterstitialAdLoaded();
 
         public bool IsRewardedVideoLoaded() =>
-            UseCoreForStandardFormats && (_core.PrimaryProvider?.Rewarded.IsLoaded ?? false);
+            IsRewardedVideoLoaded(BuildFullscreenShowProviderOrder(AdsMediationType.NONE, AdFormat.Rewarded));
         public bool CanShowRewardedVideo() => IsRewardedVideoLoaded();
 
         public bool IsBannerAdLoaded() =>
-            UseCoreForStandardFormats && (_core.PrimaryProvider?.Banner?.IsLoaded ?? false);
+            UseCoreForStandardFormats && (_core.GetProviderForFormat(AdFormat.Banner)?.Banner?.IsLoaded ?? false);
 
         public bool CanShowBannerAd() => IsBannerAdLoaded();
         #endregion

@@ -24,9 +24,11 @@ namespace JisSDKAds.Ads.Settings
             _ => AdProviderId.None
         };
 
-        public IAdProviderConfig GetProviderConfig()
+        public IAdProviderConfig GetProviderConfig() => GetProviderConfig(mediation);
+
+        public IAdProviderConfig GetProviderConfig(AdsMediationType providerMediation)
         {
-            return mediation switch
+            return providerMediation switch
             {
                 AdsMediationType.MAX => maxProviderConfig as IAdProviderConfig,
                 AdsMediationType.ADMOB => admobProviderConfig as IAdProviderConfig,

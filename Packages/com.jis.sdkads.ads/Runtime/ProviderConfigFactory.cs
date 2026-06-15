@@ -16,18 +16,21 @@ namespace JisSDKAds.Ads
     /// </summary>
     public static class ProviderConfigFactory
     {
-        public static IAdProviderConfig CreateFromSdkSetup(PlatformAdsProfile profile)
+        public static IAdProviderConfig CreateFromSdkSetup(PlatformAdsProfile profile) =>
+            CreateFromSdkSetup(profile, profile?.mediation ?? AdsMediationType.NONE);
+
+        public static IAdProviderConfig CreateFromSdkSetup(PlatformAdsProfile profile, AdsMediationType mediation)
         {
             if (profile?.sdkSetup == null) return null;
 
-            var existing = profile.GetProviderConfig();
+            var existing = profile.GetProviderConfig(mediation);
             if (existing != null)
             {
-                SyncBannerPosition(profile, existing);
+                SyncBannerPosition(profile, mediation, existing);
                 return existing;
             }
 
-            return profile.mediation switch
+            return mediation switch
             {
 #if UNITY_AD_MAX
                 AdsMediationType.MAX => CreateProviderConfig("JisSDKAds.Providers.Max.MaxAdConfig, JisSDKAds.Providers.Max", setup =>
@@ -56,8 +59,14 @@ namespace JisSDKAds.Ads
                     // - Remote Config applied to SequentialTierConfig (Premium first; then High)
                     // - SequentialTier default fallback from settings
                     // This ensures Core preload uses the same RC-driven inventory as SequentialTier loader.
-                    var fallbackInter = SequentialTierUnitIdResolver.ResolveDefaultFallbackUnitId(SequentialTierAdFormat.Interstitial, profile);
-                    var fallbackReward = SequentialTierUnitIdResolver.ResolveDefaultFallbackUnitId(SequentialTierAdFormat.Rewarded, profile);
+                    var fallbackInter = SequentialTierUnitIdResolver.ResolveDefaultFallbackUnitId(
+                        SequentialTierAdFormat.Interstitial,
+                        profile,
+                        AdsMediationType.ADMOB);
+                    var fallbackReward = SequentialTierUnitIdResolver.ResolveDefaultFallbackUnitId(
+                        SequentialTierAdFormat.Rewarded,
+                        profile,
+                        AdsMediationType.ADMOB);
 
                     static string FirstNonEmpty(params string[] values)
                     {
@@ -114,11 +123,14 @@ namespace JisSDKAds.Ads
         }
 
         static void SyncBannerPosition(PlatformAdsProfile profile, IAdProviderConfig providerConfig)
+            => SyncBannerPosition(profile, profile?.mediation ?? AdsMediationType.NONE, providerConfig);
+
+        static void SyncBannerPosition(PlatformAdsProfile profile, AdsMediationType mediation, IAdProviderConfig providerConfig)
         {
             if (profile?.sdkSetup == null || providerConfig == null)
                 return;
 
-            switch (profile.mediation)
+            switch (mediation)
             {
 #if UNITY_AD_MAX
                 case AdsMediationType.MAX:

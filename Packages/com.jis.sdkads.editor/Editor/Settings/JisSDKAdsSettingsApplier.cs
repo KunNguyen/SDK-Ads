@@ -114,12 +114,36 @@ namespace JisSDKAds.Editor
 
             ValidateProfile(settings.android, BuildTargetPlatform.Android, result);
             ValidateProfile(settings.ios, BuildTargetPlatform.iOS, result);
-            ValidateScriptingDefines(settings.android, BuildTargetGroup.Android, "Android", result);
-            ValidateScriptingDefines(settings.ios, BuildTargetGroup.iOS, "iOS", result);
+            ValidateFullscreenShowRouting(settings, result);
+            ValidateScriptingDefines(settings, settings.android, BuildTargetGroup.Android, "Android", result);
+            ValidateScriptingDefines(settings, settings.ios, BuildTargetGroup.iOS, "iOS", result);
             return result;
         }
 
+        static void ValidateFullscreenShowRouting(JisSDKAdsSettings settings, ValidationResult result)
+        {
+            if (!settings.UsesAnyFullscreenMultipleMediation())
+                return;
+
+            if (settings.autoShowFirstMediation == AdsMediationType.NONE)
+            {
+                result.AddWarning("Fullscreen auto priority 1 is NONE. Auto show will fall back to active mediation order.");
+            }
+
+            if (settings.autoShowSecondMediation == AdsMediationType.NONE)
+            {
+                result.AddWarning("Fullscreen auto priority 2 is NONE. Fallback mediation is not explicitly configured.");
+            }
+
+            if (settings.autoShowFirstMediation != AdsMediationType.NONE
+                && settings.autoShowFirstMediation == settings.autoShowSecondMediation)
+            {
+                result.AddWarning("Fullscreen auto priority 1 and 2 are the same. The fallback mediation will be ignored.");
+            }
+        }
+
         static void ValidateScriptingDefines(
+            JisSDKAdsSettings settings,
             PlatformAdsProfile profile,
             BuildTargetGroup group,
             string label,
@@ -128,7 +152,9 @@ namespace JisSDKAds.Editor
             if (profile?.sdkSetup == null)
                 return;
 
-            var expected = new HashSet<string>(profile.sdkSetup.GetExpectedScriptingDefineSymbols());
+            var expected = new HashSet<string>(
+                profile.sdkSetup.GetExpectedScriptingDefineSymbols(
+                    settings.GetConfiguredFullscreenAutoShowPriority()));
             var actual = SymbolHelper.GetDefineSymbols(group);
 
             foreach (var sym in expected)
@@ -184,23 +210,26 @@ namespace JisSDKAds.Editor
         static void ValidateSequentialTier(PlatformAdsProfile profile, string platformLabel, ValidationResult result)
         {
             var setup = profile?.sdkSetup;
-            if (setup?.admobAdsSetup == null) return;
+            if (setup == null) return;
 
-            if (setup.interstitialAdsMediationType == AdsMediationType.ADMOB
-                && setup.admobAdsSetup.InterstitialTierConfig.enableSequentialLadder
-                && !HasFallbackId(setup.admobAdsSetup.InterstitialTierConfig))
-            {
-                result.AddWarning(
-                    $"{platformLabel}: interstitial tier enabled - set a local fallback ID. Tier IDs must come from Firebase RC keys inter_premium_id ... inter_fill_id.");
-            }
+            ValidateTierConfig(setup.admobAdsSetup?.InterstitialTierConfig, platformLabel, "AdMob", "interstitial", result);
+            ValidateTierConfig(setup.admobAdsSetup?.RewardedTierConfig, platformLabel, "AdMob", "rewarded", result);
+            ValidateTierConfig(setup.maxAdsSetup?.InterstitialTierConfig, platformLabel, "MAX", "interstitial", result);
+            ValidateTierConfig(setup.maxAdsSetup?.RewardedTierConfig, platformLabel, "MAX", "rewarded", result);
+        }
 
-            if (setup.rewardedAdsMediationType == AdsMediationType.ADMOB
-                && setup.admobAdsSetup.RewardedTierConfig.enableSequentialLadder
-                && !HasFallbackId(setup.admobAdsSetup.RewardedTierConfig))
-            {
-                result.AddWarning(
-                    $"{platformLabel}: rewarded tier enabled - set a local fallback ID. Tier IDs must come from Firebase RC keys reward_premium_id ... reward_fill_id.");
-            }
+        static void ValidateTierConfig(
+            SequentialTierConfig config,
+            string platformLabel,
+            string mediationLabel,
+            string formatLabel,
+            ValidationResult result)
+        {
+            if (config == null || !config.enableSequentialLadder || HasFallbackId(config))
+                return;
+
+            result.AddWarning(
+                $"{platformLabel}: {mediationLabel} {formatLabel} tier enabled - set a local fallback ID. Tier IDs must come from Firebase RC keys.");
         }
 
         static bool HasFallbackId(SequentialTierConfig config)

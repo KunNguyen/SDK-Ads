@@ -33,6 +33,10 @@ namespace JisSDKAds.Common {
           // Interstitial / Rewarded inventory mode: "single" (default) | "tiered"
           public static readonly string key_remote_interstitial_inventory_mode = "interstitial_inventory_mode";
           public static readonly string key_remote_rewarded_inventory_mode = "rewarded_inventory_mode";
+          public static readonly string key_remote_max_interstitial_inventory_mode = "max_interstitial_inventory_mode";
+          public static readonly string key_remote_max_rewarded_inventory_mode = "max_rewarded_inventory_mode";
+          public static readonly string key_remote_admob_interstitial_inventory_mode = "admob_interstitial_inventory_mode";
+          public static readonly string key_remote_admob_rewarded_inventory_mode = "admob_rewarded_inventory_mode";
 
           // Sequential tier unit IDs (Firebase Remote Config)
           public static readonly string key_remote_inter_premium_id = "inter_premium_id";
@@ -40,11 +44,31 @@ namespace JisSDKAds.Common {
           public static readonly string key_remote_inter_mid_id = "inter_mid_id";
           public static readonly string key_remote_inter_low_id = "inter_low_id";
           public static readonly string key_remote_inter_fill_id = "inter_fill_id";
+          public static readonly string key_remote_max_inter_premium_id = "max_inter_premium_id";
+          public static readonly string key_remote_max_inter_high_id = "max_inter_high_id";
+          public static readonly string key_remote_max_inter_mid_id = "max_inter_mid_id";
+          public static readonly string key_remote_max_inter_low_id = "max_inter_low_id";
+          public static readonly string key_remote_max_inter_fill_id = "max_inter_fill_id";
+          public static readonly string key_remote_admob_inter_premium_id = "admob_inter_premium_id";
+          public static readonly string key_remote_admob_inter_high_id = "admob_inter_high_id";
+          public static readonly string key_remote_admob_inter_mid_id = "admob_inter_mid_id";
+          public static readonly string key_remote_admob_inter_low_id = "admob_inter_low_id";
+          public static readonly string key_remote_admob_inter_fill_id = "admob_inter_fill_id";
 
           public static readonly string key_remote_reward_premium_id = "reward_premium_id";
           public static readonly string key_remote_reward_high_id = "reward_high_id";
           public static readonly string key_remote_reward_mid_id = "reward_mid_id";
           public static readonly string key_remote_reward_low_id = "reward_low_id";
           public static readonly string key_remote_reward_fill_id = "reward_fill_id";
+          public static readonly string key_remote_max_reward_premium_id = "max_reward_premium_id";
+          public static readonly string key_remote_max_reward_high_id = "max_reward_high_id";
+          public static readonly string key_remote_max_reward_mid_id = "max_reward_mid_id";
+          public static readonly string key_remote_max_reward_low_id = "max_reward_low_id";
+          public static readonly string key_remote_max_reward_fill_id = "max_reward_fill_id";
+          public static readonly string key_remote_admob_reward_premium_id = "admob_reward_premium_id";
+          public static readonly string key_remote_admob_reward_high_id = "admob_reward_high_id";
+          public static readonly string key_remote_admob_reward_mid_id = "admob_reward_mid_id";
+          public static readonly string key_remote_admob_reward_low_id = "admob_reward_low_id";
+          public static readonly string key_remote_admob_reward_fill_id = "admob_reward_fill_id";
      } 
 }

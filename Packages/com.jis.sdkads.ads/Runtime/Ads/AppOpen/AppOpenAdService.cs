@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using JisSDKAds.Common;
 using JisSDKAds.Core.Interfaces;
+using JisSDKAds.Core.Models;
 using JisSDKAds.Firebase;
 using UnityEngine;
 
@@ -151,8 +152,8 @@ namespace JisSDKAds.Ads.AppOpen
         bool HasAppOpenSupport() =>
             _host.Core != null
             && _host.Core.IsInitialized
-            && _host.Core.PrimaryProvider?.AppOpen is not NullAppOpenAd;
+            && _host.Core.GetProviderForFormat(AdFormat.AppOpen)?.AppOpen is not NullAppOpenAd;
 
-        IAppOpenAd GetAppOpen() => _host.Core?.PrimaryProvider?.AppOpen;
+        IAppOpenAd GetAppOpen() => _host.Core?.GetProviderForFormat(AdFormat.AppOpen)?.AppOpen;
     }
 }

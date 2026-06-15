@@ -105,10 +105,10 @@ namespace JisSDKAds.Providers.AdMob
             var controller = manager.GetAdsMediationController(AdsMediationType.ADMOB) as AdmobMediationController;
             if (controller?.m_AdmobAdSetup == null) return;
 
-            AdInventoryRemoteConfigResolver.ApplyInventoryModesToSdkSetup(
-                setup,
-                interstitialMode,
-                rewardedMode);
+            setup.admobAdsSetup.InterstitialTierConfig.enableSequentialLadder =
+                interstitialMode == AdInventorySetupMode.Tiered;
+            setup.admobAdsSetup.RewardedTierConfig.enableSequentialLadder =
+                rewardedMode == AdInventorySetupMode.Tiered;
 
             SyncInventoryModeToControllerAdmob(setup.admobAdsSetup, controller.m_AdmobAdSetup);
 

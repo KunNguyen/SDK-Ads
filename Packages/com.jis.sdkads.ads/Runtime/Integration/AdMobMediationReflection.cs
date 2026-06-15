@@ -39,8 +39,8 @@ namespace JisSDKAds.Ads.Integration
             var bridge = Type.GetType(BridgeTypeName);
             if (bridge == null) return;
 
-            var interMode = AdInventoryRemoteConfigResolver.ReadInterstitialMode();
-            var rewardMode = AdInventoryRemoteConfigResolver.ReadRewardedMode();
+            var interMode = AdInventoryRemoteConfigResolver.ReadInterstitialMode(AdsMediationType.ADMOB);
+            var rewardMode = AdInventoryRemoteConfigResolver.ReadRewardedMode(AdsMediationType.ADMOB);
 
             bridge.GetMethod("ApplyInventoryModesFromRemoteConfig", BindingFlags.Public | BindingFlags.Static)
                 ?.Invoke(null, new object[] { manager, setup, interMode, rewardMode });
@@ -53,13 +53,13 @@ namespace JisSDKAds.Ads.Integration
             if (interMode == AdInventorySetupMode.Tiered)
             {
                 SequentialTierRemoteConfigResolver.TryReadTierIds(
-                    SequentialTierAdFormat.Interstitial, profile, out interstitialIds);
+                    SequentialTierAdFormat.Interstitial, profile, AdsMediationType.ADMOB, out interstitialIds);
             }
 
             if (rewardMode == AdInventorySetupMode.Tiered)
             {
                 SequentialTierRemoteConfigResolver.TryReadTierIds(
-                    SequentialTierAdFormat.Rewarded, profile, out rewardedIds);
+                    SequentialTierAdFormat.Rewarded, profile, AdsMediationType.ADMOB, out rewardedIds);
             }
 
             if (interstitialIds == null && rewardedIds == null) return;

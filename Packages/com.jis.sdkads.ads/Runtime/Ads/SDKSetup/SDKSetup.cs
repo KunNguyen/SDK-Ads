@@ -107,9 +107,14 @@ namespace JisSDKAds.Ads
           /// Sync scripting defines for one platform (Android or iOS group).
           /// Call once per <see cref="SDKSetup"/> asset — do not call Android+iOS setups back-to-back on the selected group.
           /// </summary>
-          public void ApplyScriptingDefines(BuildTargetGroup buildTargetGroup)
+          public void ApplyScriptingDefines(BuildTargetGroup buildTargetGroup) =>
+               ApplyScriptingDefines(buildTargetGroup, null);
+
+          public void ApplyScriptingDefines(
+               BuildTargetGroup buildTargetGroup,
+               IEnumerable<AdsMediationType> additionalMediations)
           {
-               var mediationSymbols = CollectMediationDefineSymbols();
+               var mediationSymbols = CollectMediationDefineSymbols(additionalMediations);
                SymbolHelper.SyncMediationDefines(buildTargetGroup, mediationSymbols);
                SymbolHelper.SetOptionalDefine(buildTargetGroup, "UNITY_APPSFLYER", IsActiveAppsflyer);
                SymbolHelper.SetOptionalDefine(buildTargetGroup, FIREBASE_AUTH_SYMBOL, IsActiveFirebaseAuth);
@@ -117,16 +122,19 @@ namespace JisSDKAds.Ads
           }
 
           /// <summary>Defines that should be present for this setup (validation).</summary>
-          public List<string> GetExpectedScriptingDefineSymbols()
+          public List<string> GetExpectedScriptingDefineSymbols() =>
+               GetExpectedScriptingDefineSymbols(null);
+
+          public List<string> GetExpectedScriptingDefineSymbols(IEnumerable<AdsMediationType> additionalMediations)
           {
-               var list = new List<string>(CollectMediationDefineSymbols());
+               var list = new List<string>(CollectMediationDefineSymbols(additionalMediations));
                if (IsActiveAppsflyer) list.Add("UNITY_APPSFLYER");
                if (IsActiveFirebaseAuth) list.Add(FIREBASE_AUTH_SYMBOL);
                if (IsActiveIAP) list.Add(UNITY_IAP_ACTIVE_SYMBOL);
                return list;
           }
 
-          List<string> CollectMediationDefineSymbols()
+          List<string> CollectMediationDefineSymbols(IEnumerable<AdsMediationType> additionalMediations = null)
           {
                var defineSymbols = new List<string>();
                switch (adsMediationType)
@@ -143,6 +151,13 @@ namespace JisSDKAds.Ads
                AddMediationSymbolIfNeeded(defineSymbols, interstitialAdsMediationType);
                AddMediationSymbolIfNeeded(defineSymbols, rewardedAdsMediationType);
                AddMediationSymbolIfNeeded(defineSymbols, appOpenAdsMediationType);
+
+               if (additionalMediations != null)
+               {
+                    foreach (var mediation in additionalMediations)
+                         AddMediationSymbolIfNeeded(defineSymbols, mediation);
+               }
+
                return defineSymbols;
           }
 

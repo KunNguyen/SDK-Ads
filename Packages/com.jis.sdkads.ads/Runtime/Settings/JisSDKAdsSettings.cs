@@ -1,6 +1,7 @@
 ﻿using JisSDKAds.Common;
 using UnityEngine;
 using JisSDKAds.Ads;
+using System.Collections.Generic;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -17,8 +18,17 @@ namespace JisSDKAds.Ads.Settings
         [Tooltip("Manual (recommended): call JisAds.InitializeAsync() from loading — fetches Remote Config then inits ads. AutoOnStart: AdsManager bootstraps on Start (prototypes only; do not use with JisAds auto-init).")]
         public AdsManager.AdsInitializationMode adsInitializationMode = AdsManager.AdsInitializationMode.Manual;
 
-        [Tooltip("When enabled, AdManager will not fall back to another network on the same platform.")]
+        [Tooltip("Legacy global mode. Use the per-format mediation mode fields below.")]
+        [HideInInspector]
         public bool singleMediationOnly = true;
+
+        [Tooltip("Interstitial can use only primary mediation or cross-mediation fallback.")]
+        public AdFormatMediationMode interstitialMediationMode = AdFormatMediationMode.Single;
+
+        [Tooltip("Rewarded can use only primary mediation or cross-mediation fallback.")]
+        public AdFormatMediationMode rewardedMediationMode = AdFormatMediationMode.Single;
+
+        [SerializeField, HideInInspector] int mediationModeSettingsVersion;
 
         [Tooltip("When enabled, ads SDK logs init steps, load success/fail with ad unit IDs, and mediation errors to the Unity Console.")]
         public bool enableAdsDebugLogging = false;
@@ -28,6 +38,12 @@ namespace JisSDKAds.Ads.Settings
 
         [Tooltip("When the player owns Remove Ads, skip all startup ad loads (no banner/interstitial/rewarded/app-open preload).")]
         public bool skipStartupAdLoadWhenRemoveAds = true;
+
+        [Tooltip("Auto fullscreen show priority for interstitial/rewarded. Default: AdMob first, then MAX.")]
+        public AdsMediationType autoShowFirstMediation = AdsMediationType.ADMOB;
+
+        [Tooltip("Fallback mediation for auto fullscreen show and explicit show when selected mediation is not loaded.")]
+        public AdsMediationType autoShowSecondMediation = AdsMediationType.MAX;
 
         public PlatformAdsProfile GetProfile(BuildTargetPlatform platform) =>
             platform == BuildTargetPlatform.iOS ? ios : android;
@@ -50,10 +66,102 @@ namespace JisSDKAds.Ads.Settings
         public AdsMediationType GetActiveMediation() =>
             GetActiveProfile() != null ? GetActiveProfile().mediation : AdsMediationType.NONE;
 
+        public bool IsMultipleMediationEnabled(AdsType adsType)
+        {
+            MigrateMediationModeSettingsIfNeeded();
+            return adsType switch
+            {
+                AdsType.INTERSTITIAL => interstitialMediationMode == AdFormatMediationMode.Multiple,
+                AdsType.REWARDED => rewardedMediationMode == AdFormatMediationMode.Multiple,
+                _ => false
+            };
+        }
+
+        public bool UsesAnyFullscreenMultipleMediation() =>
+            IsMultipleMediationEnabled(AdsType.INTERSTITIAL) || IsMultipleMediationEnabled(AdsType.REWARDED);
+
+        public List<AdsMediationType> GetFullscreenAutoShowPriority()
+        {
+            var result = new List<AdsMediationType>(2);
+            if (!UsesAnyFullscreenMultipleMediation())
+            {
+                AddMediationIfValid(result, GetActiveMediation());
+                return result;
+            }
+
+            AddConfiguredFullscreenAutoShowPriority(result);
+
+            var active = GetActiveMediation();
+            AddMediationIfValid(result, active);
+            AddMediationIfValid(result, active == AdsMediationType.ADMOB ? AdsMediationType.MAX : AdsMediationType.ADMOB);
+
+            return result;
+        }
+
+        public List<AdsMediationType> GetFullscreenAutoShowPriority(AdsType adsType)
+        {
+            var result = new List<AdsMediationType>(2);
+            if (!IsMultipleMediationEnabled(adsType))
+            {
+                AddMediationIfValid(result, GetActiveMediation());
+                return result;
+            }
+
+            AddConfiguredFullscreenAutoShowPriority(result);
+
+            var active = GetActiveMediation();
+            AddMediationIfValid(result, active);
+            AddMediationIfValid(result, active == AdsMediationType.ADMOB ? AdsMediationType.MAX : AdsMediationType.ADMOB);
+
+            return result;
+        }
+
+        public List<AdsMediationType> GetConfiguredFullscreenAutoShowPriority()
+        {
+            var result = new List<AdsMediationType>(2);
+            if (!UsesAnyFullscreenMultipleMediation())
+                return result;
+
+            AddConfiguredFullscreenAutoShowPriority(result);
+            return result;
+        }
+
+        void AddConfiguredFullscreenAutoShowPriority(List<AdsMediationType> result)
+        {
+            AddMediationIfValid(result, autoShowFirstMediation);
+            AddMediationIfValid(result, autoShowSecondMediation);
+        }
+
+        static void AddMediationIfValid(List<AdsMediationType> result, AdsMediationType mediation)
+        {
+            if (mediation == AdsMediationType.NONE || result.Contains(mediation))
+                return;
+            result.Add(mediation);
+        }
+
         /// <summary>Sync <see cref="DebugAds"/> from this asset (call on play / Apply to Scene).</summary>
         public void ApplyRuntimeDebugSettings()
         {
             DebugAds.Configure(enableAdsDebugLogging);
+        }
+
+        void OnValidate()
+        {
+            MigrateMediationModeSettingsIfNeeded();
+            singleMediationOnly = !UsesAnyFullscreenMultipleMediation();
+        }
+
+        void MigrateMediationModeSettingsIfNeeded()
+        {
+            if (mediationModeSettingsVersion > 0)
+                return;
+
+            var legacyMode = singleMediationOnly
+                ? AdFormatMediationMode.Single
+                : AdFormatMediationMode.Multiple;
+            interstitialMediationMode = legacyMode;
+            rewardedMediationMode = legacyMode;
+            mediationModeSettingsVersion = 1;
         }
 
 #if UNITY_EDITOR
@@ -63,12 +171,13 @@ namespace JisSDKAds.Ads.Settings
         public void ApplyScriptingDefinesForAllPlatforms()
         {
             SyncAllProfileMediationToSdkSetups();
+            var fullscreenMediations = GetConfiguredFullscreenAutoShowPriority();
 
             if (android?.sdkSetup != null)
-                android.sdkSetup.ApplyScriptingDefines(BuildTargetGroup.Android);
+                android.sdkSetup.ApplyScriptingDefines(BuildTargetGroup.Android, fullscreenMediations);
 
             if (ios?.sdkSetup != null)
-                ios.sdkSetup.ApplyScriptingDefines(BuildTargetGroup.iOS);
+                ios.sdkSetup.ApplyScriptingDefines(BuildTargetGroup.iOS, fullscreenMediations);
         }
 #endif
 
@@ -129,5 +238,11 @@ namespace JisSDKAds.Ads.Settings
     {
         Android = 0,
         iOS = 1
+    }
+
+    public enum AdFormatMediationMode
+    {
+        Single = 0,
+        Multiple = 1
     }
 }
