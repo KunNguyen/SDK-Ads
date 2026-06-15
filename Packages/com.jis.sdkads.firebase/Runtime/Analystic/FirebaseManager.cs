@@ -124,22 +124,27 @@ namespace JisSDKAds.Firebase
         }
 
         /// <summary>
-        /// Fetch & activate RemoteConfig
+        /// Fetch and activate Remote Config. Always completes (never hangs on network/SDK errors).
         /// </summary>
-        public async Task FetchRemoteConfigAsync()
+        /// <returns><c>true</c> when fetch + activate succeeded; <c>false</c> on failure (defaults may still apply).</returns>
+        public async Task<bool> FetchRemoteConfigAsync()
         {
             if (!IsFirebaseReady)
                 await InitAsync();
 
+            if (!IsFirebaseReady || remoteConfig == null)
+                return false;
+
             var tcs = new TaskCompletionSource<bool>();
 
-            remoteConfig.InitRemoteConfig(() =>
+            remoteConfig.InitRemoteConfig(fetchAndActivateSucceeded =>
             {
-                IsRemoteConfigReady = true;
-                tcs.TrySetResult(true);
+                if (remoteConfig.DefaultsApplied)
+                    IsRemoteConfigReady = true;
+                tcs.TrySetResult(fetchAndActivateSucceeded);
             });
 
-            await tcs.Task;
+            return await tcs.Task;
         }
 
         #region Auth

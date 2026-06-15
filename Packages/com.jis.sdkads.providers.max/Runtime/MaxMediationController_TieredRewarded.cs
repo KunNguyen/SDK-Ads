@@ -22,6 +22,8 @@ namespace JisSDKAds.Ads
 
         void EnsureRewardedTierLoader()
         {
+            if (AdsManager.UsesJisAdsCoreForStandardLoads())
+                return;
             if (_rewardedTierLoader != null || RewardedTierConfig == null) return;
 
             _rewardedTierLoader = new SequentialTierLoader(

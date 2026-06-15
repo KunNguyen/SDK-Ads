@@ -28,6 +28,8 @@ namespace JisSDKAds.Ads
 
         void EnsureInterstitialTierLoader()
         {
+            if (AdsManager.UsesJisAdsCoreForStandardLoads())
+                return;
             if (_interstitialTierLoader != null || InterstitialTierConfig == null) return;
 
             _interstitialTierLoader = new SequentialTierLoader(

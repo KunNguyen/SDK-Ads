@@ -48,6 +48,12 @@ namespace JisSDKAds.Ads
                 var fetchTask = FirebaseManager.Instance.FetchRemoteConfigAsync();
                 while (!fetchTask.IsCompleted)
                     yield return null;
+
+                if (!fetchTask.Result)
+                {
+                    DebugAds.LogWarning(
+                        "[AdsManager] Remote Config server fetch failed — using defaults where available.");
+                }
             }
 
             IsRemoteConfigReadyForAds = FirebaseManager.Instance.IsRemoteConfigReady;
@@ -75,7 +81,14 @@ namespace JisSDKAds.Ads
             }
 
             if (!FirebaseManager.Instance.IsRemoteConfigReady)
-                await FirebaseManager.Instance.FetchRemoteConfigAsync();
+            {
+                var fetchSucceeded = await FirebaseManager.Instance.FetchRemoteConfigAsync();
+                if (!fetchSucceeded)
+                {
+                    DebugAds.LogWarning(
+                        "[AdsManager] Remote Config server fetch failed — using defaults where available.");
+                }
+            }
 
             IsRemoteConfigReadyForAds = FirebaseManager.Instance.IsRemoteConfigReady;
             return IsRemoteConfigReadyForAds;

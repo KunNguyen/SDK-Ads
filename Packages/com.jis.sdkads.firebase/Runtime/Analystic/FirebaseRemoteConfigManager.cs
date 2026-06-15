@@ -2,16 +2,19 @@
 using System.Collections.Generic;
 using JisSDKAds.Common;
 using UnityEngine;
-using UnityEngine.Events;
 using Firebase.RemoteConfig;
-using System.Threading.Tasks;
 using Firebase.Extensions;
 
 namespace JisSDKAds.Firebase
 {
     public class FirebaseRemoteConfigManager
     {
-        public void InitRemoteConfig(System.Action onFetchAndActivateSuccessful)
+        bool _defaultsApplied;
+
+        /// <summary>Defaults were pushed via <see cref="SetDefaultsAsync"/> — <see cref="GetValues"/> is usable.</summary>
+        public bool DefaultsApplied => _defaultsApplied;
+
+        public void InitRemoteConfig(Action<bool> onComplete)
         {
             Dictionary<string, object> defaults =
                     new Dictionary<string, object>
@@ -51,9 +54,12 @@ namespace JisSDKAds.Firebase
                 if (task.IsFaulted || task.IsCanceled)
                 {
                     Debug.LogError("SetDefaultsAsync failed: " + task.Exception);
+                    onComplete?.Invoke(false);
                     return;
                 }
-                FetchRemoteConfig(onFetchAndActivateSuccessful);
+
+                _defaultsApplied = true;
+                FetchRemoteConfig(onComplete);
             });
         }
         
@@ -62,13 +68,15 @@ namespace JisSDKAds.Firebase
             return FirebaseRemoteConfig.DefaultInstance.GetValue(key);
         }
 
-        public void FetchRemoteConfig(Action onFetchAndActivateSuccessful)
+        public void FetchRemoteConfig(Action<bool> onComplete)
         {
             if (FirebaseManager.Instance.FirebaseApp == null)
             {
                 Debug.LogError("FirebaseApp is null, cannot fetch remote config.");
+                onComplete?.Invoke(false);
                 return;
             }
+
             Debug.Log("Fetching data...");
             var remoteConfig = FirebaseRemoteConfig.DefaultInstance;
             remoteConfig.FetchAsync(TimeSpan.Zero).ContinueWithOnMainThread(task =>
@@ -76,13 +84,15 @@ namespace JisSDKAds.Firebase
                 if (task.IsFaulted || task.IsCanceled)
                 {
                     Debug.LogError("FetchAsync failed: " + task.Exception);
+                    onComplete?.Invoke(false);
                     return;
                 }
-                ActivateRetrievedRemoteConfigValues(onFetchAndActivateSuccessful);
+
+                ActivateRetrievedRemoteConfigValues(onComplete);
             });
         }
 
-        private void ActivateRetrievedRemoteConfigValues(Action onFetchAndActivateSuccessful)
+        void ActivateRetrievedRemoteConfigValues(Action<bool> onComplete)
         {
             var remoteConfig = FirebaseRemoteConfig.DefaultInstance;
             var info = remoteConfig.Info;
@@ -93,18 +103,18 @@ namespace JisSDKAds.Firebase
                     if (task.IsFaulted || task.IsCanceled)
                     {
                         Debug.LogError("ActivateAsync failed: " + task.Exception);
+                        onComplete?.Invoke(false);
                         return;
                     }
+
                     Debug.Log($"Remote data loaded and ready (last fetch time {info.FetchTime}).");
-                    onFetchAndActivateSuccessful?.Invoke();
+                    onComplete?.Invoke(true);
                 });
+                return;
             }
-            else
-            {
-                Debug.LogError($"LastFetchStatus not success: {info.LastFetchStatus}");
-            }
+
+            Debug.LogWarning($"Remote Config fetch did not succeed ({info.LastFetchStatus}) — using defaults.");
+            onComplete?.Invoke(false);
         }
-        
     }
 }
-

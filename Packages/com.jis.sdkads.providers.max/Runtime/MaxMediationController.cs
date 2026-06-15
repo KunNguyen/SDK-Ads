@@ -58,10 +58,13 @@ namespace JisSDKAds.Ads
         public override void RequestInterstitialAd()
         {
             base.RequestInterstitialAd();
+            if (AdsManager.UsesJisAdsCoreForStandardLoads())
+                return;
+
             if (UseSequentialInterstitial)
             {
                 EnsureInterstitialTierLoader();
-                _interstitialTierLoader.Load();
+                _interstitialTierLoader?.Load();
                 return;
             }
 
@@ -72,8 +75,10 @@ namespace JisSDKAds.Ads
         {
             if (UseSequentialInterstitial)
             {
+                if (AdsManager.UsesJisAdsCoreForStandardLoads())
+                    return false;
                 EnsureInterstitialTierLoader();
-                return _interstitialTierLoader.IsReady;
+                return _interstitialTierLoader != null && _interstitialTierLoader.IsReady;
             }
 
             return MaxSdk.IsInterstitialReady(m_MaxAdConfig.InterstitialAdUnitID);
@@ -84,8 +89,10 @@ namespace JisSDKAds.Ads
             base.ShowInterstitialAd();
             if (UseSequentialInterstitial)
             {
+                if (AdsManager.UsesJisAdsCoreForStandardLoads())
+                    return;
                 EnsureInterstitialTierLoader();
-                if (!_interstitialTierLoader.Show())
+                if (_interstitialTierLoader == null || !_interstitialTierLoader.Show())
                     OnAdInterstitialFailToShow(new SequentialTierShowError { Code = 0, Message = "not_ready" });
                 return;
             }
@@ -186,10 +193,13 @@ namespace JisSDKAds.Ads
         public override void RequestRewardVideoAd()
         {
             base.RequestRewardVideoAd();
+            if (AdsManager.UsesJisAdsCoreForStandardLoads())
+                return;
+
             if (UseSequentialRewarded)
             {
                 EnsureRewardedTierLoader();
-                _rewardedTierLoader.Load();
+                _rewardedTierLoader?.Load();
                 return;
             }
 
@@ -206,9 +216,11 @@ namespace JisSDKAds.Ads
             base.ShowRewardVideoAd();
             if (UseSequentialRewarded)
             {
+                if (AdsManager.UsesJisAdsCoreForStandardLoads())
+                    return;
                 EnsureRewardedTierLoader();
                 IsWatchSuccess = false;
-                if (!_rewardedTierLoader.Show())
+                if (_rewardedTierLoader == null || !_rewardedTierLoader.Show())
                     OnRewardedAdFailedToShow(new SequentialTierShowError { Code = 0, Message = "not_ready" });
                 return;
             }
@@ -227,8 +239,10 @@ namespace JisSDKAds.Ads
 #else
             if (UseSequentialRewarded)
             {
+                if (AdsManager.UsesJisAdsCoreForStandardLoads())
+                    return false;
                 EnsureRewardedTierLoader();
-                return _rewardedTierLoader.IsReady;
+                return _rewardedTierLoader != null && _rewardedTierLoader.IsReady;
             }
             return MaxSdk.IsRewardedAdReady(m_MaxAdConfig.RewardedAdUnitID);
 #endif
