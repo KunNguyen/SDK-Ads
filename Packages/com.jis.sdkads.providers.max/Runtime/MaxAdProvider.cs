@@ -3,6 +3,7 @@ using System;
 using JisSDKAds.Ads;
 using JisSDKAds.Ads.Integration;
 using JisSDKAds.Ads.SequentialTier;
+using JisSDKAds.Common;
 using JisSDKAds.Core.Interfaces;
 using JisSDKAds.Core.Models;
 using JisSDKAds.Providers.Max.SequentialTier;
@@ -129,6 +130,7 @@ namespace JisSDKAds.Providers.Max
             _pendingOnLoaded = onLoaded;
             _pendingOnLoadFailed = onFailed;
 
+            DebugAds.LogAdEvent("Interstitial", "load_start", _adUnitId, "provider=MAX");
             // Idempotent: never stack handlers when Load is called repeatedly before a result.
             MaxSdkCallbacks.Interstitial.OnAdLoadedEvent -= OnLoadResult;
             MaxSdkCallbacks.Interstitial.OnAdLoadedEvent += OnLoadResult;
@@ -144,6 +146,7 @@ namespace JisSDKAds.Providers.Max
             var cb = _pendingOnLoaded;
             _pendingOnLoaded = null;
             _pendingOnLoadFailed = null;
+            DebugAds.LogAdEvent("Interstitial", "load_success", _adUnitId, "provider=MAX");
             cb?.Invoke();
         }
 
@@ -154,6 +157,7 @@ namespace JisSDKAds.Providers.Max
             var cb = _pendingOnLoadFailed;
             _pendingOnLoaded = null;
             _pendingOnLoadFailed = null;
+            DebugAds.LogAdEvent("Interstitial", "load_fail", _adUnitId, "provider=MAX", err.Message);
             cb?.Invoke(err.Message);
         }
 
@@ -167,6 +171,7 @@ namespace JisSDKAds.Providers.Max
         {
             if (!IsLoaded)
             {
+                DebugAds.LogAdEvent("Interstitial", "show_blocked_not_loaded", _adUnitId, "provider=MAX");
                 onFailed?.Invoke("Interstitial not loaded");
                 return;
             }
@@ -183,6 +188,7 @@ namespace JisSDKAds.Providers.Max
             MaxSdkCallbacks.Interstitial.OnAdDisplayFailedEvent += OnDisplayFailed;
             MaxSdkCallbacks.Interstitial.OnAdRevenuePaidEvent -= OnPaid;
             MaxSdkCallbacks.Interstitial.OnAdRevenuePaidEvent += OnPaid;
+            DebugAds.LogAdEvent("Interstitial", "show_call", _adUnitId, "provider=MAX");
             MaxSdk.ShowInterstitial(_adUnitId);
         }
 
@@ -192,6 +198,7 @@ namespace JisSDKAds.Providers.Max
             MaxSdkCallbacks.Interstitial.OnAdDisplayedEvent -= OnShown;
             var cb = _pendingOnShown;
             _pendingOnShown = null;
+            DebugAds.LogAdEvent("Interstitial", "show_opened", _adUnitId, "provider=MAX");
             cb?.Invoke();
         }
 
@@ -201,6 +208,7 @@ namespace JisSDKAds.Providers.Max
             UnsubscribeShow();
             var cb = _pendingOnClosed;
             ClearShowCallbacks();
+            DebugAds.LogAdEvent("Interstitial", "show_closed", _adUnitId, "provider=MAX");
             cb?.Invoke();
             // MAX interstitial is one-time-use â€” warm-load the next impression after close.
             WarmReload();
@@ -212,6 +220,7 @@ namespace JisSDKAds.Providers.Max
             UnsubscribeShow();
             var cb = _pendingOnShowFailed;
             ClearShowCallbacks();
+            DebugAds.LogAdEvent("Interstitial", "show_failed", _adUnitId, "provider=MAX", err.Message);
             cb?.Invoke(err.Message);
             // Display failed consumed/invalidated the loaded ad — reload a fresh one.
             WarmReload();
@@ -270,6 +279,7 @@ namespace JisSDKAds.Providers.Max
             _pendingOnLoaded = onLoaded;
             _pendingOnLoadFailed = onFailed;
 
+            DebugAds.LogAdEvent("Rewarded", "load_start", _adUnitId, "provider=MAX");
             // Idempotent: never stack handlers when Load is called repeatedly before a result.
             MaxSdkCallbacks.Rewarded.OnAdLoadedEvent -= OnLoadResult;
             MaxSdkCallbacks.Rewarded.OnAdLoadedEvent += OnLoadResult;
@@ -285,6 +295,7 @@ namespace JisSDKAds.Providers.Max
             var cb = _pendingOnLoaded;
             _pendingOnLoaded = null;
             _pendingOnLoadFailed = null;
+            DebugAds.LogAdEvent("Rewarded", "load_success", _adUnitId, "provider=MAX");
             cb?.Invoke();
         }
 
@@ -295,6 +306,7 @@ namespace JisSDKAds.Providers.Max
             var cb = _pendingOnLoadFailed;
             _pendingOnLoaded = null;
             _pendingOnLoadFailed = null;
+            DebugAds.LogAdEvent("Rewarded", "load_fail", _adUnitId, "provider=MAX", err.Message);
             cb?.Invoke(err.Message);
         }
 
@@ -308,6 +320,7 @@ namespace JisSDKAds.Providers.Max
         {
             if (!IsLoaded)
             {
+                DebugAds.LogAdEvent("Rewarded", "show_blocked_not_loaded", _adUnitId, "provider=MAX");
                 onFailed?.Invoke("Rewarded ad not loaded");
                 return;
             }
@@ -319,18 +332,29 @@ namespace JisSDKAds.Providers.Max
 
             MaxSdkCallbacks.Rewarded.OnAdReceivedRewardEvent -= OnReward;
             MaxSdkCallbacks.Rewarded.OnAdReceivedRewardEvent += OnReward;
+            MaxSdkCallbacks.Rewarded.OnAdDisplayedEvent -= OnShown;
+            MaxSdkCallbacks.Rewarded.OnAdDisplayedEvent += OnShown;
             MaxSdkCallbacks.Rewarded.OnAdHiddenEvent -= OnHidden;
             MaxSdkCallbacks.Rewarded.OnAdHiddenEvent += OnHidden;
             MaxSdkCallbacks.Rewarded.OnAdDisplayFailedEvent -= OnDisplayFailed;
             MaxSdkCallbacks.Rewarded.OnAdDisplayFailedEvent += OnDisplayFailed;
             MaxSdkCallbacks.Rewarded.OnAdRevenuePaidEvent -= OnPaid;
             MaxSdkCallbacks.Rewarded.OnAdRevenuePaidEvent += OnPaid;
+            DebugAds.LogAdEvent("Rewarded", "show_call", _adUnitId, "provider=MAX");
             MaxSdk.ShowRewardedAd(_adUnitId);
+        }
+
+        void OnShown(string id, MaxSdkBase.AdInfo info)
+        {
+            if (id != _adUnitId) return;
+            MaxSdkCallbacks.Rewarded.OnAdDisplayedEvent -= OnShown;
+            DebugAds.LogAdEvent("Rewarded", "show_opened", _adUnitId, "provider=MAX");
         }
 
         void OnReward(string id, MaxSdkBase.Reward reward, MaxSdkBase.AdInfo info)
         {
             if (id != _adUnitId) return;
+            DebugAds.LogAdEvent("Rewarded", "reward_granted", _adUnitId, "provider=MAX");
             _showCompletion.NotifyRewardGranted(() => _pendingOnRewardEarned?.Invoke());
         }
 
@@ -338,6 +362,7 @@ namespace JisSDKAds.Providers.Max
         {
             if (id != _adUnitId) return;
             UnsubscribeShowExceptReward();
+            DebugAds.LogAdEvent("Rewarded", "show_closed", _adUnitId, "provider=MAX");
             _showCompletion.NotifyFullscreenClosed(() =>
             {
                 var onClosed = _pendingOnClosed;
@@ -354,6 +379,7 @@ namespace JisSDKAds.Providers.Max
             UnsubscribeShow();
             var cb = _pendingOnShowFailed;
             ClearShowCallbacks();
+            DebugAds.LogAdEvent("Rewarded", "show_failed", _adUnitId, "provider=MAX", err.Message);
             cb?.Invoke(err.Message);
             // Display failed consumed/invalidated the loaded ad — reload a fresh one.
             WarmReload();
@@ -368,6 +394,7 @@ namespace JisSDKAds.Providers.Max
         void UnsubscribeShow()
         {
             MaxSdkCallbacks.Rewarded.OnAdReceivedRewardEvent -= OnReward;
+            MaxSdkCallbacks.Rewarded.OnAdDisplayedEvent -= OnShown;
             MaxSdkCallbacks.Rewarded.OnAdHiddenEvent -= OnHidden;
             MaxSdkCallbacks.Rewarded.OnAdDisplayFailedEvent -= OnDisplayFailed;
             MaxSdkCallbacks.Rewarded.OnAdRevenuePaidEvent -= OnPaid;
@@ -376,6 +403,7 @@ namespace JisSDKAds.Providers.Max
         void UnsubscribeShowExceptReward()
         {
             MaxSdkCallbacks.Rewarded.OnAdHiddenEvent -= OnHidden;
+            MaxSdkCallbacks.Rewarded.OnAdDisplayedEvent -= OnShown;
             MaxSdkCallbacks.Rewarded.OnAdDisplayFailedEvent -= OnDisplayFailed;
             MaxSdkCallbacks.Rewarded.OnAdRevenuePaidEvent -= OnPaid;
         }
@@ -434,6 +462,7 @@ namespace JisSDKAds.Providers.Max
             {
                 _pendingOnLoaded = onLoaded;
                 _pendingOnFailed = onFailed;
+                DebugAds.LogAdEvent("Banner", "load_start", _adUnitId, "provider=MAX");
                 MaxSdk.CreateBanner(_adUnitId, _position);
                 _created = true;
                 return;
@@ -457,6 +486,7 @@ namespace JisSDKAds.Providers.Max
             var cb = _pendingOnLoaded;
             _pendingOnLoaded = null;
             _pendingOnFailed = null;
+            DebugAds.LogAdEvent("Banner", "load_success", _adUnitId, "provider=MAX");
             cb?.Invoke();
         }
 
@@ -466,6 +496,7 @@ namespace JisSDKAds.Providers.Max
             _isLoaded = false;
             var cb = _pendingOnFailed;
             _pendingOnFailed = null;
+            DebugAds.LogAdEvent("Banner", "load_fail", _adUnitId, "provider=MAX", err.Message);
             cb?.Invoke(err.Message);
         }
 
@@ -483,8 +514,10 @@ namespace JisSDKAds.Providers.Max
                 return;
             }
 
+            DebugAds.LogAdEvent("Banner", "show_call", _adUnitId, "provider=MAX");
             MaxSdk.ShowBanner(_adUnitId);
             _isVisible = true;
+            DebugAds.LogAdEvent("Banner", "show_shown", _adUnitId, "provider=MAX");
             onShown?.Invoke();
         }
 
@@ -492,6 +525,7 @@ namespace JisSDKAds.Providers.Max
         {
             MaxSdk.HideBanner(_adUnitId);
             _isVisible = false;
+            DebugAds.LogAdEvent("Banner", "hide", _adUnitId, "provider=MAX");
         }
 
         public void Destroy()
@@ -503,6 +537,7 @@ namespace JisSDKAds.Providers.Max
             _isVisible = false;
             _isLoaded = false;
             _created = false;
+            DebugAds.LogAdEvent("Banner", "destroy", _adUnitId, "provider=MAX");
         }
     }
 
@@ -529,6 +564,7 @@ namespace JisSDKAds.Providers.Max
             _pendingOnLoaded = onLoaded;
             _pendingOnLoadFailed = onFailed;
 
+            DebugAds.LogAdEvent("AppOpen", "load_start", _adUnitId, "provider=MAX");
             MaxSdkCallbacks.AppOpen.OnAdLoadedEvent -= OnLoadResult;
             MaxSdkCallbacks.AppOpen.OnAdLoadedEvent += OnLoadResult;
             MaxSdkCallbacks.AppOpen.OnAdLoadFailedEvent -= OnLoadFailed;
@@ -543,6 +579,7 @@ namespace JisSDKAds.Providers.Max
             var cb = _pendingOnLoaded;
             _pendingOnLoaded = null;
             _pendingOnLoadFailed = null;
+            DebugAds.LogAdEvent("AppOpen", "load_success", _adUnitId, "provider=MAX");
             cb?.Invoke();
         }
 
@@ -553,6 +590,7 @@ namespace JisSDKAds.Providers.Max
             var cb = _pendingOnLoadFailed;
             _pendingOnLoaded = null;
             _pendingOnLoadFailed = null;
+            DebugAds.LogAdEvent("AppOpen", "load_fail", _adUnitId, "provider=MAX", err.Message);
             cb?.Invoke(err.Message);
         }
 
@@ -566,6 +604,7 @@ namespace JisSDKAds.Providers.Max
         {
             if (!IsLoaded)
             {
+                DebugAds.LogAdEvent("AppOpen", "show_blocked_not_loaded", _adUnitId, "provider=MAX");
                 onFailed?.Invoke("App open ad not loaded");
                 return;
             }
@@ -582,6 +621,7 @@ namespace JisSDKAds.Providers.Max
             MaxSdkCallbacks.AppOpen.OnAdDisplayFailedEvent += OnDisplayFailed;
             MaxSdkCallbacks.AppOpen.OnAdRevenuePaidEvent -= OnPaid;
             MaxSdkCallbacks.AppOpen.OnAdRevenuePaidEvent += OnPaid;
+            DebugAds.LogAdEvent("AppOpen", "show_call", _adUnitId, "provider=MAX");
             MaxSdk.ShowAppOpenAd(_adUnitId);
         }
 
@@ -591,6 +631,7 @@ namespace JisSDKAds.Providers.Max
             MaxSdkCallbacks.AppOpen.OnAdDisplayedEvent -= OnShown;
             var cb = _pendingOnShown;
             _pendingOnShown = null;
+            DebugAds.LogAdEvent("AppOpen", "show_opened", _adUnitId, "provider=MAX");
             cb?.Invoke();
         }
 
@@ -600,6 +641,7 @@ namespace JisSDKAds.Providers.Max
             UnsubscribeShow();
             var cb = _pendingOnClosed;
             ClearShowCallbacks();
+            DebugAds.LogAdEvent("AppOpen", "show_closed", _adUnitId, "provider=MAX");
             cb?.Invoke();
         }
 
@@ -609,6 +651,7 @@ namespace JisSDKAds.Providers.Max
             UnsubscribeShow();
             var cb = _pendingOnShowFailed;
             ClearShowCallbacks();
+            DebugAds.LogAdEvent("AppOpen", "show_failed", _adUnitId, "provider=MAX", err.Message);
             cb?.Invoke(err.Message);
         }
 
@@ -717,6 +760,7 @@ namespace JisSDKAds.Providers.Max.SequentialTier
             _pendingOnLoaded = onLoaded;
             _pendingOnFailed = onFailed;
             RefreshLoaderCallbacks();
+            DebugAds.LogAdEvent("Interstitial", "load_start", null, "provider=MAX tiered");
             _loader.Load();
         }
 
@@ -727,9 +771,12 @@ namespace JisSDKAds.Providers.Max.SequentialTier
             _pendingOnShowFailed = onFailed;
             RefreshLoaderCallbacks();
 
+            var unitId = _loader.ReadyCache?.AdUnitId;
+            DebugAds.LogAdEvent("Interstitial", "show_call", unitId, "provider=MAX tiered");
             if (_loader.Show())
                 return;
 
+            DebugAds.LogAdEvent("Interstitial", "show_blocked_not_loaded", unitId, "provider=MAX tiered");
             _pendingOnShowFailed?.Invoke("Interstitial not ready");
             _loader.Load(forceReload: true);
         }
@@ -752,6 +799,7 @@ namespace JisSDKAds.Providers.Max.SequentialTier
         {
             var cb = _pendingOnLoaded;
             _pendingOnLoaded = null;
+            DebugAds.LogAdEvent("Interstitial", "load_success", _loader.ReadyCache?.AdUnitId, "provider=MAX tiered");
             cb?.Invoke();
         }
 
@@ -759,6 +807,7 @@ namespace JisSDKAds.Providers.Max.SequentialTier
         {
             var cb = _pendingOnFailed;
             _pendingOnFailed = null;
+            DebugAds.LogAdEvent("Interstitial", "load_fail", null, "provider=MAX tiered", "Sequential tier ladder failed");
             cb?.Invoke("Sequential tier ladder failed");
         }
 
@@ -766,6 +815,7 @@ namespace JisSDKAds.Providers.Max.SequentialTier
         {
             var cb = _pendingOnShown;
             _pendingOnShown = null;
+            DebugAds.LogAdEvent("Interstitial", "show_opened", _loader.ReadyCache?.AdUnitId, "provider=MAX tiered");
             cb?.Invoke();
         }
 
@@ -773,6 +823,7 @@ namespace JisSDKAds.Providers.Max.SequentialTier
         {
             var cb = _pendingOnClosed;
             _pendingOnClosed = null;
+            DebugAds.LogAdEvent("Interstitial", "show_closed", _loader.ReadyCache?.AdUnitId, "provider=MAX tiered");
             cb?.Invoke();
             _loader.Load(forceReload: true);
         }
@@ -781,7 +832,9 @@ namespace JisSDKAds.Providers.Max.SequentialTier
         {
             var cb = _pendingOnShowFailed;
             _pendingOnShowFailed = null;
-            cb?.Invoke(string.IsNullOrEmpty(error?.Message) ? "show_failed" : error.Value.Message);
+            var message = string.IsNullOrEmpty(error?.Message) ? "show_failed" : error.Value.Message;
+            DebugAds.LogAdEvent("Interstitial", "show_failed", _loader.ReadyCache?.AdUnitId, "provider=MAX tiered", message);
+            cb?.Invoke(message);
             _loader.Load(forceReload: true);
         }
     }
@@ -814,6 +867,7 @@ namespace JisSDKAds.Providers.Max.SequentialTier
             _pendingOnLoaded = onLoaded;
             _pendingOnFailed = onFailed;
             RefreshLoaderCallbacks();
+            DebugAds.LogAdEvent("Rewarded", "load_start", null, "provider=MAX tiered");
             _loader.Load();
         }
 
@@ -824,9 +878,12 @@ namespace JisSDKAds.Providers.Max.SequentialTier
             _pendingOnShowFailed = onFailed;
             RefreshLoaderCallbacks();
 
+            var unitId = _loader.ReadyCache?.AdUnitId;
+            DebugAds.LogAdEvent("Rewarded", "show_call", unitId, "provider=MAX tiered");
             if (_loader.Show())
                 return;
 
+            DebugAds.LogAdEvent("Rewarded", "show_blocked_not_loaded", unitId, "provider=MAX tiered");
             _pendingOnShowFailed?.Invoke("Rewarded not ready");
             _loader.Load(urgent: true);
         }
@@ -838,6 +895,7 @@ namespace JisSDKAds.Providers.Max.SequentialTier
                 OnLoadFailed,
                 new SequentialTierShowHooks
                 {
+                    onOpened = OnShowOpened,
                     onClosed = OnShowClosed,
                     onFailed = OnShowFailed,
                     onRewardGranted = OnRewardGranted,
@@ -849,6 +907,7 @@ namespace JisSDKAds.Providers.Max.SequentialTier
         {
             var cb = _pendingOnLoaded;
             _pendingOnLoaded = null;
+            DebugAds.LogAdEvent("Rewarded", "load_success", _loader.ReadyCache?.AdUnitId, "provider=MAX tiered");
             cb?.Invoke();
         }
 
@@ -856,13 +915,20 @@ namespace JisSDKAds.Providers.Max.SequentialTier
         {
             var cb = _pendingOnFailed;
             _pendingOnFailed = null;
+            DebugAds.LogAdEvent("Rewarded", "load_fail", null, "provider=MAX tiered", "Sequential tier ladder failed");
             cb?.Invoke("Sequential tier ladder failed");
+        }
+
+        void OnShowOpened()
+        {
+            DebugAds.LogAdEvent("Rewarded", "show_opened", _loader.ReadyCache?.AdUnitId, "provider=MAX tiered");
         }
 
         void OnRewardGranted()
         {
             var cb = _pendingOnRewardGranted;
             _pendingOnRewardGranted = null;
+            DebugAds.LogAdEvent("Rewarded", "reward_granted", _loader.ReadyCache?.AdUnitId, "provider=MAX tiered");
             cb?.Invoke();
         }
 
@@ -870,6 +936,7 @@ namespace JisSDKAds.Providers.Max.SequentialTier
         {
             var cb = _pendingOnClosed;
             _pendingOnClosed = null;
+            DebugAds.LogAdEvent("Rewarded", "show_closed", _loader.ReadyCache?.AdUnitId, "provider=MAX tiered");
             cb?.Invoke();
             _loader.Load(forceReload: true);
         }
@@ -878,7 +945,9 @@ namespace JisSDKAds.Providers.Max.SequentialTier
         {
             var cb = _pendingOnShowFailed;
             _pendingOnShowFailed = null;
-            cb?.Invoke(string.IsNullOrEmpty(error?.Message) ? "show_failed" : error.Value.Message);
+            var message = string.IsNullOrEmpty(error?.Message) ? "show_failed" : error.Value.Message;
+            DebugAds.LogAdEvent("Rewarded", "show_failed", _loader.ReadyCache?.AdUnitId, "provider=MAX tiered", message);
+            cb?.Invoke(message);
             _loader.Load(forceReload: true);
         }
     }
