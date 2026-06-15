@@ -188,7 +188,10 @@ namespace JisSDKAds.Editor
 
                 EditorGUILayout.Space(6);
                 DrawSingleFormatSection("SDK Keys & Integrations", () =>
-                    JisSDKAdsSetupFieldDrawer.DrawSdkKeys(setup, primaryMediation));
+                    JisSDKAdsSetupFieldDrawer.DrawSdkKeys(
+                        setup,
+                        primaryMediation,
+                        ShouldShowMaxSdkKey(settings, setup, primaryMediation)));
 
                 EditorGUILayout.Space(6);
                 DrawFormatTabs(settings, profile, setup, primaryMediation);
@@ -496,6 +499,24 @@ namespace JisSDKAds.Editor
             AdsMediationType.MAX => "MAX",
             _ => mediation.ToString()
         };
+
+        static bool ShouldShowMaxSdkKey(
+            JisSDKAdsSettings settings,
+            SDKSetup setup,
+            AdsMediationType primaryMediation)
+        {
+            if (primaryMediation == AdsMediationType.MAX)
+                return true;
+
+            if (settings != null && settings.GetFullscreenAutoShowPriority().Contains(AdsMediationType.MAX))
+                return true;
+
+            return setup != null
+                   && (setup.GetAdsMediationType(AdsType.BANNER) == AdsMediationType.MAX
+                       || setup.GetAdsMediationType(AdsType.INTERSTITIAL) == AdsMediationType.MAX
+                       || setup.GetAdsMediationType(AdsType.REWARDED) == AdsMediationType.MAX
+                       || setup.GetAdsMediationType(AdsType.APP_OPEN) == AdsMediationType.MAX);
+        }
 
         static void DrawSingleFormatSection(string title, Action drawContent)
         {

@@ -255,7 +255,10 @@ namespace JisSDKAds.Editor
             });
         }
 
-        public static void DrawSdkKeys(SDKSetup setup, AdsMediationType primaryMediation)
+        public static void DrawSdkKeys(
+            SDKSetup setup,
+            AdsMediationType primaryMediation,
+            bool showMaxSdkKey = false)
         {
             DrawSetupFields(setup, () =>
             {
@@ -276,11 +279,18 @@ namespace JisSDKAds.Editor
                         setup.CustomAdImpressionEventName ?? string.Empty);
                 }
 
-                if (primaryMediation == AdsMediationType.MAX)
+                if (primaryMediation == AdsMediationType.MAX || showMaxSdkKey)
                 {
                     setup.sdkKey_MAX = EditorGUILayout.TextField(
                         "AppLovin SDK Key",
                         setup.sdkKey_MAX ?? string.Empty);
+
+                    if (primaryMediation != AdsMediationType.MAX)
+                    {
+                        EditorGUILayout.HelpBox(
+                            "MAX SDK Key is required because MAX is enabled for at least one format or fullscreen fallback route.",
+                            MessageType.None);
+                    }
                 }
             });
         }
