@@ -6,7 +6,7 @@ using UnityEngine;
 namespace JisSDKAds.Ads.Integration
 {
     /// <summary>
-    /// Starts <c>MobileAds.Initialize</c> via the AdMob provider assembly when active profile uses AdMob,
+    /// Starts <c>MobileAds.Initialize</c> via the AdMob provider assembly when the active profile uses AdMob,
     /// without a compile-time reference to <c>JisSDKAds.Providers.AdMob</c>.
     /// </summary>
     internal static class AdMobSdkEarlyInitBridge
@@ -16,17 +16,11 @@ namespace JisSDKAds.Ads.Integration
 
         public static void TryWarmUpFromSettings(JisSDKAdsSettings settings)
         {
-            if (settings == null || settings.GetActiveMediation() != AdsMediationType.ADMOB)
+            var profile = settings?.GetActiveProfile();
+            if (!ShouldWarmUpAdMob(settings, profile))
                 return;
 
-            if (settings.ShouldDelegateConsentToMax())
-            {
-                DebugAds.LogSdkInit("JisAds", "AdMob early SDK warm-up", true,
-                    "skipped because multiple mediation delegates consent to MAX");
-                return;
-            }
-
-            var requestConsent = ShouldRequestConsent();
+            var requestConsent = ResolveRequestConsent(settings);
             var type = Type.GetType(InitializerTypeName);
             if (type == null)
             {
@@ -47,6 +41,36 @@ namespace JisSDKAds.Ads.Integration
             DebugAds.LogSdkInit("JisAds", "AdMob early SDK warm-up", true,
                 $"requestConsent={requestConsent} (parallel with Firebase Remote Config)");
             method.Invoke(null, new object[] { requestConsent });
+        }
+
+        static bool ShouldWarmUpAdMob(JisSDKAdsSettings settings, PlatformAdsProfile profile)
+        {
+            if (settings == null || profile == null)
+                return false;
+
+            if (profile.mediation == AdsMediationType.ADMOB)
+                return true;
+
+            var setup = profile.sdkSetup;
+            if (setup != null)
+            {
+                if (setup.GetAdsMediationType(AdsType.BANNER) == AdsMediationType.ADMOB
+                    || setup.GetAdsMediationType(AdsType.INTERSTITIAL) == AdsMediationType.ADMOB
+                    || setup.GetAdsMediationType(AdsType.REWARDED) == AdsMediationType.ADMOB
+                    || setup.GetAdsMediationType(AdsType.APP_OPEN) == AdsMediationType.ADMOB)
+                    return true;
+            }
+
+            return settings.autoShowFirstMediation == AdsMediationType.ADMOB
+                   || settings.autoShowSecondMediation == AdsMediationType.ADMOB;
+        }
+
+        static bool ResolveRequestConsent(JisSDKAdsSettings settings)
+        {
+            if (settings != null && settings.ShouldDelegateConsentToMax())
+                return false;
+
+            return ShouldRequestConsent();
         }
 
         static bool ShouldRequestConsent()

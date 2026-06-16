@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -69,12 +70,16 @@ namespace JisSDKAds.Ads
         private bool _rewardedCallbacksInFlight;
         private int _rewardedShowAttemptId;
         private Coroutine _rewardedWatchdogCoroutine;
-        private bool _standardFormatsPreloadedAfterRemoteConfig;
+        private bool _immediateFormatsPreloadedOnCoreReady;
+        private bool _fullscreenFormatsPreloadedAfterRemoteConfig;
+        private bool _pendingImmediatePreloadAfterCoreReady;
+        private bool _pendingFullscreenPreloadAfterRemoteConfig;
+        private bool _pendingRecoverFullscreenPreloadsAfterCoreReady;
         private bool _legacyBridgeNotified;
         private bool _appOpenResumeInitStarted;
-        private bool _pendingRecoverPreloadsAfterCoreReady;
-        private bool _pendingStartupPreloadAfterCoreReady;
         private bool _isApplyingRemoteConfig;
+        private TaskCompletionSource<bool> _initializeAsyncGate;
+        const float CoreInitWaitTimeoutSec = 45f;
         private readonly int[] _preloadFailCounts = new int[3];
         private readonly bool[] _preloadRetryInFlight = new bool[3];
         private readonly Coroutine[] _preloadRetryCoroutines = new Coroutine[3];
@@ -138,6 +143,16 @@ namespace JisSDKAds.Ads
                 appOpenFirstShowDelayMs,
                 appOpenFirstShowWaitLoadTimeoutSec,
                 appOpenMinIntervalBetweenShowsSec);
+            WarmUpAdSdksEarly();
+        }
+
+        void WarmUpAdSdksEarly()
+        {
+            if (settings == null)
+                return;
+
+            AdMobSdkEarlyInitBridge.TryWarmUpFromSettings(settings);
+            MaxSdkEarlyInitBridge.TryWarmUpFromSettings(settings);
         }
         private void OnApplicationPause(bool pauseStatus)
         {
@@ -161,26 +176,84 @@ namespace JisSDKAds.Ads
         }
         public async Task InitializeAsync(bool fetchRemoteConfig = true)
         {
+            if (_core != null && _core.IsInitialized)
+            {
+                TryCompleteStartupAfterCoreReady();
+                return;
+            }
+
+            Task<bool> inFlight = null;
+            var isLeader = false;
+            lock (this)
+            {
+                if (_initializeAsyncGate == null)
+                {
+                    _initializeAsyncGate = new TaskCompletionSource<bool>();
+                    isLeader = true;
+                }
+                else
+                {
+                    inFlight = _initializeAsyncGate.Task;
+                }
+            }
+
+            if (!isLeader)
+            {
+                DebugAds.Log("[JisAds] InitializeAsync already in progress — joining existing startup.");
+                await inFlight;
+                await WaitForCoreReadyAsync();
+                TryCompleteStartupAfterCoreReady();
+                return;
+            }
+
+            try
+            {
+                await RunInitializeAsyncCore(fetchRemoteConfig);
+                _initializeAsyncGate.TrySetResult(true);
+            }
+            catch (Exception ex)
+            {
+                _initializeAsyncGate.TrySetException(ex);
+                lock (this)
+                    _initializeAsyncGate = null;
+                throw;
+            }
+
+            await WaitForCoreReadyAsync();
+            LogInitializeAsyncComplete();
+        }
+
+        async Task RunInitializeAsyncCore(bool fetchRemoteConfig)
+        {
             settings?.ApplyRuntimeDebugSettings();
             RefreshRemoveAdsFromPersistence();
             DebugAds.LogSdkInit("JisAds", "InitializeAsync", true, $"fetchRemoteConfig={fetchRemoteConfig}");
-            AdMobSdkEarlyInitBridge.TryWarmUpFromSettings(settings);
-            MaxSdkEarlyInitBridge.TryWarmUpFromSettings(settings);
+            WarmUpAdSdksEarly();
             await InitializeFirebaseAsync(fetchRemoteConfig);
             ApplyRemoteAdInventoryFromConfig();
             InitializeCoreFlow();
+        }
 
-            // Core-only readiness: wait a bit for Core to finish initializing.
+        async Task WaitForCoreReadyAsync()
+        {
+            if (_core != null && _core.IsInitialized)
+            {
+                TryCompleteStartupAfterCoreReady();
+                return;
+            }
+
             var waited = 0f;
-            const float timeout = 15f;
-            while ((_core == null || !_core.IsInitialized) && waited < timeout)
+            while ((_core == null || !_core.IsInitialized) && waited < CoreInitWaitTimeoutSec)
             {
                 waited += Time.unscaledDeltaTime;
                 await Task.Yield();
             }
 
             TryCompleteStartupAfterCoreReady();
+        }
 
+        void LogInitializeAsyncComplete()
+        {
             var coreReadyNow = _core != null && _core.IsInitialized;
             DebugAds.LogSdkInit(
                 "JisAds",
@@ -214,26 +287,140 @@ namespace JisSDKAds.Ads
                 AdsManager.Instance?.NotifyJisAdsCoreReady();
             }
 
-            if (!_appOpenResumeInitStarted && ShouldPreloadAdsOnGameStart())
-            {
-                _appOpenResumeInitStarted = true;
-                StartCoroutine(CoInitializeAppOpenAndResume());
-            }
+            if (!_appOpenResumeInitStarted)
+                EnsureAppOpenAndResumeBootstrapped();
 
             if (!ShouldPreloadAdsOnGameStart())
             {
-                _pendingRecoverPreloadsAfterCoreReady = false;
-                _pendingStartupPreloadAfterCoreReady = false;
+                _pendingRecoverFullscreenPreloadsAfterCoreReady = false;
+                _pendingImmediatePreloadAfterCoreReady = false;
+                _pendingFullscreenPreloadAfterRemoteConfig = false;
                 return;
             }
 
-            if (_pendingRecoverPreloadsAfterCoreReady)
-                RunDeferredPreloadRecovery();
-            else if (_pendingStartupPreloadAfterCoreReady || !_standardFormatsPreloadedAfterRemoteConfig)
-                PreloadStandardFormatsAfterRemoteConfig();
+            if (_pendingRecoverFullscreenPreloadsAfterCoreReady)
+            {
+                TryPreloadImmediateFormatsOnCoreReady();
+                RunDeferredFullscreenPreloadRecovery();
+            }
+            else
+            {
+                TryPreloadImmediateFormatsOnCoreReady();
+                TryPreloadFullscreenFormatsAfterRemoteConfig();
+            }
 
             TryFulfillQueuedBannerShow();
         }
+
+        void EnsureAppOpenAndResumeBootstrapped()
+        {
+            if (_appOpenResumeInitStarted)
+                return;
+
+            _appOpenResumeInitStarted = true;
+            resumeCoordinator?.Bind(this, _appOpen);
+
+            if (ShouldPreloadAdsOnGameStart() && IsAppOpenEnabledInSetup())
+                _appOpen?.BeginAfterCoreReady();
+
+            if (IsRemoteConfigReady())
+                resumeCoordinator?.ApplyRemoteConfig();
+        }
+
+        void TryPreloadImmediateFormatsOnCoreReady()
+        {
+            if (Application.isEditor)
+                return;
+
+            if (!ShouldPreloadAdsOnGameStart())
+            {
+                _immediateFormatsPreloadedOnCoreReady = true;
+                _pendingImmediatePreloadAfterCoreReady = false;
+                return;
+            }
+
+            if (_core == null || !_core.IsInitialized)
+            {
+                _pendingImmediatePreloadAfterCoreReady = true;
+                DebugAds.Log("[JisAds] Deferring banner/app-open preload — Core AdManager not ready.");
+                return;
+            }
+
+            if (_immediateFormatsPreloadedOnCoreReady)
+                return;
+
+            _pendingImmediatePreloadAfterCoreReady = false;
+            _immediateFormatsPreloadedOnCoreReady = true;
+
+            if (IsBannerEnabledInSetup())
+            {
+                DebugAds.Log("[JisAds] Preloading banner — Core ready (no Remote Config wait).");
+                PreloadBannerAd(isStartup: true);
+            }
+
+            if (IsAppOpenEnabledInSetup() && _appOpen != null)
+            {
+                DebugAds.Log("[JisAds] Preloading app open — Core ready (no Remote Config wait).");
+                _appOpen.Preload();
+            }
+        }
+
+        void TryPreloadFullscreenFormatsAfterRemoteConfig()
+        {
+            if (Application.isEditor)
+                return;
+
+            if (!ShouldPreloadAdsOnGameStart())
+            {
+                _fullscreenFormatsPreloadedAfterRemoteConfig = true;
+                _pendingFullscreenPreloadAfterRemoteConfig = false;
+                return;
+            }
+
+            if (_core == null || !_core.IsInitialized)
+            {
+                _pendingFullscreenPreloadAfterRemoteConfig = true;
+                DebugAds.Log("[JisAds] Deferring interstitial/rewarded preload — Core AdManager not ready.");
+                return;
+            }
+
+            if (!IsRemoteConfigReady())
+            {
+                _pendingFullscreenPreloadAfterRemoteConfig = true;
+                DebugAds.Log("[JisAds] Deferring interstitial/rewarded preload — Remote Config not ready.");
+                return;
+            }
+
+            if (_fullscreenFormatsPreloadedAfterRemoteConfig)
+                return;
+
+            _pendingFullscreenPreloadAfterRemoteConfig = false;
+            _fullscreenFormatsPreloadedAfterRemoteConfig = true;
+
+            if (IsRewardedEnabledInSetup())
+            {
+                DebugAds.Log("[JisAds] Preloading rewarded — Remote Config applied.");
+                PreloadRewardedAd();
+            }
+
+            if (IsInterstitialEnabledInSetup())
+                StartCoroutine(CoDeferredInterstitialPreload());
+        }
+
+        static bool IsRemoteConfigReady() =>
+            FirebaseManager.Instance != null && FirebaseManager.Instance.IsRemoteConfigReady;
+
+        bool IsBannerEnabledInSetup() =>
+            settings?.GetActiveProfile()?.sdkSetup?.IsActiveAdsType(AdsType.BANNER) == true;
+
+        bool IsAppOpenEnabledInSetup() =>
+            settings?.GetActiveProfile()?.sdkSetup?.IsActiveAdsType(AdsType.APP_OPEN) == true;
+
+        bool IsInterstitialEnabledInSetup() =>
+            settings?.GetActiveProfile()?.sdkSetup?.IsActiveAdsType(AdsType.INTERSTITIAL) == true;
+
+        bool IsRewardedEnabledInSetup() =>
+            settings?.GetActiveProfile()?.sdkSetup?.IsActiveAdsType(AdsType.REWARDED) == true;
 
         void TryFulfillQueuedBannerShow()
         {
@@ -247,44 +434,10 @@ namespace JisSDKAds.Ads
             RestartBannerAutoRefresh();
         }
 
-        void PreloadStandardFormatsAfterRemoteConfig()
+        void RunDeferredFullscreenPreloadRecovery()
         {
-            if (Application.isEditor)
-                return;
-            if (_standardFormatsPreloadedAfterRemoteConfig)
-                return;
-            if (!ShouldPreloadAdsOnGameStart())
-            {
-                _standardFormatsPreloadedAfterRemoteConfig = true;
-                _pendingStartupPreloadAfterCoreReady = false;
-                return;
-            }
-
-            if (_core == null || !_core.IsInitialized)
-            {
-                _pendingStartupPreloadAfterCoreReady = true;
-                DebugAds.Log("[JisAds] Deferring startup preload — Core AdManager not ready.");
-                return;
-            }
-
-            if (FirebaseManager.Instance == null || !FirebaseManager.Instance.IsRemoteConfigReady)
-            {
-                _pendingStartupPreloadAfterCoreReady = true;
-                DebugAds.Log("[JisAds] Deferring startup preload — Remote Config not ready.");
-                return;
-            }
-
-            _pendingStartupPreloadAfterCoreReady = false;
-            _standardFormatsPreloadedAfterRemoteConfig = true;
-            PreloadBannerAd(isStartup: true);
-            PreloadRewardedAd();
-            StartCoroutine(CoDeferredInterstitialPreload());
-        }
-
-        void RunDeferredPreloadRecovery()
-        {
-            _pendingRecoverPreloadsAfterCoreReady = false;
-            _pendingStartupPreloadAfterCoreReady = false;
+            _pendingRecoverFullscreenPreloadsAfterCoreReady = false;
+            _pendingFullscreenPreloadAfterRemoteConfig = false;
 
             if (!UseCoreForStandardFormats || !CanShowAds())
                 return;
@@ -292,9 +445,9 @@ namespace JisSDKAds.Ads
             _preloadFailCounts[PreloadFormatIndex(StandardAdPreloadFormat.Interstitial)] = 0;
             _preloadFailCounts[PreloadFormatIndex(StandardAdPreloadFormat.Rewarded)] = 0;
 
-            if (!_standardFormatsPreloadedAfterRemoteConfig)
+            if (!_fullscreenFormatsPreloadedAfterRemoteConfig)
             {
-                PreloadStandardFormatsAfterRemoteConfig();
+                TryPreloadFullscreenFormatsAfterRemoteConfig();
                 return;
             }
 
@@ -380,7 +533,7 @@ namespace JisSDKAds.Ads
             if (!UseCoreForStandardFormats || _core == null)
                 return;
 
-            var providerIds = GetFullscreenShowProviderIds(AdFormat.Interstitial);
+            var providerIds = GetFullscreenPreloadProviderIds(AdFormat.Interstitial);
             LogFullscreenLoadPlan(AdFormat.Interstitial, providerIds);
 
             foreach (var providerId in providerIds)
@@ -408,7 +561,7 @@ namespace JisSDKAds.Ads
                     onFailed: err =>
                     {
                         DebugAds.LogWarning($"[JisAds][Interstitial][preload_fail] mediation={providerId} error={err}");
-                        HandlePreloadFailed(StandardAdPreloadFormat.Interstitial);
+                        HandlePreloadFailedIfNoFormatReady(StandardAdPreloadFormat.Interstitial);
                     });
             }
         }
@@ -418,7 +571,7 @@ namespace JisSDKAds.Ads
             if (!UseCoreForStandardFormats || _core == null)
                 return;
 
-            var providerIds = GetFullscreenShowProviderIds(AdFormat.Rewarded);
+            var providerIds = GetFullscreenPreloadProviderIds(AdFormat.Rewarded);
             LogFullscreenLoadPlan(AdFormat.Rewarded, providerIds);
 
             foreach (var providerId in providerIds)
@@ -446,9 +599,26 @@ namespace JisSDKAds.Ads
                     onFailed: err =>
                     {
                         DebugAds.LogWarning($"[JisAds][Rewarded][preload_fail] mediation={providerId} error={err}");
-                        HandlePreloadFailed(StandardAdPreloadFormat.Rewarded);
+                        HandlePreloadFailedIfNoFormatReady(StandardAdPreloadFormat.Rewarded);
                     });
             }
+        }
+
+        void HandlePreloadFailedIfNoFormatReady(StandardAdPreloadFormat format)
+        {
+            if (format == StandardAdPreloadFormat.Interstitial && IsInterstitialAdLoaded())
+            {
+                OnPreloadSucceeded(format);
+                return;
+            }
+
+            if (format == StandardAdPreloadFormat.Rewarded && IsRewardedVideoLoaded())
+            {
+                OnPreloadSucceeded(format);
+                return;
+            }
+
+            HandlePreloadFailed(format);
         }
 
         /*
@@ -684,34 +854,17 @@ namespace JisSDKAds.Ads
                 },
                 onFailed: err => DebugAds.LogWarning($"[JisAds] Banner auto-refresh load failed: {err}"));
         }
-        IEnumerator CoInitializeAppOpenAndResume()
-        {
-            if (_core != null)
-            {
-                var waited = 0f;
-                const float timeout = 15f;
-                while (!_core.IsInitialized && waited < timeout)
-                {
-                    waited += Time.unscaledDeltaTime;
-                    yield return null;
-                }
-            }
-
-            resumeCoordinator?.Bind(this, _appOpen);
-            resumeCoordinator?.ApplyRemoteConfig();
-            _appOpen?.BeginAfterSdkReady();
-        }
         public void RefreshAppOpenAndResumeRemoteConfig()
         {
             _appOpen?.ApplyRemoteConfig();
             resumeCoordinator?.ApplyRemoteConfig();
             ApplyBannerRemoteConfig();
-            RecoverStandardPreloadsAfterRemoteConfigRefresh();
+            RecoverFullscreenPreloadsAfterRemoteConfigRefresh();
         }
 
         /// <summary>
         /// Call after Firebase Remote Config is ready (fetch success or defaults-only).
-        /// Applies inventory, legacy managers, app-open/resume policies, and arms standard-format preloads.
+        /// Applies inventory, legacy managers, app-open/resume policies, and arms fullscreen preloads.
         /// </summary>
         public void OnRemoteConfigFetched()
         {
@@ -760,7 +913,7 @@ namespace JisSDKAds.Ads
         /// resolved IDs and re-arm interstitial/rewarded preloads that may have permanently given up
         /// earlier (the tiered preload retry stops after a few "no ad unit configured" failures).
         /// </summary>
-        void RecoverStandardPreloadsAfterRemoteConfigRefresh()
+        void RecoverFullscreenPreloadsAfterRemoteConfigRefresh()
         {
             // Always apply inventory when RC arrives — even if Core is still initializing.
             ApplyRemoteAdInventoryFromConfig();
@@ -770,13 +923,16 @@ namespace JisSDKAds.Ads
 
             if (_core == null || !_core.IsInitialized)
             {
-                _pendingRecoverPreloadsAfterCoreReady = true;
-                _pendingStartupPreloadAfterCoreReady = false;
-                DebugAds.Log("[JisAds] Deferring preload recovery — Core AdManager not ready.");
+                _pendingRecoverFullscreenPreloadsAfterCoreReady = true;
+                _pendingFullscreenPreloadAfterRemoteConfig = false;
+                DebugAds.Log("[JisAds] Deferring fullscreen preload recovery — Core AdManager not ready.");
                 return;
             }
 
-            RunDeferredPreloadRecovery();
+            if (!_immediateFormatsPreloadedOnCoreReady)
+                TryPreloadImmediateFormatsOnCoreReady();
+
+            RunDeferredFullscreenPreloadRecovery();
         }
         public async Task InitializeFirebaseAsync(bool fetchRemoteConfig = true)
         {
@@ -868,8 +1024,9 @@ namespace JisSDKAds.Ads
                 {
                     DebugAds.LogSdkInit("JisAds", "Core AdManager", false, err);
                     useCoreForStandardFormats = false;
-                    _pendingRecoverPreloadsAfterCoreReady = false;
-                    _pendingStartupPreloadAfterCoreReady = false;
+                    _pendingRecoverFullscreenPreloadsAfterCoreReady = false;
+                    _pendingImmediatePreloadAfterCoreReady = false;
+                    _pendingFullscreenPreloadAfterRemoteConfig = false;
                 });
         }
 
@@ -1015,6 +1172,34 @@ namespace JisSDKAds.Ads
 
             AddProviderIfValid(list, _core != null ? _core.GetProviderIdForFormat(format) : AdProviderId.None);
             return list;
+        }
+
+        /// <summary>
+        /// Preload order for multi-mediation: warm fallback mediation first so a show-ready ad exists
+        /// while the primary provider (often AdMob tiered ladder) is still loading.
+        /// </summary>
+        List<AdProviderId> GetFullscreenPreloadProviderIds(AdFormat format)
+        {
+            var providerIds = GetFullscreenShowProviderIds(format);
+            if (providerIds.Count <= 1 || settings == null || !settings.IsMultipleMediationEnabled(ToAdsType(format)))
+                return providerIds;
+
+            var primary = _core != null ? _core.GetProviderIdForFormat(format) : AdProviderId.None;
+            if (primary == AdProviderId.None)
+                return providerIds;
+
+            var fallbackFirst = new List<AdProviderId>(providerIds.Count);
+            foreach (var providerId in providerIds)
+            {
+                if (providerId != primary)
+                    fallbackFirst.Add(providerId);
+            }
+
+            if (fallbackFirst.Count == 0)
+                return providerIds;
+
+            fallbackFirst.Add(primary);
+            return fallbackFirst;
         }
 
         void LogFullscreenLoadPlan(AdFormat format, List<AdProviderId> providerIds)
@@ -1182,7 +1367,8 @@ namespace JisSDKAds.Ads
 
         void ApplyRemoveAdsSideEffects()
         {
-            _standardFormatsPreloadedAfterRemoteConfig = true;
+            _immediateFormatsPreloadedOnCoreReady = true;
+            _fullscreenFormatsPreloadedAfterRemoteConfig = true;
             StopAllPreloadRetries();
             _bannerWantsVisible = false;
             StopBannerAutoRefresh();

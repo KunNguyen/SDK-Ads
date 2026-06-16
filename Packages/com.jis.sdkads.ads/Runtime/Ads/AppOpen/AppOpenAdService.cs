@@ -56,14 +56,16 @@ namespace JisSDKAds.Ads.AppOpen
             _minIntervalBetweenShowsSec = minIntervalBetweenShowsSec;
         }
 
-        public void BeginAfterSdkReady()
+        public void BeginAfterCoreReady()
         {
             ApplyRemoteConfig();
-            Preload();
 
             if (_showOnColdStart && _isFirstOpen && _showOnFirstOpen)
                 _coroutineRunner.StartCoroutine(CoTryShowFirstOpenSafely());
         }
+
+        /// <summary>Legacy name — use <see cref="BeginAfterCoreReady"/>.</summary>
+        public void BeginAfterSdkReady() => BeginAfterCoreReady();
 
         public void Preload()
         {
