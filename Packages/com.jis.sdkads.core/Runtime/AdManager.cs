@@ -29,6 +29,10 @@ namespace JisSDKAds.Core
         private bool _isInitialized;
 
         public bool IsInitialized => _isInitialized;
+
+        public bool IsProviderInitialized(AdProviderId id) =>
+            id != AdProviderId.None && _initializedProviders.Contains(id);
+
         public IAdService PrimaryProvider => GetProvider(primaryProvider);
         public IAdService FallbackProvider => GetProvider(fallbackProvider);
 
@@ -182,7 +186,7 @@ namespace JisSDKAds.Core
         /// </summary>
         public void ShowInterstitial(Action onClosed = null, Action<string> onFailed = null)
         {
-            if (!_isInitialized)
+            if (!CanShowFormat(AdFormat.Interstitial))
             {
                 onFailed?.Invoke("AdManager not initialized");
                 return;
@@ -198,7 +202,7 @@ namespace JisSDKAds.Core
             Action onClosed = null,
             Action<string> onFailed = null)
         {
-            if (!_isInitialized)
+            if (!CanShowThroughProviders(provider, fallback))
             {
                 onFailed?.Invoke("AdManager not initialized");
                 return;
@@ -275,7 +279,7 @@ namespace JisSDKAds.Core
         /// </summary>
         public void ShowRewarded(Action onRewardEarned = null, Action onClosed = null, Action<string> onFailed = null)
         {
-            if (!_isInitialized)
+            if (!CanShowFormat(AdFormat.Rewarded))
             {
                 onFailed?.Invoke("AdManager not initialized");
                 return;
@@ -292,7 +296,7 @@ namespace JisSDKAds.Core
             Action onClosed = null,
             Action<string> onFailed = null)
         {
-            if (!_isInitialized)
+            if (!CanShowThroughProviders(provider, fallback))
             {
                 onFailed?.Invoke("AdManager not initialized");
                 return;
@@ -378,7 +382,7 @@ namespace JisSDKAds.Core
         /// </summary>
         public void ShowBanner(Action onShown = null, Action<string> onFailed = null)
         {
-            if (!_isInitialized)
+            if (!CanShowFormat(AdFormat.Banner))
             {
                 onFailed?.Invoke("AdManager not initialized");
                 return;
@@ -412,7 +416,8 @@ namespace JisSDKAds.Core
         /// </summary>
         public void HideBanner()
         {
-            if (!_isInitialized) return;
+            if (!CanShowFormat(AdFormat.Banner))
+                return;
             GetProviderForFormat(AdFormat.Banner)?.Banner.Hide();
         }
 
@@ -421,7 +426,7 @@ namespace JisSDKAds.Core
         /// </summary>
         public void ShowAppOpen(Action onClosed = null, Action<string> onFailed = null)
         {
-            if (!_isInitialized)
+            if (!CanShowFormat(AdFormat.AppOpen))
             {
                 onFailed?.Invoke("AdManager not initialized");
                 return;
@@ -527,6 +532,26 @@ namespace JisSDKAds.Core
                 return null;
 
             return provider;
+        }
+
+        bool CanShowThroughProviders(AdProviderId primary, AdProviderId fallback)
+        {
+            if (_isInitialized)
+                return true;
+
+            if (primary != AdProviderId.None && IsProviderInitialized(primary))
+                return true;
+
+            return fallback != AdProviderId.None && IsProviderInitialized(fallback);
+        }
+
+        bool CanShowFormat(AdFormat format)
+        {
+            if (_isInitialized)
+                return true;
+
+            var primary = GetProviderIdForFormat(format);
+            return CanShowThroughProviders(primary, ResolveFallbackProvider(primary));
         }
     }
 }
