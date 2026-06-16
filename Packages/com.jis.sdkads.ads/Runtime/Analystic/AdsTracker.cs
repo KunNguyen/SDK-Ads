@@ -205,16 +205,58 @@ namespace JisSDKAds.Ads
 #endif
         }
 
-        public void TrackAdsInterstitial_LoadedFail(string error, float timeFromStartRequest)
+        public void TrackAdsInterstitial_LoadedSuccess(float timeFromStartRequest, string placement = "")
+        {
+            interstitialAdsLoadSuccess++;
+            timeFromStartRequest = Mathf.Round(timeFromStartRequest * 2) / 2;
+            if (string.IsNullOrEmpty(placement))
+            {
+                var parameters = new[]
+                {
+                    new Parameter("count", interstitialAdsLoadSuccess.ToString()),
+                    new Parameter("request_time", timeFromStartRequest.ToString("F1")),
+                };
+                FirebaseManager.Instance.LogEvent(ad_inter_load, parameters);
+            }
+            else
+            {
+                var parameters = new[]
+                {
+                    new Parameter("count", interstitialAdsLoadSuccess.ToString()),
+                    new Parameter("request_time", timeFromStartRequest.ToString("F1")),
+                    new Parameter("placement", placement),
+                };
+                FirebaseManager.Instance.LogEvent(ad_inter_load, parameters);
+            }
+
+#if UNITY_APPSFLYER
+            AppsflyerManager.TrackInterstitial_LoadedSuccess();
+#endif
+        }
+
+        public void TrackAdsInterstitial_LoadedFail(string error, float timeFromStartRequest, string placement = "")
         {
             //round time to 0.5 
             timeFromStartRequest = Mathf.Round(timeFromStartRequest * 2) / 2;
-            var parameters = new[]
+            if (string.IsNullOrEmpty(placement))
             {
-                new Parameter("error", error),
-                new Parameter("request_time", timeFromStartRequest.ToString("F1")),
-            };
-            FirebaseManager.Instance.LogEvent(ad_inter_load_fail, parameters);
+                var parameters = new[]
+                {
+                    new Parameter("error", error),
+                    new Parameter("request_time", timeFromStartRequest.ToString("F1")),
+                };
+                FirebaseManager.Instance.LogEvent(ad_inter_load_fail, parameters);
+            }
+            else
+            {
+                var parameters = new[]
+                {
+                    new Parameter("error", error),
+                    new Parameter("request_time", timeFromStartRequest.ToString("F1")),
+                    new Parameter("placement", placement),
+                };
+                FirebaseManager.Instance.LogEvent(ad_inter_load_fail, parameters);
+            }
         }
 
         public void TrackAdsInterstitial_ShowSuccess(string placement = "")
@@ -226,14 +268,14 @@ namespace JisSDKAds.Ads
 #endif
         }
 
-        public void TrackAdsInterstitial_ShowFail()
+        public void TrackAdsInterstitial_ShowFail(string placement = "")
         {
-            FirebaseManager.Instance.LogEvent(ad_inter_fail);
+            LogInterstitialEvent(ad_inter_fail, placement);
         }
 
-        public void TrackAdsInterstitial_ShowFailByLoad()
+        public void TrackAdsInterstitial_ShowFailByLoad(string placement = "")
         {
-            FirebaseManager.Instance.LogEvent(ad_inter_show_fail_by_load);
+            LogInterstitialEvent(ad_inter_show_fail_by_load, placement);
         }
 
         public void TrackAdsInterstitial_ClickOnButton(string placement = "")

@@ -1641,7 +1641,7 @@ namespace JisSDKAds.Ads
             UnityAction showFailCallback = null,
             bool isTracking = true,
             bool isSkipCapping = false) =>
-            ShowInterstitial("", AdsMediationType.NONE, closedCallback, showSuccessCallback, showFailCallback, isTracking, isSkipCapping);
+            ShowInterstitial("default", AdsMediationType.NONE, closedCallback, showSuccessCallback, showFailCallback, isTracking, isSkipCapping);
 
         public void ShowInterstitial(
             AdsMediationType mediation,
@@ -1650,7 +1650,7 @@ namespace JisSDKAds.Ads
             UnityAction showFailCallback = null,
             bool isTracking = true,
             bool isSkipCapping = false) =>
-            ShowInterstitial("", mediation, closedCallback, showSuccessCallback, showFailCallback, isTracking, isSkipCapping);
+            ShowInterstitial("default", mediation, closedCallback, showSuccessCallback, showFailCallback, isTracking, isSkipCapping);
 
         public void ShowInterstitialAuto(
             UnityAction closedCallback = null,
@@ -1658,7 +1658,7 @@ namespace JisSDKAds.Ads
             UnityAction showFailCallback = null,
             bool isTracking = true,
             bool isSkipCapping = false) =>
-            ShowInterstitial("", AdsMediationType.NONE, closedCallback, showSuccessCallback, showFailCallback, isTracking, isSkipCapping);
+            ShowInterstitial("auto", AdsMediationType.NONE, closedCallback, showSuccessCallback, showFailCallback, isTracking, isSkipCapping);
 
         public void ShowInterstitial(
             string interstitialPlacement,
@@ -1773,9 +1773,9 @@ namespace JisSDKAds.Ads
             }
 
             if (!_pendingInterstitialHadLoadedAdAtShowRequest)
-                tracker.TrackAdsInterstitial_ShowFailByLoad();
+                tracker.TrackAdsInterstitial_ShowFailByLoad(_pendingInterstitialPlacement);
             else
-                tracker.TrackAdsInterstitial_ShowFail();
+                tracker.TrackAdsInterstitial_ShowFail(_pendingInterstitialPlacement);
         }
 
         void TrackPendingInterstitialClick()

@@ -175,7 +175,7 @@ namespace JisSDKAds.Ads.UnitAdManagers
                else
                {
                     if (AdsTracker.Instance != null)
-                         AdsTracker.Instance.TrackAdsInterstitial_ShowFailByLoad();
+                         AdsTracker.Instance.TrackAdsInterstitial_ShowFailByLoad(Placement);
                     else
                          DebugAds.LogWarning("[InterstitialAdManager] AdsTracker.Instance is null. Skipping interstitial show-fail-by-load tracking.");
                     showFailCallback?.Invoke();
@@ -222,7 +222,7 @@ namespace JisSDKAds.Ads.UnitAdManagers
                DebugAds.Log("OnAdShowFailed Interstitial");
                base.OnAdShowFailed();
                ResetCooldown();
-               AdsTracker.Instance.TrackAdsInterstitial_ShowFail();
+               AdsTracker.Instance.TrackAdsInterstitial_ShowFail(Placement);
           }
           public override void OnAdClose()
           {
@@ -237,7 +237,7 @@ namespace JisSDKAds.Ads.UnitAdManagers
                base.OnAdLoadSuccess();
                AutoLoad.OnLoadSuccess();
                float timeFromStartRequest = (float)(DateTime.Now - StartRequestTime).TotalSeconds;
-               AdsTracker.Instance.TrackAdsInterstitial_LoadedSuccess(timeFromStartRequest);
+               AdsTracker.Instance.TrackAdsInterstitial_LoadedSuccess(timeFromStartRequest, Placement);
           }
 
           public override void OnAdLoadFail()
