@@ -1660,6 +1660,20 @@ namespace JisSDKAds.Ads
             bool isSkipCapping = false) =>
             ShowInterstitial("auto", AdsMediationType.NONE, closedCallback, showSuccessCallback, showFailCallback, isTracking, isSkipCapping);
 
+        public void ShowInterstitialAuto(
+            string placement,
+            UnityAction closedCallback = null,
+            UnityAction showSuccessCallback = null,
+            UnityAction showFailCallback = null,
+            bool isTracking = true,
+            bool isSkipCapping = false)
+        {
+            if (string.IsNullOrEmpty(placement))
+                placement = "auto";
+
+            ShowInterstitial(placement, AdsMediationType.NONE, closedCallback, showSuccessCallback, showFailCallback, isTracking, isSkipCapping);
+        }
+
         public void ShowInterstitial(
             string interstitialPlacement,
             UnityAction closedCallback = null,
