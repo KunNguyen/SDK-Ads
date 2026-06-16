@@ -16,7 +16,7 @@ namespace JisSDKAds.Ads
         static bool ShouldRouteStandardFormatsToJisAds()
         {
             var jis = ActiveJisAds;
-            return jis != null && jis.UseCoreForStandardFormats;
+            return jis != null && jis.UsesCoreRouting;
         }
 
         /// <summary>When true, JisAds Core owns startup preload; legacy AutoLoad is skipped.</summary>

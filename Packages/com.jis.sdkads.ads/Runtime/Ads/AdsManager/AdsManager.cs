@@ -614,11 +614,12 @@ namespace JisSDKAds.Ads
             }
         }
 
-        public void RefreshRemoteConfigDrivenSettings()
+        public void RefreshRemoteConfigDrivenSettings(bool notifyLegacySubscribers = true)
         {
             ApplyRemoteConfigBeforeAdsInit();
             ApplyAllUnitAdManagerRemoteConfigs();
-            NotifyRemoteConfigUpdated();
+            if (notifyLegacySubscribers)
+                NotifyRemoteConfigUpdated();
         }
 
         /// <summary>Inventory mode + tier unit IDs from Firebase (call before mediation/ad loads).</summary>
@@ -645,7 +646,6 @@ namespace JisSDKAds.Ads
             BannerAdManager?.ApplyRemoteConfigNow();
             InterstitialAdManager?.ApplyRemoteConfigNow();
             RewardAdManager?.ApplyRemoteConfigNow();
-            JisAds.Instance?.RefreshAppOpenAndResumeRemoteConfig();
         }
 
         static void NotifyRemoteConfigUpdated() => EventManager.Trigger("UpdateRemoteConfigs");

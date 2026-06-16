@@ -15,5 +15,7 @@ MonoBehaviour:
   configurations:
   - ID: Unity.Mathematics
     ActivationSettings: 2
+  - ID: Unity.Addressables
+    ActivationSettings: 2
   ModuleTogglingSettings: 1
   ModuleUpdateSettings: 0

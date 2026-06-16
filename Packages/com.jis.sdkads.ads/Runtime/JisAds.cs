@@ -74,6 +74,7 @@ namespace JisSDKAds.Ads
         private bool _appOpenResumeInitStarted;
         private bool _pendingRecoverPreloadsAfterCoreReady;
         private bool _pendingStartupPreloadAfterCoreReady;
+        private bool _isApplyingRemoteConfig;
         private readonly int[] _preloadFailCounts = new int[3];
         private readonly bool[] _preloadRetryInFlight = new bool[3];
         private readonly Coroutine[] _preloadRetryCoroutines = new Coroutine[3];
@@ -94,6 +95,8 @@ namespace JisSDKAds.Ads
             Rewarded
         }
         public bool IsReady => _isReady;
+        /// <summary>Game routes show/load APIs through JisAds Core (even while Core is still initializing).</summary>
+        public bool UsesCoreRouting => useCoreForStandardFormats;
         public bool UseCoreForStandardFormats => useCoreForStandardFormats && _core != null && _core.IsInitialized;
         public bool HasAppOpenSupport =>
             _core != null
@@ -228,6 +231,20 @@ namespace JisSDKAds.Ads
                 RunDeferredPreloadRecovery();
             else if (_pendingStartupPreloadAfterCoreReady || !_standardFormatsPreloadedAfterRemoteConfig)
                 PreloadStandardFormatsAfterRemoteConfig();
+
+            TryFulfillQueuedBannerShow();
+        }
+
+        void TryFulfillQueuedBannerShow()
+        {
+            if (!_bannerWantsVisible || !CanShowAds() || !UseCoreForStandardFormats)
+                return;
+
+            DebugAds.Log("[JisAds] Fulfilling queued banner show after Core ready.");
+            _core.ShowBanner(
+                onShown: () => DebugAds.Log("[JisAds] Banner shown"),
+                onFailed: err => Debug.LogWarning($"[JisAds] Banner show failed: {err}"));
+            RestartBannerAutoRefresh();
         }
 
         void PreloadStandardFormatsAfterRemoteConfig()
@@ -698,15 +715,26 @@ namespace JisSDKAds.Ads
         /// </summary>
         public void OnRemoteConfigFetched()
         {
+            if (_isApplyingRemoteConfig)
+                return;
+
             if (FirebaseManager.Instance == null || !FirebaseManager.Instance.IsRemoteConfigReady)
             {
                 DebugAds.LogWarning("[JisAds] OnRemoteConfigFetched skipped — Remote Config not ready.");
                 return;
             }
 
-            AdsManager.Instance?.RefreshRemoteConfigDrivenSettings();
-            RefreshAppOpenAndResumeRemoteConfig();
-            DebugAds.Log("[JisAds] Remote Config applied to ads — preloads armed.");
+            _isApplyingRemoteConfig = true;
+            try
+            {
+                AdsManager.Instance?.RefreshRemoteConfigDrivenSettings(notifyLegacySubscribers: false);
+                RefreshAppOpenAndResumeRemoteConfig();
+                DebugAds.Log("[JisAds] Remote Config applied to ads — preloads armed.");
+            }
+            finally
+            {
+                _isApplyingRemoteConfig = false;
+            }
         }
 
         /// <summary>
@@ -1525,8 +1553,17 @@ namespace JisSDKAds.Ads
 
             TrackRewardedClick();
 
-            if (UseCoreForStandardFormats)
+            if (useCoreForStandardFormats)
             {
+                if (!UseCoreForStandardFormats)
+                {
+                    DebugAds.LogWarning("[JisAds] Rewarded show skipped — Core not ready. Warm-loading.");
+                    RequestRewardedLoadIfNeeded();
+                    TrackPendingRewardedShowFailure();
+                    ConsumePendingRewardedCallbacksOnFail();
+                    return;
+                }
+
                 if (!_pendingRewardedHadLoadedAdAtShowRequest)
                 {
                     AdLoadCoordinator.Instance.PrepareUrgentRewarded();
@@ -1706,17 +1743,24 @@ namespace JisSDKAds.Ads
                 return;
             }
 
-            if (UseCoreForStandardFormats)
+            if (!useCoreForStandardFormats)
             {
-                _bannerWantsVisible = true;
-                _core.ShowBanner(
-                    onShown: () => DebugAds.Log("[JisAds] Banner shown"),
-                    onFailed: err => Debug.LogWarning($"[JisAds] Banner show failed: {err}"));
-                RestartBannerAutoRefresh();
+                Debug.LogWarning("[JisAds] Banner unavailable — Core AdManager not enabled.");
                 return;
             }
 
-            Debug.LogWarning("[JisAds] Banner unavailable — Core AdManager not initialized. Check AdMob init logs.");
+            _bannerWantsVisible = true;
+
+            if (!UseCoreForStandardFormats)
+            {
+                DebugAds.Log("[JisAds] Banner show queued — Core AdManager not ready yet.");
+                return;
+            }
+
+            _core.ShowBanner(
+                onShown: () => DebugAds.Log("[JisAds] Banner shown"),
+                onFailed: err => Debug.LogWarning($"[JisAds] Banner show failed: {err}"));
+            RestartBannerAutoRefresh();
         }
 
         void TryShowBannerOnStartIfConfigured()
