@@ -89,6 +89,8 @@ namespace JisSDKAds.Ads
         private const float SinglePreloadRetryDelay2Sec = 60f;
         private const float SinglePreloadRetryDelaySteadySec = 120f;
         private bool _bannerWantsVisible;
+        private bool _bannerPreloadInFlight;
+        private bool _bannerShowInFlight;
         private bool _bannerAutoRefreshEnabled;
         private float _bannerAutoRefreshIntervalSec = BannerRefreshSettings.DefaultIntervalSeconds;
         private Coroutine _bannerAutoRefreshCoroutine;
@@ -638,10 +640,22 @@ namespace JisSDKAds.Ads
             if (!_bannerWantsVisible || !CanShowAds() || !CanOperateBanner())
                 return;
 
+            if (_bannerShowInFlight)
+                return;
+
             DebugAds.Log("[JisAds] Fulfilling queued banner show after Core ready.");
+            _bannerShowInFlight = true;
             _core.ShowBanner(
-                onShown: () => DebugAds.Log("[JisAds] Banner shown"),
-                onFailed: err => Debug.LogWarning($"[JisAds] Banner show failed: {err}"));
+                onShown: () =>
+                {
+                    _bannerShowInFlight = false;
+                    DebugAds.Log("[JisAds] Banner shown");
+                },
+                onFailed: err =>
+                {
+                    _bannerShowInFlight = false;
+                    Debug.LogWarning($"[JisAds] Banner show failed: {err}");
+                });
             RestartBannerAutoRefresh();
         }
 
@@ -724,10 +738,18 @@ namespace JisSDKAds.Ads
             if (provider?.Banner == null)
                 return;
 
+            if (_bannerPreloadInFlight)
+            {
+                DebugAds.Log("[JisAds] Preload Banner skipped: load already in-flight.");
+                return;
+            }
+
             var preserveVisible = _bannerWantsVisible;
+            _bannerPreloadInFlight = true;
             provider.Banner.Load(
                 onLoaded: () =>
                 {
+                    _bannerPreloadInFlight = false;
                     OnPreloadSucceeded(StandardAdPreloadFormat.Banner);
                     DebugAds.Log("[JisAds] Preload Banner: loaded");
                     if (isStartup)
@@ -737,6 +759,7 @@ namespace JisSDKAds.Ads
                 },
                 onFailed: err =>
                 {
+                    _bannerPreloadInFlight = false;
                     DebugAds.LogWarning($"[JisAds] Preload Banner failed: {err}");
                     HandlePreloadFailed(StandardAdPreloadFormat.Banner);
                 });
@@ -2187,9 +2210,21 @@ namespace JisSDKAds.Ads
                 return;
             }
 
+            if (_bannerShowInFlight)
+                return;
+
+            _bannerShowInFlight = true;
             _core.ShowBanner(
-                onShown: () => DebugAds.Log("[JisAds] Banner shown"),
-                onFailed: err => Debug.LogWarning($"[JisAds] Banner show failed: {err}"));
+                onShown: () =>
+                {
+                    _bannerShowInFlight = false;
+                    DebugAds.Log("[JisAds] Banner shown");
+                },
+                onFailed: err =>
+                {
+                    _bannerShowInFlight = false;
+                    Debug.LogWarning($"[JisAds] Banner show failed: {err}");
+                });
             RestartBannerAutoRefresh();
         }
 
@@ -2209,6 +2244,7 @@ namespace JisSDKAds.Ads
         public void HideBannerAds()
         {
             _bannerWantsVisible = false;
+            _bannerShowInFlight = false;
             CancelPendingBannerRestore();
             CancelPendingBannerPauseRestore();
             if (UseCoreForStandardFormats)
