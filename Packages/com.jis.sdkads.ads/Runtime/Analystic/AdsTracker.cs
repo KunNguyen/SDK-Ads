@@ -38,6 +38,11 @@ namespace JisSDKAds.Ads
         public static void TrackAdImpression(ImpressionData impressionData, bool isTrackingAdImpression = true,
             bool isTrackingCustomAdImpressionEvent = false, string customAdImpressionEvent = "")
         {
+            // Requirement: measure ad revenue to Firebase only for MAX (AppLovin).
+            // AdMob paid events should not be sent to Firebase.
+            if (impressionData.ad_mediation == AdsMediationType.ADMOB)
+                return;
+
             var revenue = impressionData.ad_revenue;
             var adPlatform = impressionData.ad_mediation.ToString();
             switch (impressionData.ad_mediation)
