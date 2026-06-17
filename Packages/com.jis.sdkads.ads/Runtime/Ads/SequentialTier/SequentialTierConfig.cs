@@ -25,7 +25,10 @@ namespace JisSDKAds.Ads.SequentialTier
         [Tooltip("Number of Fill tier load failures before trying the local fallback unit ID.")]
         [Min(0)] public int fillHoldMaxRetries = 3;
 
-        [Tooltip("Delay between Fill retries before trying fallback.")]
+        [Tooltip("Seconds to wait before each Fill retry (e.g. 2, 4, 8). After all entries are used, fallback unit is tried.")]
+        public float[] fillHoldRetryDelaySeconds = { 2f, 4f, 8f };
+
+        [Tooltip("Legacy single delay when fillHoldRetryDelaySeconds is empty.")]
         [Min(1f)] public float fillHoldRetryIntervalSeconds = 30f;
 
         [Header("eCPM recovery")]
@@ -97,6 +100,25 @@ namespace JisSDKAds.Ads.SequentialTier
         {
             if (tiers != null && tiers.Length >= 5) return;
             tiers = CreateDefaultTiers();
+        }
+
+        public bool ShouldScheduleFillRetry(int fillFailureCount)
+        {
+            if (fillHoldRetryDelaySeconds != null && fillHoldRetryDelaySeconds.Length > 0)
+                return fillFailureCount <= fillHoldRetryDelaySeconds.Length;
+
+            return fillFailureCount < fillHoldMaxRetries && fillHoldRetryIntervalSeconds > 0f;
+        }
+
+        public float GetFillRetryDelaySeconds(int fillFailureCount)
+        {
+            if (fillHoldRetryDelaySeconds != null && fillHoldRetryDelaySeconds.Length > 0)
+            {
+                var index = Mathf.Clamp(fillFailureCount - 1, 0, fillHoldRetryDelaySeconds.Length - 1);
+                return Mathf.Max(0f, fillHoldRetryDelaySeconds[index]);
+            }
+
+            return fillHoldRetryIntervalSeconds > 0f ? fillHoldRetryIntervalSeconds : 2f;
         }
     }
 }

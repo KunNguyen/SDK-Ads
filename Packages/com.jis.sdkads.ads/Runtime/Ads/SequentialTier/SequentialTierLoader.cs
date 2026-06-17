@@ -33,6 +33,7 @@ namespace JisSDKAds.Ads.SequentialTier
         int _fillFailureCount;
         bool _isLoadingFallback;
         Coroutine _fillRetryRoutine;
+        float _pendingFillRetryDelaySec;
 
         const float SafetyLoadTimeoutSeconds = 45f;
 
@@ -296,10 +297,9 @@ namespace JisSDKAds.Ads.SequentialTier
             }
 
             _fillFailureCount++;
-            var maxFillAttempts = Mathf.Max(0, _config.fillHoldMaxRetries);
-            if (_fillFailureCount < maxFillAttempts && _config.fillHoldRetryIntervalSeconds > 0f)
+            if (_config.ShouldScheduleFillRetry(_fillFailureCount))
             {
-                ScheduleFillRetry();
+                ScheduleFillRetry(_config.GetFillRetryDelaySeconds(_fillFailureCount));
                 return;
             }
 
@@ -326,17 +326,19 @@ namespace JisSDKAds.Ads.SequentialTier
             _fillRetryRoutine = null;
         }
 
-        void ScheduleFillRetry()
+        void ScheduleFillRetry(float delaySeconds)
         {
             StopTimeout();
             if (_fillRetryRoutine != null && _host != null)
                 _host.StopCoroutine(_fillRetryRoutine);
+            _pendingFillRetryDelaySec = Mathf.Max(0f, delaySeconds);
             _fillRetryRoutine = _host.StartCoroutine(CoDelayedFillRetry());
         }
 
         IEnumerator CoDelayedFillRetry()
         {
-            yield return new WaitForSecondsRealtime(_config.fillHoldRetryIntervalSeconds);
+            if (_pendingFillRetryDelaySec > 0f)
+                yield return new WaitForSecondsRealtime(_pendingFillRetryDelaySec);
             _fillRetryRoutine = null;
             if (_host == null) yield break;
             if (IsReady)

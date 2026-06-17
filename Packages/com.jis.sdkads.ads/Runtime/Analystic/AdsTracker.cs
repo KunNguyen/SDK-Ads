@@ -34,6 +34,7 @@ namespace JisSDKAds.Ads
         private const string key_ad_inters_count = "ad_inters_count";
         private const string ad_inters_show_count = "ad_inters_show_count_";
         private const string ad_rewarded_show_count = "ad_rewarded_show_count_";
+        private const string session_ad_index_parameter = "session_ad_index";
 
         public static void TrackAdImpression(ImpressionData impressionData, bool isTrackingAdImpression = true,
             bool isTrackingCustomAdImpressionEvent = false, string customAdImpressionEvent = "")
@@ -131,10 +132,13 @@ namespace JisSDKAds.Ads
         private const string ads_reward_show_fail_by_load = "ads_reward_show_fail_by_load";
         private const string ads_reward_load_success = "ads_reward_load_success";
         private const string ads_reward_first_show = "ads_reward_first_show";
+        private int rewardedAdsLoadSuccess = 0;
+        private int rewardedAdsShowAttempt = 0;
+        private int currentRewardedAdsShowAttempt = 0;
 
         public void TrackAdsReward_ClickOnButton()
         {
-            FirebaseManager.Instance.LogEvent(ads_reward_click);
+            FirebaseManager.Instance.LogEvent(ads_reward_click, CreateSessionAdIndexParameters(BeginRewardedShowAttempt()));
 #if UNITY_APPSFLYER
             AppsflyerManager.TrackRewarded_ClickShowButton();
 #endif
@@ -142,26 +146,26 @@ namespace JisSDKAds.Ads
 
         public void TrackAdsReward_StartShow()
         {
-            FirebaseManager.Instance.LogEvent(ads_reward_show);
+            FirebaseManager.Instance.LogEvent(ads_reward_show, CreateSessionAdIndexParameters(EnsureRewardedShowAttempt()));
         }
 
         public void TrackAdsReward_ShowFail()
         {
-            FirebaseManager.Instance.LogEvent(ads_reward_fail);
+            FirebaseManager.Instance.LogEvent(ads_reward_fail, CreateSessionAdIndexParameters(EnsureRewardedShowAttempt()));
+            ClearRewardedShowAttempt();
         }
 
         public void TrackAdsReward_ShowFailByLoad()
         {
-            FirebaseManager.Instance.LogEvent(ads_reward_show_fail_by_load);
+            FirebaseManager.Instance.LogEvent(ads_reward_show_fail_by_load, CreateSessionAdIndexParameters(EnsureRewardedShowAttempt()));
+            ClearRewardedShowAttempt();
         }
 
         public void TrackAdsReward_ShowCompleted(string placement)
         {
-            var parameters = new Parameter[]
-            {
-                new Parameter("placement", placement)
-            };
+            var parameters = CreatePlacementSessionAdIndexParameters(placement, EnsureRewardedShowAttempt());
             FirebaseManager.Instance.LogEvent(ads_reward_complete, parameters);
+            ClearRewardedShowAttempt();
             EventManager.InvokeNextFrame(() => { TrackLocalAdImpression(AdsType.REWARDED); });
 #if UNITY_APPSFLYER
             AppsflyerManager.TrackRewarded_Displayed();
@@ -170,7 +174,8 @@ namespace JisSDKAds.Ads
 
         public void TrackAdsReward_LoadSuccess()
         {
-            FirebaseManager.Instance.LogEvent(ads_reward_load_success);
+            rewardedAdsLoadSuccess++;
+            FirebaseManager.Instance.LogEvent(ads_reward_load_success, CreateSessionAdIndexParameters(rewardedAdsLoadSuccess));
 #if UNITY_APPSFLYER
             AppsflyerManager.TrackRewarded_LoadedSuccess();
 #endif
@@ -188,7 +193,10 @@ namespace JisSDKAds.Ads
         private const string ad_inter_show_fail_by_load = "ad_inter_show_fail_by_load";
         private const string ad_inter_first_show = "ad_inter_first_show";
         private int interstitialAdsLoadSuccess = 0;
+        private int interstitialAdsLoadFail = 0;
         private int interstitialAdsShowSuccess = 0;
+        private int interstitialAdsShowAttempt = 0;
+        private int currentInterstitialAdsShowAttempt = 0;
 
         public void TrackAdsInterstitial_LoadedSuccess(float timeFromStartRequest)
         {
@@ -198,6 +206,7 @@ namespace JisSDKAds.Ads
             {
                 new Parameter("count", interstitialAdsLoadSuccess.ToString()),
                 new Parameter("request_time", timeFromStartRequest.ToString("F1")),
+                new Parameter(session_ad_index_parameter, interstitialAdsLoadSuccess),
             };
             FirebaseManager.Instance.LogEvent(ad_inter_load, parameters);
 #if UNITY_APPSFLYER
@@ -215,6 +224,7 @@ namespace JisSDKAds.Ads
                 {
                     new Parameter("count", interstitialAdsLoadSuccess.ToString()),
                     new Parameter("request_time", timeFromStartRequest.ToString("F1")),
+                    new Parameter(session_ad_index_parameter, interstitialAdsLoadSuccess),
                 };
                 FirebaseManager.Instance.LogEvent(ad_inter_load, parameters);
             }
@@ -225,6 +235,7 @@ namespace JisSDKAds.Ads
                     new Parameter("count", interstitialAdsLoadSuccess.ToString()),
                     new Parameter("request_time", timeFromStartRequest.ToString("F1")),
                     new Parameter("placement", placement),
+                    new Parameter(session_ad_index_parameter, interstitialAdsLoadSuccess),
                 };
                 FirebaseManager.Instance.LogEvent(ad_inter_load, parameters);
             }
@@ -237,6 +248,7 @@ namespace JisSDKAds.Ads
         public void TrackAdsInterstitial_LoadedFail(string error, float timeFromStartRequest, string placement = "")
         {
             //round time to 0.5 
+            interstitialAdsLoadFail++;
             timeFromStartRequest = Mathf.Round(timeFromStartRequest * 2) / 2;
             if (string.IsNullOrEmpty(placement))
             {
@@ -244,6 +256,7 @@ namespace JisSDKAds.Ads
                 {
                     new Parameter("error", error),
                     new Parameter("request_time", timeFromStartRequest.ToString("F1")),
+                    new Parameter(session_ad_index_parameter, interstitialAdsLoadFail),
                 };
                 FirebaseManager.Instance.LogEvent(ad_inter_load_fail, parameters);
             }
@@ -254,6 +267,7 @@ namespace JisSDKAds.Ads
                     new Parameter("error", error),
                     new Parameter("request_time", timeFromStartRequest.ToString("F1")),
                     new Parameter("placement", placement),
+                    new Parameter(session_ad_index_parameter, interstitialAdsLoadFail),
                 };
                 FirebaseManager.Instance.LogEvent(ad_inter_load_fail, parameters);
             }
@@ -261,7 +275,9 @@ namespace JisSDKAds.Ads
 
         public void TrackAdsInterstitial_ShowSuccess(string placement = "")
         {
-            LogInterstitialEvent(ad_inter_show, placement);
+            interstitialAdsShowSuccess++;
+            LogInterstitialEvent(ad_inter_show, placement, EnsureInterstitialShowAttempt());
+            ClearInterstitialShowAttempt();
             EventManager.InvokeNextFrame(() => { TrackLocalAdImpression(AdsType.INTERSTITIAL); });
 #if UNITY_APPSFLYER
             AppsflyerManager.TrackInterstitial_Displayed();
@@ -270,17 +286,19 @@ namespace JisSDKAds.Ads
 
         public void TrackAdsInterstitial_ShowFail(string placement = "")
         {
-            LogInterstitialEvent(ad_inter_fail, placement);
+            LogInterstitialEvent(ad_inter_fail, placement, EnsureInterstitialShowAttempt());
+            ClearInterstitialShowAttempt();
         }
 
         public void TrackAdsInterstitial_ShowFailByLoad(string placement = "")
         {
-            LogInterstitialEvent(ad_inter_show_fail_by_load, placement);
+            LogInterstitialEvent(ad_inter_show_fail_by_load, placement, EnsureInterstitialShowAttempt());
+            ClearInterstitialShowAttempt();
         }
 
         public void TrackAdsInterstitial_ClickOnButton(string placement = "")
         {
-            LogInterstitialEvent(ad_inter_click, placement);
+            LogInterstitialEvent(ad_inter_click, placement, BeginInterstitialShowAttempt());
 #if UNITY_APPSFLYER
             AppsflyerManager.TrackInterstitial_ClickShowButton();
 #endif
@@ -291,12 +309,64 @@ namespace JisSDKAds.Ads
             FirebaseManager.Instance.LogEvent(ad_inter_first_show);
         }
 
-        static void LogInterstitialEvent(string eventName, string placement)
+        static void LogInterstitialEvent(string eventName, string placement, int sessionAdIndex)
+        {
+            FirebaseManager.Instance.LogEvent(eventName, CreatePlacementSessionAdIndexParameters(placement, sessionAdIndex));
+        }
+
+        int BeginRewardedShowAttempt()
+        {
+            rewardedAdsShowAttempt++;
+            currentRewardedAdsShowAttempt = rewardedAdsShowAttempt;
+            return currentRewardedAdsShowAttempt;
+        }
+
+        int EnsureRewardedShowAttempt()
+        {
+            return currentRewardedAdsShowAttempt > 0
+                ? currentRewardedAdsShowAttempt
+                : BeginRewardedShowAttempt();
+        }
+
+        void ClearRewardedShowAttempt()
+        {
+            currentRewardedAdsShowAttempt = 0;
+        }
+
+        int BeginInterstitialShowAttempt()
+        {
+            interstitialAdsShowAttempt++;
+            currentInterstitialAdsShowAttempt = interstitialAdsShowAttempt;
+            return currentInterstitialAdsShowAttempt;
+        }
+
+        int EnsureInterstitialShowAttempt()
+        {
+            return currentInterstitialAdsShowAttempt > 0
+                ? currentInterstitialAdsShowAttempt
+                : BeginInterstitialShowAttempt();
+        }
+
+        void ClearInterstitialShowAttempt()
+        {
+            currentInterstitialAdsShowAttempt = 0;
+        }
+
+        static Parameter[] CreateSessionAdIndexParameters(int sessionAdIndex)
+        {
+            return new[] { new Parameter(session_ad_index_parameter, sessionAdIndex) };
+        }
+
+        static Parameter[] CreatePlacementSessionAdIndexParameters(string placement, int sessionAdIndex)
         {
             if (string.IsNullOrEmpty(placement))
-                FirebaseManager.Instance.LogEvent(eventName);
-            else
-                FirebaseManager.Instance.LogEvent(eventName, new[] { new Parameter("placement", placement) });
+                return CreateSessionAdIndexParameters(sessionAdIndex);
+
+            return new[]
+            {
+                new Parameter("placement", placement),
+                new Parameter(session_ad_index_parameter, sessionAdIndex),
+            };
         }
 
         #endregion

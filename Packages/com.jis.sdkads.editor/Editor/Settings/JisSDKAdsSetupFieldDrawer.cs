@@ -166,9 +166,8 @@ namespace JisSDKAds.Editor
             tier.consecutiveFailuresBeforeDowngrade = EditorGUILayout.IntField(
                 "Failures before downgrade", tier.consecutiveFailuresBeforeDowngrade);
             tier.fillHoldMaxRetries = EditorGUILayout.IntField(
-                "Fill failures before fallback", tier.fillHoldMaxRetries);
-            tier.fillHoldRetryIntervalSeconds = EditorGUILayout.FloatField(
-                "Fill retry interval (seconds)", tier.fillHoldRetryIntervalSeconds);
+                "Fill failures before fallback (legacy)", tier.fillHoldMaxRetries);
+            DrawFillRetryDelays(tier);
 
             EditorGUILayout.Space(4);
             EditorGUILayout.LabelField("Per-tier load timeout (Premium → Fill)", EditorStyles.miniBoldLabel);
@@ -177,6 +176,21 @@ namespace JisSDKAds.Editor
                 var entry = tier.GetEntry(t);
                 if (entry == null) continue;
                 entry.timeoutSeconds = EditorGUILayout.FloatField($"  {entry.tier} timeout (s, 0=none)", entry.timeoutSeconds);
+            }
+        }
+
+        static void DrawFillRetryDelays(SequentialTierConfig tier)
+        {
+            const int slotCount = 3;
+            if (tier.fillHoldRetryDelaySeconds == null || tier.fillHoldRetryDelaySeconds.Length != slotCount)
+                tier.fillHoldRetryDelaySeconds = new[] { 2f, 4f, 8f };
+
+            EditorGUILayout.LabelField("Fill retry delays (seconds)", EditorStyles.miniBoldLabel);
+            for (var i = 0; i < slotCount; i++)
+            {
+                tier.fillHoldRetryDelaySeconds[i] = EditorGUILayout.FloatField(
+                    $"  Retry {i + 1} wait",
+                    tier.fillHoldRetryDelaySeconds[i]);
             }
         }
 
