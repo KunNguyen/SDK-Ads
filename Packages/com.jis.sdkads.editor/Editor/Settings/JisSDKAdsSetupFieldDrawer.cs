@@ -166,7 +166,7 @@ namespace JisSDKAds.Editor
             tier.consecutiveFailuresBeforeDowngrade = EditorGUILayout.IntField(
                 "Failures before downgrade", tier.consecutiveFailuresBeforeDowngrade);
             tier.fillHoldMaxRetries = EditorGUILayout.IntField(
-                "Fill failures before fallback (legacy)", tier.fillHoldMaxRetries);
+                "Fill retry waits before fallback", tier.fillHoldMaxRetries);
             DrawFillRetryDelays(tier);
 
             EditorGUILayout.Space(4);
@@ -181,17 +181,10 @@ namespace JisSDKAds.Editor
 
         static void DrawFillRetryDelays(SequentialTierConfig tier)
         {
-            const int slotCount = 3;
-            if (tier.fillHoldRetryDelaySeconds == null || tier.fillHoldRetryDelaySeconds.Length != slotCount)
-                tier.fillHoldRetryDelaySeconds = new[] { 2f, 4f, 8f };
-
-            EditorGUILayout.LabelField("Fill retry delays (seconds)", EditorStyles.miniBoldLabel);
-            for (var i = 0; i < slotCount; i++)
-            {
-                tier.fillHoldRetryDelaySeconds[i] = EditorGUILayout.FloatField(
-                    $"  Retry {i + 1} wait",
-                    tier.fillHoldRetryDelaySeconds[i]);
-            }
+            EditorGUILayout.HelpBox(
+                $"Fill retry wait uses exponential backoff: min({RetryBackoff.MaxDelaySeconds}s, 2^n) " +
+                $"where n is the Fill fail count (2s, 4s, 8s, 16s, 32s, 64s, …).",
+                MessageType.None);
         }
 
         public static void DrawBannerSingle(

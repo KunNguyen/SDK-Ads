@@ -85,10 +85,6 @@ namespace JisSDKAds.Ads
         private readonly int[] _preloadFailCounts = new int[3];
         private readonly bool[] _preloadRetryInFlight = new bool[3];
         private readonly Coroutine[] _preloadRetryCoroutines = new Coroutine[3];
-        private const float PreloadRetryDelay1Sec = 2f;
-        private const float PreloadRetryDelay2Sec = 4f;
-        private const float PreloadRetryDelay3Sec = 8f;
-        private const float PreloadRetryDelaySteadySec = 16f;
         private bool _bannerWantsVisible;
         private bool _bannerPreloadInFlight;
         private bool _bannerShowInFlight;
@@ -976,13 +972,7 @@ namespace JisSDKAds.Ads
         }
 
         static float GetPreloadRetryDelaySeconds(bool singleInventory, int failCount) =>
-            failCount switch
-            {
-                1 => PreloadRetryDelay1Sec,
-                2 => PreloadRetryDelay2Sec,
-                3 => PreloadRetryDelay3Sec,
-                _ => PreloadRetryDelaySteadySec
-            };
+            RetryBackoff.GetDelaySeconds(failCount);
 
         IEnumerator CoDelayedPreloadRetry(StandardAdPreloadFormat format, float delay)
         {
