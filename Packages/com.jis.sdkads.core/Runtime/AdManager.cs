@@ -27,6 +27,7 @@ namespace JisSDKAds.Core
         private readonly HashSet<AdProviderId> _initializedProviders = new HashSet<AdProviderId>();
         private readonly Dictionary<AdProviderId, string> _failedProviderErrors = new Dictionary<AdProviderId, string>();
         private bool _isInitialized;
+        private int _interstitialShowAttemptId;
 
         public bool IsInitialized => _isInitialized;
 
@@ -116,6 +117,52 @@ namespace JisSDKAds.Core
             StartCoroutine(CoInitialize(onSuccess, onFailure));
         }
 
+        /// <summary>
+        /// Re-initialize a single provider after a prior init failure.
+        /// </summary>
+        public void RetryInitializeProvider(AdProviderId providerId, Action onSuccess = null, Action<string> onFailure = null)
+        {
+            if (!_providers.TryGetValue(providerId, out var provider))
+            {
+                onFailure?.Invoke($"Provider {providerId} is not registered.");
+                return;
+            }
+
+            if (_initializedProviders.Contains(providerId))
+            {
+                onSuccess?.Invoke();
+                return;
+            }
+
+            try
+            {
+                provider.Initialize(
+                    () =>
+                    {
+                        _initializedProviders.Add(providerId);
+                        _failedProviderErrors.Remove(providerId);
+                        if (!_isInitialized)
+                            _isInitialized = true;
+                        AdEvents.RaiseProviderInitialized(provider.ProviderId);
+                        onSuccess?.Invoke();
+                    },
+                    err =>
+                    {
+                        _initializedProviders.Remove(providerId);
+                        _failedProviderErrors[providerId] = err;
+                        AdEvents.RaiseProviderFailed(provider.ProviderId, err);
+                        onFailure?.Invoke(err);
+                    });
+            }
+            catch (Exception ex)
+            {
+                _initializedProviders.Remove(providerId);
+                _failedProviderErrors[providerId] = ex.Message;
+                AdEvents.RaiseProviderFailed(provider.ProviderId, ex.Message);
+                onFailure?.Invoke(ex.Message);
+            }
+        }
+
         private IEnumerator CoInitialize(Action onSuccess, Action<string> onFailure)
         {
             int completed = 0;
@@ -184,7 +231,7 @@ namespace JisSDKAds.Core
         /// <summary>
         /// Show interstitial with fallback and retry.
         /// </summary>
-        public void ShowInterstitial(Action onClosed = null, Action<string> onFailed = null)
+        public void ShowInterstitial(Action onClosed = null, Action<string> onFailed = null, int showAttemptId = 0)
         {
             if (!CanShowFormat(AdFormat.Interstitial))
             {
@@ -193,14 +240,21 @@ namespace JisSDKAds.Core
             }
 
             var provider = GetProviderIdForFormat(AdFormat.Interstitial);
-            TryShowInterstitialWithFallback(provider, ResolveFallbackProvider(provider), 0, onClosed, onFailed);
+            TryShowInterstitialWithFallback(
+                provider,
+                ResolveFallbackProvider(provider),
+                0,
+                onClosed,
+                onFailed,
+                showAttemptId);
         }
 
         public void ShowInterstitial(
             AdProviderId provider,
             AdProviderId fallback,
             Action onClosed = null,
-            Action<string> onFailed = null)
+            Action<string> onFailed = null,
+            int showAttemptId = 0)
         {
             if (!CanShowThroughProviders(provider, fallback))
             {
@@ -208,7 +262,14 @@ namespace JisSDKAds.Core
                 return;
             }
 
-            TryShowInterstitialWithFallback(provider, fallback, 0, onClosed, onFailed, forceProviderFallback: true);
+            TryShowInterstitialWithFallback(
+                provider,
+                fallback,
+                0,
+                onClosed,
+                onFailed,
+                showAttemptId,
+                forceProviderFallback: true);
         }
 
         private void TryShowInterstitialWithFallback(
@@ -217,12 +278,14 @@ namespace JisSDKAds.Core
             int attempt,
             Action onClosed,
             Action<string> onFailed,
+            int showAttemptId,
             bool forceProviderFallback = false)
         {
             var provider = GetProvider(primary);
             if (provider == null)
             {
-                TryFallbackOrRetryInterstitial(attempt, primary, fallback, onClosed, onFailed, forceProviderFallback);
+                TryFallbackOrRetryInterstitial(
+                    attempt, primary, fallback, onClosed, onFailed, showAttemptId, forceProviderFallback);
                 return;
             }
 
@@ -234,33 +297,36 @@ namespace JisSDKAds.Core
                         onLoaded: () =>
                         {
                             AdEvents.RaiseInterstitialLoaded(AdFormat.Interstitial, primary.ToString());
-                            provider.Interstitial.Show(
-                                onShown: () => AdEvents.RaiseInterstitialShown(AdFormat.Interstitial),
-                                onClosed: () =>
-                                {
-                                    AdEvents.RaiseInterstitialClosed(AdFormat.Interstitial);
-                                    onClosed?.Invoke();
-                                },
-                                onFailed: err =>
-                                {
-                                    AdEvents.RaiseInterstitialFailed(AdFormat.Interstitial, err);
-                                    TryFallbackOrRetryInterstitial(attempt, primary, fallback, onClosed, onFailed, forceProviderFallback);
-                                });
+                            ShowLoadedInterstitial(provider, primary, onClosed, onFailed, showAttemptId);
                         },
                         onFailed: err =>
                         {
-                            AdEvents.RaiseInterstitialFailed(AdFormat.Interstitial, err);
-                            TryFallbackOrRetryInterstitial(attempt, primary, fallback, onClosed, onFailed, forceProviderFallback);
+                            AdEvents.RaiseInterstitialFailed(AdFormat.Interstitial, primary.ToString(), err);
+                            TryFallbackOrRetryInterstitial(
+                                attempt, primary, fallback, onClosed, onFailed, showAttemptId, forceProviderFallback);
                         }
                     );
                     return;
                 }
-                TryFallbackOrRetryInterstitial(attempt, primary, fallback, onClosed, onFailed, forceProviderFallback);
+
+                TryFallbackOrRetryInterstitial(
+                    attempt, primary, fallback, onClosed, onFailed, showAttemptId, forceProviderFallback);
                 return;
             }
 
+            ShowLoadedInterstitial(provider, primary, onClosed, onFailed, showAttemptId);
+        }
+
+        void ShowLoadedInterstitial(
+            IAdService provider,
+            AdProviderId providerId,
+            Action onClosed,
+            Action<string> onFailed,
+            int showAttemptId)
+        {
+            _interstitialShowAttemptId = showAttemptId;
             provider.Interstitial.Show(
-                onShown: () => AdEvents.RaiseInterstitialShown(AdFormat.Interstitial),
+                onShown: () => AdEvents.RaiseInterstitialShown(AdFormat.Interstitial, _interstitialShowAttemptId),
                 onClosed: () =>
                 {
                     AdEvents.RaiseInterstitialClosed(AdFormat.Interstitial);
@@ -268,10 +334,9 @@ namespace JisSDKAds.Core
                 },
                 onFailed: err =>
                 {
-                    AdEvents.RaiseInterstitialFailed(AdFormat.Interstitial, err);
-                    TryFallbackOrRetryInterstitial(attempt, primary, fallback, onClosed, onFailed, forceProviderFallback);
-                }
-            );
+                    AdEvents.RaiseInterstitialFailed(AdFormat.Interstitial, providerId.ToString(), err);
+                    onFailed?.Invoke(err);
+                });
         }
 
         /// <summary>
@@ -302,7 +367,8 @@ namespace JisSDKAds.Core
                 return;
             }
 
-            TryShowRewardedWithFallback(provider, fallback, 0, onRewardEarned, onClosed, onFailed, forceProviderFallback: true);
+            TryShowRewardedWithFallback(
+                provider, fallback, 0, onRewardEarned, onClosed, onFailed, forceProviderFallback: true);
         }
 
         private void TryShowRewardedWithFallback(
@@ -317,7 +383,8 @@ namespace JisSDKAds.Core
             var provider = GetProvider(primary);
             if (provider == null)
             {
-                TryFallbackOrRetryRewarded(attempt, primary, fallback, onRewardEarned, onClosed, onFailed, forceProviderFallback);
+                TryFallbackOrRetryRewarded(
+                    attempt, primary, fallback, onRewardEarned, onClosed, onFailed, forceProviderFallback);
                 return;
             }
 
@@ -329,35 +396,33 @@ namespace JisSDKAds.Core
                         onLoaded: () =>
                         {
                             AdEvents.RaiseRewardedLoaded(AdFormat.Rewarded, primary.ToString());
-                            provider.Rewarded.Show(
-                                onRewardEarned: () =>
-                                {
-                                    AdEvents.RaiseRewardEarned(AdFormat.Rewarded);
-                                    onRewardEarned?.Invoke();
-                                },
-                                onClosed: () =>
-                                {
-                                    AdEvents.RaiseRewardedClosed(AdFormat.Rewarded);
-                                    onClosed?.Invoke();
-                                },
-                                onFailed: err =>
-                                {
-                                    AdEvents.RaiseRewardedFailed(AdFormat.Rewarded, err);
-                                    TryFallbackOrRetryRewarded(attempt, primary, fallback, onRewardEarned, onClosed, onFailed, forceProviderFallback);
-                                });
+                            ShowLoadedRewarded(provider, primary, onRewardEarned, onClosed, onFailed);
                         },
                         onFailed: err =>
                         {
-                            AdEvents.RaiseRewardedFailed(AdFormat.Rewarded, err);
-                            TryFallbackOrRetryRewarded(attempt, primary, fallback, onRewardEarned, onClosed, onFailed, forceProviderFallback);
+                            AdEvents.RaiseRewardedFailed(AdFormat.Rewarded, primary.ToString(), err);
+                            TryFallbackOrRetryRewarded(
+                                attempt, primary, fallback, onRewardEarned, onClosed, onFailed, forceProviderFallback);
                         }
                     );
                     return;
                 }
-                TryFallbackOrRetryRewarded(attempt, primary, fallback, onRewardEarned, onClosed, onFailed, forceProviderFallback);
+
+                TryFallbackOrRetryRewarded(
+                    attempt, primary, fallback, onRewardEarned, onClosed, onFailed, forceProviderFallback);
                 return;
             }
 
+            ShowLoadedRewarded(provider, primary, onRewardEarned, onClosed, onFailed);
+        }
+
+        void ShowLoadedRewarded(
+            IAdService provider,
+            AdProviderId providerId,
+            Action onRewardEarned,
+            Action onClosed,
+            Action<string> onFailed)
+        {
             provider.Rewarded.Show(
                 onRewardEarned: () =>
                 {
@@ -371,10 +436,9 @@ namespace JisSDKAds.Core
                 },
                 onFailed: err =>
                 {
-                    AdEvents.RaiseRewardedFailed(AdFormat.Rewarded, err);
-                    TryFallbackOrRetryRewarded(attempt, primary, fallback, onRewardEarned, onClosed, onFailed, forceProviderFallback);
-                }
-            );
+                    AdEvents.RaiseRewardedFailed(AdFormat.Rewarded, providerId.ToString(), err);
+                    onFailed?.Invoke(err);
+                });
         }
 
         /// <summary>
@@ -401,11 +465,12 @@ namespace JisSDKAds.Core
                 return;
             }
 
+            var providerId = GetProviderIdForFormat(AdFormat.Banner);
             provider.Banner.Load(
                 onLoaded: () => provider.Banner.Show(onShown, onFailed),
                 onFailed: err =>
                 {
-                    AdEvents.RaiseBannerFailed(AdFormat.Banner, err);
+                    AdEvents.RaiseBannerFailed(AdFormat.Banner, providerId.ToString(), err);
                     onFailed?.Invoke(err);
                 }
             );
@@ -440,6 +505,7 @@ namespace JisSDKAds.Core
                 return;
             }
 
+            var providerId = GetProviderIdForFormat(AdFormat.AppOpen);
             if (appOpen.IsLoaded)
             {
                 appOpen.Show(
@@ -450,7 +516,7 @@ namespace JisSDKAds.Core
                     },
                     onFailed: err =>
                     {
-                        AdEvents.RaiseInterstitialFailed(AdFormat.AppOpen, err);
+                        AdEvents.RaiseInterstitialFailed(AdFormat.AppOpen, providerId.ToString(), err);
                         onFailed?.Invoke(err);
                     });
                 return;
@@ -481,17 +547,30 @@ namespace JisSDKAds.Core
             AdProviderId fallback,
             Action onClosed,
             Action<string> onFailed,
+            int showAttemptId,
             bool forceProviderFallback = false)
         {
             if ((allowCrossProviderFallback || forceProviderFallback) && fallback != AdProviderId.None && fallback != primary)
             {
-                StartCoroutine(CoDelayedRetry(() => TryShowInterstitialWithFallback(fallback, primary, attempt + 1, onClosed, onFailed, forceProviderFallback)));
+                StartCoroutine(CoDelayedRetry(() =>
+                    TryShowInterstitialWithFallback(
+                        fallback, primary, attempt + 1, onClosed, onFailed, showAttemptId, forceProviderFallback)));
                 return;
             }
+
             if (attempt < maxRetries)
-                StartCoroutine(CoDelayedRetry(() => TryShowInterstitialWithFallback(primary, fallback, attempt + 1, onClosed, onFailed, forceProviderFallback)));
-            else
-                onFailed?.Invoke("Interstitial failed after retries");
+            {
+                StartCoroutine(CoDelayedRetry(() =>
+                    TryShowInterstitialWithFallback(
+                        primary, fallback, attempt + 1, onClosed, onFailed, showAttemptId, forceProviderFallback)));
+                return;
+            }
+
+            AdEvents.RaiseInterstitialFailed(
+                AdFormat.Interstitial,
+                primary.ToString(),
+                "Interstitial failed after retries");
+            onFailed?.Invoke("Interstitial failed after retries");
         }
 
         private void TryFallbackOrRetryRewarded(
@@ -505,13 +584,25 @@ namespace JisSDKAds.Core
         {
             if ((allowCrossProviderFallback || forceProviderFallback) && fallback != AdProviderId.None && fallback != primary)
             {
-                StartCoroutine(CoDelayedRetry(() => TryShowRewardedWithFallback(fallback, primary, attempt + 1, onRewardEarned, onClosed, onFailed, forceProviderFallback)));
+                StartCoroutine(CoDelayedRetry(() =>
+                    TryShowRewardedWithFallback(
+                        fallback, primary, attempt + 1, onRewardEarned, onClosed, onFailed, forceProviderFallback)));
                 return;
             }
+
             if (attempt < maxRetries)
-                StartCoroutine(CoDelayedRetry(() => TryShowRewardedWithFallback(primary, fallback, attempt + 1, onRewardEarned, onClosed, onFailed, forceProviderFallback)));
-            else
-                onFailed?.Invoke("Rewarded ad failed after retries");
+            {
+                StartCoroutine(CoDelayedRetry(() =>
+                    TryShowRewardedWithFallback(
+                        primary, fallback, attempt + 1, onRewardEarned, onClosed, onFailed, forceProviderFallback)));
+                return;
+            }
+
+            AdEvents.RaiseRewardedFailed(
+                AdFormat.Rewarded,
+                primary.ToString(),
+                "Rewarded ad failed after retries");
+            onFailed?.Invoke("Rewarded ad failed after retries");
         }
 
         private IEnumerator CoDelayedRetry(Action action)

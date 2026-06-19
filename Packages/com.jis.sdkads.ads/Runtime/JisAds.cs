@@ -42,6 +42,9 @@ namespace JisSDKAds.Ads
         [Header("Fullscreen in-flight watchdog (recover stuck callbacks)")]
         [SerializeField] private bool enableFullscreenInFlightWatchdog = true;
         [SerializeField] private float fullscreenInFlightWatchdogSec = 60f;
+        [Header("Network recovery")]
+        [SerializeField] private bool enableNetworkReachabilityPolling = true;
+        [SerializeField] private float networkReachabilityPollIntervalSec = 5f;
         private AdManager _core;
         private AppOpenAdService _appOpen;
         private bool _isReady;
@@ -94,6 +97,29 @@ namespace JisSDKAds.Ads
         private Coroutine _bannerRestoreCoroutine;
         private Coroutine _bannerPauseRestoreCoroutine;
         const string BannerRestoreLogPrefix = "[JisAds][BannerRestore]";
+        const float FullscreenPreloadRemoteConfigWaitTimeoutSec = 10f;
+        const float LoadedAdMaxAgeSec = 50f * 60f;
+        const int MaxProviderInitRetries = 5;
+        const int MaxCoreInitRetries = 3;
+        private bool _interstitialLoadInFlight;
+        private int _interstitialLoadsPending;
+        private bool _rewardedLoadInFlight;
+        private int _rewardedLoadsPending;
+        private bool _forceFullscreenPreloadWithoutRemoteConfig;
+        private bool _fullscreenPreloadRemoteConfigWaitStarted;
+        private Coroutine _fullscreenPreloadRemoteConfigWaitCoroutine;
+        private NetworkReachability _lastNetworkReachability;
+        private readonly Dictionary<AdProviderId, float> _interstitialLoadedAtUnscaled = new Dictionary<AdProviderId, float>();
+        private readonly Dictionary<AdProviderId, float> _rewardedLoadedAtUnscaled = new Dictionary<AdProviderId, float>();
+        private List<AdProviderId> _cachedInterstitialProviderOrder;
+        private List<AdProviderId> _cachedRewardedProviderOrder;
+        private bool _providerOrderCacheDirty = true;
+        private readonly Dictionary<AdProviderId, int> _providerInitFailCounts = new Dictionary<AdProviderId, int>();
+        private readonly Dictionary<AdProviderId, Coroutine> _providerInitRetryCoroutines = new Dictionary<AdProviderId, Coroutine>();
+        private int _coreInitFailCount;
+        private Coroutine _coreInitRetryCoroutine;
+        private Coroutine _networkReachabilityPollCoroutine;
+        private bool _networkRecoveryRemoteConfigFetchInFlight;
         enum StandardAdPreloadFormat
         {
             Banner,
@@ -137,8 +163,10 @@ namespace JisSDKAds.Ads
             EnsureResumeCoordinator();
             _appOpen = new AppOpenAdService(this, this);
             _appOpenUnscaledTime = Time.unscaledTime;
+            _lastNetworkReachability = Application.internetReachability;
             AdLoadCoordinator.Instance.Configure(this);
             BindCoreCappingEvents();
+            BindProviderEvents();
             _appOpen.ConfigureColdStart(
                 showAppOpenOnColdStart,
                 appOpenFirstShowDelayMs,
@@ -156,24 +184,40 @@ namespace JisSDKAds.Ads
             AdMobSdkEarlyInitBridge.TryWarmUpFromSettings(settings);
             MaxSdkEarlyInitBridge.TryWarmUpFromSettings(settings);
         }
+        private void OnApplicationFocus(bool hasFocus)
+        {
+            if (hasFocus)
+                HandleNetworkReachabilityChanged();
+        }
+
         private void OnApplicationPause(bool pauseStatus)
         {
             resumeCoordinator?.OnApplicationPause(pauseStatus);
 
-            if (!pauseStatus && _bannerWantsVisible && !IsShowingAnyAd())
-                ScheduleBannerRestoreOnAppResume();
+            if (!pauseStatus)
+            {
+                HandleNetworkReachabilityChanged();
+                if (_bannerWantsVisible && !IsShowingAnyAd())
+                    ScheduleBannerRestoreOnAppResume();
+            }
         }
         private void OnDestroy()
         {
             StopAllPreloadRetries();
+            StopAllProviderInitRetries();
+            StopCoreInitRetry();
+            StopFullscreenPreloadRemoteConfigWait();
+            StopNetworkReachabilityPolling();
             StopBannerAutoRefresh();
             CancelPendingBannerRestore();
             CancelPendingBannerPauseRestore();
             UnbindCoreCappingEvents();
+            UnbindProviderEvents();
             AdEvents.OnProviderInitialized -= HandleProviderInitialized;
         }
         private void Start()
         {
+            StartNetworkReachabilityPolling();
             if (autoInitializeOnStart)
                 _ = InitializeAsync();
         }
@@ -405,12 +449,67 @@ namespace JisSDKAds.Ads
                 return;
             }
 
-            if (!IsRemoteConfigReady())
+            if (!IsRemoteConfigReady() && !_forceFullscreenPreloadWithoutRemoteConfig)
             {
                 _pendingFullscreenPreloadAfterRemoteConfig = true;
                 DebugAds.Log("[JisAds] Deferring interstitial/rewarded preload — Remote Config not ready.");
+                EnsureFullscreenPreloadRemoteConfigWaitStarted();
                 return;
             }
+
+            ProceedWithFullscreenPreloadAfterRemoteConfig();
+        }
+
+        void EnsureFullscreenPreloadRemoteConfigWaitStarted()
+        {
+            if (_fullscreenPreloadRemoteConfigWaitStarted)
+                return;
+
+            _fullscreenPreloadRemoteConfigWaitStarted = true;
+            _fullscreenPreloadRemoteConfigWaitCoroutine = StartCoroutine(CoWaitRemoteConfigOrTimeoutPreloadFullscreen());
+        }
+
+        void StopFullscreenPreloadRemoteConfigWait()
+        {
+            if (_fullscreenPreloadRemoteConfigWaitCoroutine == null)
+                return;
+
+            StopCoroutine(_fullscreenPreloadRemoteConfigWaitCoroutine);
+            _fullscreenPreloadRemoteConfigWaitCoroutine = null;
+            _fullscreenPreloadRemoteConfigWaitStarted = false;
+        }
+
+        IEnumerator CoWaitRemoteConfigOrTimeoutPreloadFullscreen()
+        {
+            var startedAt = Time.unscaledTime;
+            while (!IsRemoteConfigReady() && Time.unscaledTime - startedAt < FullscreenPreloadRemoteConfigWaitTimeoutSec)
+                yield return null;
+
+            _fullscreenPreloadRemoteConfigWaitCoroutine = null;
+            _fullscreenPreloadRemoteConfigWaitStarted = false;
+
+            if (IsRemoteConfigReady())
+            {
+                DebugAds.Log("[JisAds] Remote Config ready — proceeding with fullscreen preload.");
+            }
+            else
+            {
+                _forceFullscreenPreloadWithoutRemoteConfig = true;
+                DebugAds.LogWarning(
+                    $"[JisAds] Remote Config wait timeout ({FullscreenPreloadRemoteConfigWaitTimeoutSec:0.#}s) — fullscreen preload with default inventory.");
+            }
+
+            _pendingFullscreenPreloadAfterRemoteConfig = false;
+            ProceedWithFullscreenPreloadAfterRemoteConfig();
+        }
+
+        void ProceedWithFullscreenPreloadAfterRemoteConfig()
+        {
+            if (!ShouldPreloadAdsOnGameStart())
+                return;
+
+            if (_core == null || !_core.IsInitialized)
+                return;
 
             TryPreloadFullscreenForAllReadyProviders();
 
@@ -423,6 +522,9 @@ namespace JisSDKAds.Ads
             if (IsInterstitialEnabledInSetup())
                 StartCoroutine(CoDeferredInterstitialPreload());
         }
+
+        bool CanPreloadFullscreenForProvider() =>
+            IsRemoteConfigReady() || _forceFullscreenPreloadWithoutRemoteConfig;
 
         static bool IsRemoteConfigReady() =>
             FirebaseManager.Instance != null && FirebaseManager.Instance.IsRemoteConfigReady;
@@ -502,6 +604,13 @@ namespace JisSDKAds.Ads
 
         void OnProviderBecameReady(AdProviderId providerId)
         {
+            _providerInitFailCounts[providerId] = 0;
+            if (_providerInitRetryCoroutines.TryGetValue(providerId, out var retry) && retry != null)
+            {
+                StopCoroutine(retry);
+                _providerInitRetryCoroutines[providerId] = null;
+            }
+
             if (!ShouldPreloadAdsOnGameStart() || !CanShowAds())
                 return;
 
@@ -547,7 +656,7 @@ namespace JisSDKAds.Ads
 
         void TryPreloadFullscreenForProvider(AdProviderId providerId)
         {
-            if (!IsRemoteConfigReady() || _core == null || !_core.IsProviderInitialized(providerId))
+            if (!CanPreloadFullscreenForProvider() || _core == null || !_core.IsProviderInitialized(providerId))
                 return;
 
             if (IsRewardedEnabledInSetup() && ProviderHandlesFormat(providerId, AdFormat.Rewarded))
@@ -559,7 +668,7 @@ namespace JisSDKAds.Ads
 
         void TryPreloadFullscreenForAllReadyProviders()
         {
-            if (!IsRemoteConfigReady() || _core == null)
+            if (!CanPreloadFullscreenForProvider() || _core == null)
                 return;
 
             foreach (var providerId in GetFullscreenPreloadProviderIds(AdFormat.Rewarded))
@@ -583,24 +692,28 @@ namespace JisSDKAds.Ads
         void TryPreloadRewardedForProvider(AdProviderId providerId)
         {
             var provider = _core?.GetProvider(providerId);
-            if (!CanOperateFullscreen() || provider?.Rewarded == null)
+            if (!CanOperateFullscreen() || provider?.Rewarded == null || _rewardedLoadInFlight)
                 return;
 
-            if (provider.Rewarded.IsLoaded)
+            if (IsProviderRewardedLoadedFresh(providerId))
             {
                 DebugAds.Log($"[JisAds][Rewarded][preload_skip] mediation={providerId} reason=already_loaded");
                 return;
             }
 
+            _rewardedLoadInFlight = true;
             DebugAds.Log($"[JisAds][Rewarded][preload_start] mediation={providerId}");
             provider.Rewarded.Load(
                 onLoaded: () =>
                 {
+                    _rewardedLoadInFlight = false;
+                    RecordRewardedLoaded(providerId);
                     OnPreloadSucceeded(StandardAdPreloadFormat.Rewarded);
                     DebugAds.Log($"[JisAds][Rewarded][preload_success] mediation={providerId}");
                 },
                 onFailed: err =>
                 {
+                    _rewardedLoadInFlight = false;
                     DebugAds.LogWarning($"[JisAds][Rewarded][preload_fail] mediation={providerId} error={err}");
                     HandlePreloadFailedIfNoFormatReady(StandardAdPreloadFormat.Rewarded);
                 });
@@ -609,24 +722,28 @@ namespace JisSDKAds.Ads
         void TryPreloadInterstitialForProvider(AdProviderId providerId)
         {
             var provider = _core?.GetProvider(providerId);
-            if (!CanOperateFullscreen() || provider?.Interstitial == null)
+            if (!CanOperateFullscreen() || provider?.Interstitial == null || _interstitialLoadInFlight)
                 return;
 
-            if (provider.Interstitial.IsLoaded)
+            if (IsProviderInterstitialLoadedFresh(providerId))
             {
                 DebugAds.Log($"[JisAds][Interstitial][preload_skip] mediation={providerId} reason=already_loaded");
                 return;
             }
 
+            _interstitialLoadInFlight = true;
             DebugAds.Log($"[JisAds][Interstitial][preload_start] mediation={providerId}");
             provider.Interstitial.Load(
                 onLoaded: () =>
                 {
+                    _interstitialLoadInFlight = false;
+                    RecordInterstitialLoaded(providerId);
                     OnPreloadSucceeded(StandardAdPreloadFormat.Interstitial);
                     DebugAds.Log($"[JisAds][Interstitial][preload_success] mediation={providerId}");
                 },
                 onFailed: err =>
                 {
+                    _interstitialLoadInFlight = false;
                     DebugAds.LogWarning($"[JisAds][Interstitial][preload_fail] mediation={providerId} error={err}");
                     HandlePreloadFailedIfNoFormatReady(StandardAdPreloadFormat.Interstitial);
                 });
@@ -762,14 +879,21 @@ namespace JisSDKAds.Ads
                 });
         }
 
-        void PreloadInterstitialAd()
+        void PreloadInterstitialAd(bool forceReload = false)
         {
             if (!CanOperateFullscreen() || _core == null)
                 return;
 
+            if (!TryBeginInterstitialLoadBatch(forceReload))
+            {
+                DebugAds.Log("[JisAds][Interstitial][preload_skip] reason=load_in_flight");
+                return;
+            }
+
             var providerIds = GetFullscreenPreloadProviderIds(AdFormat.Interstitial);
             LogFullscreenLoadPlan(AdFormat.Interstitial, providerIds);
 
+            var startedAny = false;
             foreach (var providerId in providerIds)
             {
                 if (!_core.IsProviderInitialized(providerId))
@@ -785,35 +909,53 @@ namespace JisSDKAds.Ads
                     continue;
                 }
 
-                if (provider.Interstitial.IsLoaded)
+                if (!forceReload && IsProviderInterstitialLoadedFresh(providerId))
                 {
                     DebugAds.Log($"[JisAds][Interstitial][preload_skip] mediation={providerId} reason=already_loaded");
                     continue;
                 }
 
+                startedAny = true;
+                BeginInterstitialLoadSlot();
                 DebugAds.Log($"[JisAds][Interstitial][preload_start] mediation={providerId}");
                 provider.Interstitial.Load(
                     onLoaded: () =>
                     {
+                        RecordInterstitialLoaded(providerId);
                         OnPreloadSucceeded(StandardAdPreloadFormat.Interstitial);
                         DebugAds.Log($"[JisAds][Interstitial][preload_success] mediation={providerId}");
+                        EndInterstitialLoadSlot();
                     },
                     onFailed: err =>
                     {
                         DebugAds.LogWarning($"[JisAds][Interstitial][preload_fail] mediation={providerId} error={err}");
                         HandlePreloadFailedIfNoFormatReady(StandardAdPreloadFormat.Interstitial);
+                        EndInterstitialLoadSlot();
                     });
+            }
+
+            if (!startedAny)
+            {
+                _interstitialLoadInFlight = false;
+                _interstitialLoadsPending = 0;
             }
         }
 
-        void PreloadRewardedAd()
+        void PreloadRewardedAd(bool forceReload = false)
         {
             if (!CanOperateFullscreen() || _core == null)
                 return;
 
+            if (!TryBeginRewardedLoadBatch(forceReload))
+            {
+                DebugAds.Log("[JisAds][Rewarded][preload_skip] reason=load_in_flight");
+                return;
+            }
+
             var providerIds = GetFullscreenPreloadProviderIds(AdFormat.Rewarded);
             LogFullscreenLoadPlan(AdFormat.Rewarded, providerIds);
 
+            var startedAny = false;
             foreach (var providerId in providerIds)
             {
                 if (!_core.IsProviderInitialized(providerId))
@@ -829,24 +971,35 @@ namespace JisSDKAds.Ads
                     continue;
                 }
 
-                if (provider.Rewarded.IsLoaded)
+                if (!forceReload && IsProviderRewardedLoadedFresh(providerId))
                 {
                     DebugAds.Log($"[JisAds][Rewarded][preload_skip] mediation={providerId} reason=already_loaded");
                     continue;
                 }
 
+                startedAny = true;
+                BeginRewardedLoadSlot();
                 DebugAds.Log($"[JisAds][Rewarded][preload_start] mediation={providerId}");
                 provider.Rewarded.Load(
                     onLoaded: () =>
                     {
+                        RecordRewardedLoaded(providerId);
                         OnPreloadSucceeded(StandardAdPreloadFormat.Rewarded);
                         DebugAds.Log($"[JisAds][Rewarded][preload_success] mediation={providerId}");
+                        EndRewardedLoadSlot();
                     },
                     onFailed: err =>
                     {
                         DebugAds.LogWarning($"[JisAds][Rewarded][preload_fail] mediation={providerId} error={err}");
                         HandlePreloadFailedIfNoFormatReady(StandardAdPreloadFormat.Rewarded);
+                        EndRewardedLoadSlot();
                     });
+            }
+
+            if (!startedAny)
+            {
+                _rewardedLoadInFlight = false;
+                _rewardedLoadsPending = 0;
             }
         }
 
@@ -876,21 +1029,28 @@ namespace JisSDKAds.Ads
             if (!CanOperateFullscreen() || provider?.Interstitial == null || _core == null || !_core.IsProviderInitialized(providerId))
                 return;
 
-            if (provider.Interstitial.IsLoaded)
+            if (_interstitialLoadInFlight)
+                return;
+
+            if (IsProviderInterstitialLoadedFresh(providerId))
             {
                 DebugAds.Log($"[JisAds][Interstitial][preload_skip] mediation={providerId} reason=already_loaded");
                 return;
             }
 
+            _interstitialLoadInFlight = true;
             DebugAds.Log($"[JisAds][Interstitial][preload_start] mediation={providerId}");
             provider.Interstitial.Load(
                 onLoaded: () =>
                 {
+                    _interstitialLoadInFlight = false;
+                    RecordInterstitialLoaded(providerId);
                     OnPreloadSucceeded(StandardAdPreloadFormat.Interstitial);
                     DebugAds.Log($"[JisAds][Interstitial][preload_success] mediation={providerId}");
                 },
                 onFailed: err =>
                 {
+                    _interstitialLoadInFlight = false;
                     DebugAds.LogWarning($"[JisAds][Interstitial][preload_fail] mediation={providerId} error={err}");
                     HandlePreloadFailed(StandardAdPreloadFormat.Interstitial);
                 });
@@ -902,21 +1062,28 @@ namespace JisSDKAds.Ads
             if (!CanOperateFullscreen() || provider?.Rewarded == null || _core == null || !_core.IsProviderInitialized(providerId))
                 return;
 
-            if (provider.Rewarded.IsLoaded)
+            if (_rewardedLoadInFlight)
+                return;
+
+            if (IsProviderRewardedLoadedFresh(providerId))
             {
                 DebugAds.Log($"[JisAds][Rewarded][preload_skip] mediation={providerId} reason=already_loaded");
                 return;
             }
 
+            _rewardedLoadInFlight = true;
             DebugAds.Log($"[JisAds][Rewarded][preload_start] mediation={providerId}");
             provider.Rewarded.Load(
                 onLoaded: () =>
                 {
+                    _rewardedLoadInFlight = false;
+                    RecordRewardedLoaded(providerId);
                     OnPreloadSucceeded(StandardAdPreloadFormat.Rewarded);
                     DebugAds.Log($"[JisAds][Rewarded][preload_success] mediation={providerId}");
                 },
                 onFailed: err =>
                 {
+                    _rewardedLoadInFlight = false;
                     DebugAds.LogWarning($"[JisAds][Rewarded][preload_fail] mediation={providerId} error={err}");
                     HandlePreloadFailed(StandardAdPreloadFormat.Rewarded);
                 });
@@ -1108,6 +1275,8 @@ namespace JisSDKAds.Ads
             _isApplyingRemoteConfig = true;
             try
             {
+                _forceFullscreenPreloadWithoutRemoteConfig = false;
+                StopFullscreenPreloadRemoteConfigWait();
                 AdsManager.Instance?.RefreshRemoteConfigDrivenSettings(notifyLegacySubscribers: false);
                 RefreshAppOpenAndResumeRemoteConfig();
                 DebugAds.Log("[JisAds] Remote Config applied to ads — preloads armed.");
@@ -1198,6 +1367,7 @@ namespace JisSDKAds.Ads
             AdMediationModeRemoteConfigResolver.ApplyMediationModesFromRemoteConfig(settings);
             AdInventoryRemoteConfigResolver.ApplyInventoryModesFromRemoteConfig(profile.sdkSetup, profile, settings);
             SequentialTierRemoteConfigResolver.ApplyResolvedIdsToAllMediationSetups(profile);
+            InvalidateProviderOrderCache();
         }
 
         void InitializeCoreFlow()
@@ -1243,19 +1413,19 @@ namespace JisSDKAds.Ads
             }
 
             ConfigureCoreFormatRoutes(profile);
+            InvalidateProviderOrderCache();
             _core.Initialize(
                 onSuccess: () =>
                 {
                     DebugAds.LogSdkInit("JisAds", "Core AdManager", true);
+                    _coreInitFailCount = 0;
+                    StopCoreInitRetry();
                     TryCompleteStartupAfterCoreReady();
                 },
                 onFailure: err =>
                 {
                     DebugAds.LogSdkInit("JisAds", "Core AdManager", false, err);
-                    useCoreForStandardFormats = false;
-                    _pendingRecoverFullscreenPreloadsAfterCoreReady = false;
-                    _pendingImmediatePreloadAfterCoreReady = false;
-                    _pendingFullscreenPreloadAfterRemoteConfig = false;
+                    ScheduleCoreInitRetry(err);
                 });
         }
 
@@ -1300,6 +1470,7 @@ namespace JisSDKAds.Ads
             _core.SetFormatProvider(AdFormat.Interstitial, ToProviderId(setup.GetAdsMediationType(AdsType.INTERSTITIAL)));
             _core.SetFormatProvider(AdFormat.Rewarded, ToProviderId(setup.GetAdsMediationType(AdsType.REWARDED)));
             _core.SetFormatProvider(AdFormat.AppOpen, ToProviderId(setup.GetAdsMediationType(AdsType.APP_OPEN)));
+            InvalidateProviderOrderCache();
         }
 
         static AdProviderId ToProviderId(AdsMediationType mediation) => mediation switch
@@ -1525,8 +1696,8 @@ namespace JisSDKAds.Ads
 
             return format switch
             {
-                AdFormat.Interstitial => _core.IsInterstitialLoaded(provider),
-                AdFormat.Rewarded => _core.IsRewardedLoaded(provider),
+                AdFormat.Interstitial => IsProviderInterstitialLoadedFresh(provider),
+                AdFormat.Rewarded => IsProviderRewardedLoadedFresh(provider),
                 _ => false
             };
         }
@@ -1541,7 +1712,7 @@ namespace JisSDKAds.Ads
                 if (!_core.IsProviderInitialized(provider))
                     continue;
 
-                if (_core.IsInterstitialLoaded(provider))
+                if (IsProviderInterstitialLoadedFresh(provider))
                     return true;
             }
 
@@ -1558,12 +1729,396 @@ namespace JisSDKAds.Ads
                 if (!_core.IsProviderInitialized(provider))
                     continue;
 
-                if (_core.IsRewardedLoaded(provider))
+                if (IsProviderRewardedLoadedFresh(provider))
                     return true;
             }
 
             return false;
         }
+        #region Fullscreen load resilience
+        void InvalidateProviderOrderCache()
+        {
+            _providerOrderCacheDirty = true;
+            _cachedInterstitialProviderOrder = null;
+            _cachedRewardedProviderOrder = null;
+        }
+
+        List<AdProviderId> GetCachedFullscreenShowProviderOrder(AdFormat format, AdsMediationType mediation = AdsMediationType.NONE)
+        {
+            if (mediation != AdsMediationType.NONE)
+                return BuildFullscreenShowProviderOrder(mediation, format);
+
+            if (!_providerOrderCacheDirty)
+            {
+                if (format == AdFormat.Interstitial && _cachedInterstitialProviderOrder != null)
+                    return _cachedInterstitialProviderOrder;
+                if (format == AdFormat.Rewarded && _cachedRewardedProviderOrder != null)
+                    return _cachedRewardedProviderOrder;
+            }
+
+            var order = BuildFullscreenShowProviderOrder(AdsMediationType.NONE, format);
+            if (format == AdFormat.Interstitial)
+                _cachedInterstitialProviderOrder = order;
+            else if (format == AdFormat.Rewarded)
+                _cachedRewardedProviderOrder = order;
+            _providerOrderCacheDirty = false;
+            return order;
+        }
+
+        void RecordInterstitialLoaded(AdProviderId providerId)
+        {
+            if (providerId == AdProviderId.None)
+                return;
+            _interstitialLoadedAtUnscaled[providerId] = Time.unscaledTime;
+        }
+
+        void RecordRewardedLoaded(AdProviderId providerId)
+        {
+            if (providerId == AdProviderId.None)
+                return;
+            _rewardedLoadedAtUnscaled[providerId] = Time.unscaledTime;
+        }
+
+        bool IsProviderInterstitialLoadedFresh(AdProviderId providerId)
+        {
+            if (_core == null || !_core.IsInterstitialLoaded(providerId))
+                return false;
+
+            if (!_interstitialLoadedAtUnscaled.TryGetValue(providerId, out var loadedAt))
+            {
+                RecordInterstitialLoaded(providerId);
+                return true;
+            }
+
+            if (Time.unscaledTime - loadedAt <= LoadedAdMaxAgeSec)
+                return true;
+
+            DebugAds.Log($"[JisAds][Interstitial][stale] mediation={providerId} age={(Time.unscaledTime - loadedAt):0.#}s");
+            _interstitialLoadedAtUnscaled.Remove(providerId);
+            if (!_interstitialLoadInFlight)
+                PreloadSingleProviderInterstitial(providerId);
+            return false;
+        }
+
+        bool IsProviderRewardedLoadedFresh(AdProviderId providerId)
+        {
+            if (_core == null || !_core.IsRewardedLoaded(providerId))
+                return false;
+
+            if (!_rewardedLoadedAtUnscaled.TryGetValue(providerId, out var loadedAt))
+            {
+                RecordRewardedLoaded(providerId);
+                return true;
+            }
+
+            if (Time.unscaledTime - loadedAt <= LoadedAdMaxAgeSec)
+                return true;
+
+            DebugAds.Log($"[JisAds][Rewarded][stale] mediation={providerId} age={(Time.unscaledTime - loadedAt):0.#}s");
+            _rewardedLoadedAtUnscaled.Remove(providerId);
+            if (!_rewardedLoadInFlight)
+                PreloadSingleProviderRewarded(providerId);
+            return false;
+        }
+
+        bool TryBeginInterstitialLoadBatch(bool forceReload = false)
+        {
+            if (_interstitialLoadInFlight && !forceReload)
+                return false;
+            _interstitialLoadInFlight = true;
+            _interstitialLoadsPending = 0;
+            return true;
+        }
+
+        void BeginInterstitialLoadSlot()
+        {
+            _interstitialLoadsPending++;
+        }
+
+        void EndInterstitialLoadSlot()
+        {
+            _interstitialLoadsPending = Mathf.Max(0, _interstitialLoadsPending - 1);
+            if (_interstitialLoadsPending <= 0)
+            {
+                _interstitialLoadsPending = 0;
+                _interstitialLoadInFlight = false;
+            }
+        }
+
+        bool TryBeginRewardedLoadBatch(bool forceReload = false)
+        {
+            if (_rewardedLoadInFlight && !forceReload)
+                return false;
+            _rewardedLoadInFlight = true;
+            _rewardedLoadsPending = 0;
+            return true;
+        }
+
+        void BeginRewardedLoadSlot()
+        {
+            _rewardedLoadsPending++;
+        }
+
+        void EndRewardedLoadSlot()
+        {
+            _rewardedLoadsPending = Mathf.Max(0, _rewardedLoadsPending - 1);
+            if (_rewardedLoadsPending <= 0)
+            {
+                _rewardedLoadsPending = 0;
+                _rewardedLoadInFlight = false;
+            }
+        }
+
+        void HandleNetworkReachabilityChanged()
+        {
+            var current = Application.internetReachability;
+            if (current == _lastNetworkReachability)
+                return;
+
+            var wasOffline = _lastNetworkReachability == NetworkReachability.NotReachable;
+            _lastNetworkReachability = current;
+
+            if (current == NetworkReachability.NotReachable || !wasOffline)
+                return;
+
+            OnNetworkBecameReachable();
+        }
+
+        void OnNetworkBecameReachable()
+        {
+            DebugAds.Log("[JisAds] Network reachable — resetting preload backoff and re-fetching Remote Config.");
+            _preloadFailCounts[PreloadFormatIndex(StandardAdPreloadFormat.Interstitial)] = 0;
+            _preloadFailCounts[PreloadFormatIndex(StandardAdPreloadFormat.Rewarded)] = 0;
+            StopPreloadRetryCoroutine(StandardAdPreloadFormat.Interstitial);
+            StopPreloadRetryCoroutine(StandardAdPreloadFormat.Rewarded);
+            _interstitialLoadedAtUnscaled.Clear();
+            _rewardedLoadedAtUnscaled.Clear();
+            RequestInterstitialLoadIfNeeded();
+            RequestRewardedLoadIfNeeded();
+            TriggerRemoteConfigFetchAfterNetworkRecovery();
+        }
+
+        void StartNetworkReachabilityPolling()
+        {
+            if (!enableNetworkReachabilityPolling || settings == null)
+                return;
+
+            StopNetworkReachabilityPolling();
+            if (networkReachabilityPollIntervalSec <= 0f)
+                return;
+
+            _networkReachabilityPollCoroutine = StartCoroutine(CoPollNetworkReachability());
+        }
+
+        void StopNetworkReachabilityPolling()
+        {
+            if (_networkReachabilityPollCoroutine == null)
+                return;
+
+            StopCoroutine(_networkReachabilityPollCoroutine);
+            _networkReachabilityPollCoroutine = null;
+        }
+
+        IEnumerator CoPollNetworkReachability()
+        {
+            var interval = Mathf.Max(1f, networkReachabilityPollIntervalSec);
+            var wait = new WaitForSecondsRealtime(interval);
+            while (true)
+            {
+                yield return wait;
+                HandleNetworkReachabilityChanged();
+            }
+        }
+
+        void TriggerRemoteConfigFetchAfterNetworkRecovery()
+        {
+            if (_isRemoveAds || _networkRecoveryRemoteConfigFetchInFlight || _isApplyingRemoteConfig)
+                return;
+
+            _networkRecoveryRemoteConfigFetchInFlight = true;
+            _ = FetchRemoteConfigAfterNetworkRecoveryAsync();
+        }
+
+        async Task FetchRemoteConfigAfterNetworkRecoveryAsync()
+        {
+            try
+            {
+                var fetchSucceeded = await FetchAndApplyRemoteConfigAsync();
+                DebugAds.Log(
+                    fetchSucceeded
+                        ? "[JisAds] Network recovery Remote Config fetch succeeded."
+                        : "[JisAds] Network recovery Remote Config fetch finished with defaults/failure — preloads re-armed.");
+            }
+            catch (Exception ex)
+            {
+                DebugAds.LogWarning($"[JisAds] Network recovery Remote Config fetch error: {ex.Message}");
+            }
+            finally
+            {
+                _networkRecoveryRemoteConfigFetchInFlight = false;
+            }
+        }
+
+        void BindProviderEvents() => AdEvents.OnProviderFailed += HandleProviderFailed;
+
+        void UnbindProviderEvents() => AdEvents.OnProviderFailed -= HandleProviderFailed;
+
+        void HandleProviderFailed(AdFailureInfo failure)
+        {
+            if (!useCoreForStandardFormats || _core == null)
+                return;
+
+            var providerId = ParseProviderId(failure.ProviderId);
+            if (providerId == AdProviderId.None)
+                return;
+
+            ScheduleProviderInitRetry(providerId);
+        }
+
+        void ScheduleProviderInitRetry(AdProviderId providerId)
+        {
+            if (_providerInitRetryCoroutines.TryGetValue(providerId, out var existing) && existing != null)
+                return;
+
+            _providerInitFailCounts.TryGetValue(providerId, out var count);
+            count++;
+            _providerInitFailCounts[providerId] = count;
+            if (count > MaxProviderInitRetries)
+            {
+                DebugAds.LogWarning($"[JisAds] Provider init retry exhausted mediation={providerId}");
+                return;
+            }
+
+            var delay = RetryBackoff.GetDelaySeconds(count);
+            DebugAds.Log($"[JisAds] Provider init retry #{count} mediation={providerId} in {delay:0.#}s");
+            _providerInitRetryCoroutines[providerId] = StartCoroutine(CoRetryProviderInit(providerId, delay));
+        }
+
+        IEnumerator CoRetryProviderInit(AdProviderId providerId, float delay)
+        {
+            yield return new WaitForSecondsRealtime(delay);
+            _providerInitRetryCoroutines[providerId] = null;
+
+            if (!useCoreForStandardFormats || _core == null)
+                yield break;
+
+            _core.RetryInitializeProvider(
+                providerId,
+                onSuccess: () =>
+                {
+                    _providerInitFailCounts[providerId] = 0;
+                    OnProviderBecameReady(providerId);
+                },
+                onFailure: err =>
+                    DebugAds.LogWarning($"[JisAds] Provider init retry failed mediation={providerId} error={err}"));
+        }
+
+        void StopAllProviderInitRetries()
+        {
+            foreach (var kvp in _providerInitRetryCoroutines)
+            {
+                if (kvp.Value != null)
+                    StopCoroutine(kvp.Value);
+            }
+            _providerInitRetryCoroutines.Clear();
+        }
+
+        void ScheduleCoreInitRetry(string error)
+        {
+            if (_coreInitRetryCoroutine != null)
+                return;
+
+            _coreInitFailCount++;
+            if (_coreInitFailCount > MaxCoreInitRetries)
+            {
+                DebugAds.LogSdkInit("JisAds", "Core AdManager", false, $"{error} (retries exhausted)");
+                useCoreForStandardFormats = false;
+                _pendingRecoverFullscreenPreloadsAfterCoreReady = false;
+                _pendingImmediatePreloadAfterCoreReady = false;
+                _pendingFullscreenPreloadAfterRemoteConfig = false;
+                return;
+            }
+
+            var delay = RetryBackoff.GetDelaySeconds(_coreInitFailCount);
+            DebugAds.LogWarning($"[JisAds] Core init retry #{_coreInitFailCount} in {delay:0.#}s error={error}");
+            _coreInitRetryCoroutine = StartCoroutine(CoRetryCoreInit(delay));
+        }
+
+        IEnumerator CoRetryCoreInit(float delay)
+        {
+            yield return new WaitForSecondsRealtime(delay);
+            _coreInitRetryCoroutine = null;
+
+            if (_core == null || settings == null)
+                yield break;
+
+            _core.Initialize(
+                onSuccess: () =>
+                {
+                    DebugAds.LogSdkInit("JisAds", "Core AdManager", true);
+                    _coreInitFailCount = 0;
+                    TryCompleteStartupAfterCoreReady();
+                },
+                onFailure: ScheduleCoreInitRetry);
+        }
+
+        void StopCoreInitRetry()
+        {
+            if (_coreInitRetryCoroutine == null)
+                return;
+            StopCoroutine(_coreInitRetryCoroutine);
+            _coreInitRetryCoroutine = null;
+        }
+
+        /// <summary>
+        /// Re-arms interstitial preload after tier ladder give-up or prolonged NoFill backoff.
+        /// Call before important gameplay moments (e.g. entering a level).
+        /// </summary>
+        public void ForceRearmInterstitialLoad()
+        {
+            if (!CanShowAds())
+                return;
+
+            _preloadFailCounts[PreloadFormatIndex(StandardAdPreloadFormat.Interstitial)] = 0;
+            StopPreloadRetryCoroutine(StandardAdPreloadFormat.Interstitial);
+            _interstitialLoadInFlight = false;
+            _interstitialLoadsPending = 0;
+            _interstitialLoadedAtUnscaled.Clear();
+
+            if (!CanOperateFullscreen())
+            {
+                DebugAds.LogWarning("[JisAds] ForceRearmInterstitialLoad skipped — Core not ready.");
+                return;
+            }
+
+            DebugAds.Log("[JisAds] ForceRearmInterstitialLoad — warm-loading interstitial.");
+            PreloadInterstitialAd(forceReload: true);
+        }
+
+        /// <summary>
+        /// Re-arms rewarded preload after tier ladder give-up or prolonged NoFill backoff.
+        /// </summary>
+        public void ForceRearmRewardedLoad()
+        {
+            if (!CanShowAds())
+                return;
+
+            _preloadFailCounts[PreloadFormatIndex(StandardAdPreloadFormat.Rewarded)] = 0;
+            StopPreloadRetryCoroutine(StandardAdPreloadFormat.Rewarded);
+            _rewardedLoadInFlight = false;
+            _rewardedLoadsPending = 0;
+            _rewardedLoadedAtUnscaled.Clear();
+
+            if (!CanOperateFullscreen())
+            {
+                DebugAds.LogWarning("[JisAds] ForceRearmRewardedLoad skipped — Core not ready.");
+                return;
+            }
+
+            DebugAds.Log("[JisAds] ForceRearmRewardedLoad — warm-loading rewarded.");
+            PreloadRewardedAd(forceReload: true);
+        }
+        #endregion
         #region State helpers
         public bool CanShowAds() => !_isRemoveAds;
         public bool IsShowingAnyAd() => _isShowingAd;
@@ -1580,6 +2135,8 @@ namespace JisSDKAds.Ads
 
             if (_isRemoveAds)
                 ApplyRemoveAdsSideEffects();
+            else
+                RestoreAdsAfterRemoveAdsRevoked();
 
             var legacy = AdsManager.Instance;
             if (legacy != null && legacy.IsRemoveAds != isRemove)
@@ -1611,6 +2168,17 @@ namespace JisSDKAds.Ads
             StopBannerAutoRefresh();
             HideBannerAds();
             DebugAds.Log("[JisAds] Remove Ads active — startup loads suppressed; banner/interstitial show blocked.");
+        }
+
+        void RestoreAdsAfterRemoveAdsRevoked()
+        {
+            _immediateFormatsPreloadedOnCoreReady = false;
+            _fullscreenFormatsPreloadedAfterRemoteConfig = false;
+            _bannerStartupPreloadStarted = false;
+            _appOpenStartupPreloadStarted = false;
+            _pendingRecoverFullscreenPreloadsAfterCoreReady = false;
+            DebugAds.Log("[JisAds] Remove Ads revoked — re-arming startup preloads.");
+            TryCompleteStartupAfterCoreReady();
         }
         #endregion
         #region Standard formats
@@ -1691,7 +2259,7 @@ namespace JisSDKAds.Ads
             _interstitialShowAttemptId++;
             StartInterstitialInFlightWatchdog(_interstitialShowAttemptId);
             _pendingInterstitialWasShown = false;
-            var providerOrder = BuildFullscreenShowProviderOrder(mediation, AdFormat.Interstitial);
+            var providerOrder = GetCachedFullscreenShowProviderOrder(AdFormat.Interstitial, mediation);
             _pendingInterstitialHadLoadedAdAtShowRequest = IsInterstitialAdLoaded(providerOrder);
             _pendingInterstitialIsTracking = isTracking;
             _pendingInterstitialPlacement = interstitialPlacement;
@@ -1745,7 +2313,8 @@ namespace JisSDKAds.Ads
                         Debug.LogWarning($"[JisAds] Core interstitial failed: {err}");
                         TrackPendingInterstitialShowFailure(isTracking);
                         ConsumePendingInterstitialCallbacksOnFail();
-                    });
+                    },
+                    showAttemptId: _interstitialShowAttemptId);
                 return;
             }
             Debug.LogWarning("[JisAds] Legacy interstitial is removed. Enable Core AdManager.");
@@ -1918,24 +2487,36 @@ namespace JisSDKAds.Ads
 
         void OnCoreInterstitialLoaded(AdFormat format, string providerId)
         {
+            if (format == AdFormat.Interstitial)
+            {
+                var id = ParseProviderId(providerId);
+                RecordInterstitialLoaded(id);
+            }
+
             DebugAds.Log($"[JisAds][{format}][load_success] mediation={providerId}");
         }
 
         void OnCoreRewardedLoaded(AdFormat format, string providerId)
         {
+            if (format == AdFormat.Rewarded)
+            {
+                var id = ParseProviderId(providerId);
+                RecordRewardedLoaded(id);
+            }
+
             DebugAds.Log($"[JisAds][{format}][load_success] mediation={providerId}");
         }
 
-        void OnCoreInterstitialShown(AdFormat format)
+        void OnCoreInterstitialShown(AdFormat format, int showAttemptId)
         {
             if (format != AdFormat.Interstitial)
                 return;
-            // Only mark "shown" for the current in-flight show attempt.
-            if (_interstitialCallbacksInFlight)
-            {
-                _pendingInterstitialWasShown = true;
-                TrackPendingInterstitialShowSuccess();
-            }
+
+            if (!_interstitialCallbacksInFlight || showAttemptId != _interstitialShowAttemptId)
+                return;
+
+            _pendingInterstitialWasShown = true;
+            TrackPendingInterstitialShowSuccess();
             ResetCoreInterstitialBetweenShowsCooldown();
         }
 
@@ -1946,15 +2527,76 @@ namespace JisSDKAds.Ads
             // Requirement: watching a rewarded ad resets type-2 timer as well.
             ResetCoreInterstitialBetweenShowsCooldown();
         }
-        /// <summary>Interstitial for foreground resume — bypasses legacy gameplay cooldown.</summary>
+        /// <summary>Interstitial for foreground resume — bypasses gameplay capping; uses shared in-flight guard.</summary>
         public void ShowInterstitialForResume(System.Action onClosed = null, System.Action<string> onFailed = null)
         {
-            if (UseCoreForStandardFormats)
+            if (_interstitialCallbacksInFlight)
             {
-                _core.ShowInterstitial(onClosed, onFailed);
+                onFailed?.Invoke("Previous interstitial still in-flight.");
                 return;
             }
-            onFailed?.Invoke("Resume interstitial unavailable — Core AdManager not initialized.");
+
+            if (!UseCoreForStandardFormats)
+            {
+                onFailed?.Invoke("Resume interstitial unavailable — Core AdManager not initialized.");
+                return;
+            }
+
+            if (!CanOperateFullscreen())
+            {
+                RequestInterstitialLoadIfNeeded();
+                onFailed?.Invoke("Core not ready.");
+                return;
+            }
+
+            var providerOrder = GetCachedFullscreenShowProviderOrder(AdFormat.Interstitial);
+            if (!IsInterstitialAdLoaded(providerOrder))
+            {
+                RequestInterstitialLoadIfNeeded();
+                onFailed?.Invoke("No interstitial loaded.");
+                return;
+            }
+
+            _interstitialCallbacksInFlight = true;
+            _interstitialShowAttemptId++;
+            var attemptId = _interstitialShowAttemptId;
+            StartInterstitialInFlightWatchdog(attemptId);
+            _pendingInterstitialIsTracking = false;
+            _pendingInterstitialPlacement = "resume";
+            _pendingInterstitialWasShown = false;
+
+            SetAdsShowingState(true);
+            HideBannerForFullscreenAd("interstitial_resume");
+
+            var provider = SelectProviderForShow(providerOrder, AdFormat.Interstitial);
+            var fallback = SelectFallbackProvider(providerOrder, provider);
+            if (provider == AdProviderId.None)
+            {
+                ConsumePendingInterstitialCallbacksOnFail();
+                onFailed?.Invoke("No mediation provider registered.");
+                return;
+            }
+
+            _core.ShowInterstitial(
+                provider,
+                fallback,
+                onClosed: () =>
+                {
+                    var closed = onClosed;
+                    ClearPendingInterstitialCallbacks();
+                    closed?.Invoke();
+                    ScheduleBannerRestoreAfterFullscreenAd("interstitial_resume");
+                    RequestInterstitialLoadIfNeeded();
+                },
+                onFailed: err =>
+                {
+                    var failed = onFailed;
+                    ClearPendingInterstitialCallbacks();
+                    failed?.Invoke(err);
+                    ScheduleBannerRestoreAfterFullscreenAd("interstitial_resume");
+                    RequestInterstitialLoadIfNeeded();
+                },
+                showAttemptId: attemptId);
         }
         public void ShowRewardVideo(
             string rewardedPlacement,
@@ -1989,7 +2631,7 @@ namespace JisSDKAds.Ads
             StartRewardedInFlightWatchdog(_rewardedShowAttemptId);
             _pendingRewardedWasShown = false;
             _pendingRewardedRewardGranted = false;
-            var providerOrder = BuildFullscreenShowProviderOrder(mediation, AdFormat.Rewarded);
+            var providerOrder = GetCachedFullscreenShowProviderOrder(AdFormat.Rewarded, mediation);
             _pendingRewardedHadLoadedAdAtShowRequest = IsRewardedVideoLoaded(providerOrder);
             _pendingRewardedPlacement = rewardedPlacement;
             _pendingRewardedRewardCallback = successCallback;
@@ -2433,12 +3075,12 @@ namespace JisSDKAds.Ads
         }
 
         public bool IsInterstitialAdLoaded() =>
-            IsInterstitialAdLoaded(BuildFullscreenShowProviderOrder(AdsMediationType.NONE, AdFormat.Interstitial));
+            IsInterstitialAdLoaded(GetCachedFullscreenShowProviderOrder(AdFormat.Interstitial));
 
         public bool CanShowInterstitialAd() => IsInterstitialAdLoaded();
 
         public bool IsRewardedVideoLoaded() =>
-            IsRewardedVideoLoaded(BuildFullscreenShowProviderOrder(AdsMediationType.NONE, AdFormat.Rewarded));
+            IsRewardedVideoLoaded(GetCachedFullscreenShowProviderOrder(AdFormat.Rewarded));
         public bool CanShowRewardedVideo() => IsRewardedVideoLoaded();
 
         public bool IsBannerAdLoaded()
