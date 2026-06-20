@@ -3,7 +3,8 @@
     "rootNamespace": "JisSDKAds.IAP.Editor",
     "references": [
         "JisSDKAds.IAP",
-        "JisSDKAds.Common"
+        "JisSDKAds.Common",
+        "JisSDKAds.Core"
     ],
     "includePlatforms": [
         "Editor"

@@ -2,7 +2,8 @@
     "name": "JisSDKAds.Analytics.Facebook",
     "rootNamespace": "",
     "references": [
-        "JisSDKAds.Common"
+        "JisSDKAds.Common",
+        "JisSDKAds.Core"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

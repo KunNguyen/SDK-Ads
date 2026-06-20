@@ -2,7 +2,9 @@
     "name": "JisSDKAds.Notifications.Editor",
     "rootNamespace": "JisSDKAds.Notifications.Editor",
     "references": [
-        "JisSDKAds.Notifications"
+        "JisSDKAds.Notifications",
+        "JisSDKAds.Common",
+        "JisSDKAds.Core"
     ],
     "includePlatforms": [
         "Editor"

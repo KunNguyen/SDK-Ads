@@ -4,7 +4,8 @@
     "references": [
         "JisSDKAds.Common",
         "Unity.Notifications.Android",
-        "Unity.Notifications.iOS"
+        "Unity.Notifications.iOS",
+        "JisSDKAds.Core"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
