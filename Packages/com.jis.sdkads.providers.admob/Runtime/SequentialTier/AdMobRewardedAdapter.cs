@@ -29,7 +29,6 @@ namespace JisSDKAds.Providers.AdMob.SequentialTier
             Destroy();
             _adUnitId = adUnitId;
             var request = new AdRequest();
-            request.Keywords.Add("unity-admob-sample");
 
             RewardedAd.Load(adUnitId, request, (ad, error) =>
             {

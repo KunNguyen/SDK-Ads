@@ -83,7 +83,6 @@ namespace JisSDKAds.Ads
             }
 
             var adRequest = new AdRequest();
-            adRequest.Keywords.Add("unity-admob-sample");
 
             var adUnitId = GetLegacyInterstitialAdUnit();
             if (string.IsNullOrEmpty(adUnitId))

@@ -245,6 +245,11 @@ namespace JisSDKAds.Ads.UnitAdManagers
                DebugAds.Log("OnAdLoadFail Interstitial");
                base.OnAdLoadFail();
                AutoLoad.OnLoadFailed();
+               var timeFromStartRequest = (float)(DateTime.Now - StartRequestTime).TotalSeconds;
+               if (AdsTracker.Instance != null)
+                    AdsTracker.Instance.TrackAdsInterstitial_LoadedFail("load_failed", timeFromStartRequest, Placement);
+               else
+                    DebugAds.LogWarning("[InterstitialAdManager] AdsTracker.Instance is null. Skipping interstitial load-fail tracking.");
           }
           public override bool IsLoaded()
           {

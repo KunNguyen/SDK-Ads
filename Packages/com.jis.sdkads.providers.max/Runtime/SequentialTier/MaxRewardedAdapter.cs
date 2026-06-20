@@ -66,49 +66,10 @@ namespace JisSDKAds.Providers.Max.SequentialTier
             Action<string, MaxSdkBase.AdInfo> onPaid = null;
 
             var hooks = _hooks;
+            var adUnitId = _adUnitId;
             _showCompletion.Reset();
 
-            onDisplayed = (id, info) =>
-            {
-                if (id != _adUnitId) return;
-                hooks.onOpened?.Invoke();
-            };
-            onDisplayFailed = (id, error, info) =>
-            {
-                if (id != _adUnitId) return;
-                Unsubscribe();
-                _isReady = false;
-                hooks.onFailed?.Invoke(new SequentialTierShowError { Code = (int)error.Code, Message = error.Message });
-            };
-            onRewarded = (id, reward, info) =>
-            {
-                if (id != _adUnitId) return;
-                _showCompletion.NotifyRewardGranted(() => hooks.onRewardGranted?.Invoke());
-            };
-            onHidden = (id, info) =>
-            {
-                if (id != _adUnitId) return;
-                UnsubscribeExceptReward();
-                _showCompletion.NotifyFullscreenClosed(() =>
-                {
-                    if (!_showCompletion.RewardGranted)
-                        DebugAds.Log("[MAX][Rewarded][Tier] show_closed_without_reward");
-                    Unsubscribe();
-                    hooks.onClosed?.Invoke();
-                });
-            };
-            onPaid = (id, info) =>
-            {
-                if (id != _adUnitId) return;
-                hooks.onPaid?.Invoke(new SequentialTierPaidEvent
-                {
-                    Revenue = info.Revenue,
-                    Currency = "USD",
-                    AdUnitId = id,
-                    AdSource = info.NetworkName
-                });
-            };
-
+            // Unsubscribe ALL show-related listeners.
             void Unsubscribe()
             {
                 MaxSdkCallbacks.Rewarded.OnAdDisplayedEvent -= onDisplayed;
@@ -118,6 +79,7 @@ namespace JisSDKAds.Providers.Max.SequentialTier
                 MaxSdkCallbacks.Rewarded.OnAdRevenuePaidEvent -= onPaid;
             }
 
+            // Unsubscribe everything except reward while waiting for the late-reward grace window.
             void UnsubscribeExceptReward()
             {
                 MaxSdkCallbacks.Rewarded.OnAdDisplayedEvent -= onDisplayed;
@@ -126,6 +88,50 @@ namespace JisSDKAds.Providers.Max.SequentialTier
                 MaxSdkCallbacks.Rewarded.OnAdRevenuePaidEvent -= onPaid;
             }
 
+            onDisplayed = (id, info) =>
+            {
+                if (id != adUnitId) return;
+                hooks.onOpened?.Invoke();
+            };
+            onDisplayFailed = (id, error, info) =>
+            {
+                if (id != adUnitId) return;
+                // Must unsubscribe onRewarded too — display failed means no reward will arrive.
+                Unsubscribe();
+                _isReady = false;
+                hooks.onFailed?.Invoke(new SequentialTierShowError { Code = (int)error.Code, Message = error.Message });
+            };
+            onRewarded = (id, reward, info) =>
+            {
+                if (id != adUnitId) return;
+                _showCompletion.NotifyRewardGranted(() => hooks.onRewardGranted?.Invoke());
+            };
+            onHidden = (id, info) =>
+            {
+                if (id != adUnitId) return;
+                // Unsubscribe non-reward listeners; keep onRewarded alive for the late-reward grace window.
+                UnsubscribeExceptReward();
+                _showCompletion.NotifyFullscreenClosed(() =>
+                {
+                    if (!_showCompletion.RewardGranted)
+                        DebugAds.Log("[MAX][Rewarded][Tier] show_closed_without_reward");
+                    // Now fully unsubscribe onRewarded after the grace window is resolved.
+                    MaxSdkCallbacks.Rewarded.OnAdReceivedRewardEvent -= onRewarded;
+                    hooks.onClosed?.Invoke();
+                });
+            };
+            onPaid = (id, info) =>
+            {
+                if (id != adUnitId) return;
+                hooks.onPaid?.Invoke(new SequentialTierPaidEvent
+                {
+                    Revenue = info.Revenue,
+                    Currency = "USD",
+                    AdUnitId = id,
+                    AdSource = info.NetworkName
+                });
+            };
+
             MaxSdkCallbacks.Rewarded.OnAdDisplayedEvent += onDisplayed;
             MaxSdkCallbacks.Rewarded.OnAdDisplayFailedEvent += onDisplayFailed;
             MaxSdkCallbacks.Rewarded.OnAdHiddenEvent += onHidden;
@@ -133,7 +139,7 @@ namespace JisSDKAds.Providers.Max.SequentialTier
             MaxSdkCallbacks.Rewarded.OnAdRevenuePaidEvent += onPaid;
 
             _isReady = false;
-            MaxSdk.ShowRewardedAd(_adUnitId);
+            MaxSdk.ShowRewardedAd(adUnitId);
             return true;
         }
     }

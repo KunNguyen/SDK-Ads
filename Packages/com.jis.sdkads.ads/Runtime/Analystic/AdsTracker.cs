@@ -250,27 +250,23 @@ namespace JisSDKAds.Ads
             //round time to 0.5 
             interstitialAdsLoadFail++;
             timeFromStartRequest = Mathf.Round(timeFromStartRequest * 2) / 2;
-            if (string.IsNullOrEmpty(placement))
-            {
-                var parameters = new[]
+            var parameters = string.IsNullOrEmpty(placement)
+                ? new[]
                 {
                     new Parameter("error", error),
                     new Parameter("request_time", timeFromStartRequest.ToString("F1")),
+                    new Parameter("count", interstitialAdsLoadFail.ToString()),
                     new Parameter(session_ad_index_parameter, interstitialAdsLoadFail),
-                };
-                FirebaseManager.Instance.LogEvent(ad_inter_load_fail, parameters);
-            }
-            else
-            {
-                var parameters = new[]
+                }
+                : new[]
                 {
                     new Parameter("error", error),
                     new Parameter("request_time", timeFromStartRequest.ToString("F1")),
                     new Parameter("placement", placement),
+                    new Parameter("count", interstitialAdsLoadFail.ToString()),
                     new Parameter(session_ad_index_parameter, interstitialAdsLoadFail),
                 };
-                FirebaseManager.Instance.LogEvent(ad_inter_load_fail, parameters);
-            }
+            FirebaseManager.Instance.LogEvent(ad_inter_load_fail, parameters);
         }
 
         public void TrackAdsInterstitial_ShowSuccess(string placement = "")

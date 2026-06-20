@@ -757,6 +757,7 @@ namespace JisSDKAds.Providers.Max.SequentialTier
 
         public void Load(Action onLoaded = null, Action<string> onFailed = null)
         {
+            FlushSupersededLoadCallbacks();
             _pendingOnLoaded = onLoaded;
             _pendingOnFailed = onFailed;
             RefreshLoaderCallbacks();
@@ -777,8 +778,9 @@ namespace JisSDKAds.Providers.Max.SequentialTier
                 return;
 
             DebugAds.LogAdEvent("Interstitial", "show_blocked_not_loaded", unitId, "provider=MAX tiered");
-            _pendingOnShowFailed?.Invoke("Interstitial not ready");
-            _loader.Load(forceReload: true);
+            var cb = _pendingOnShowFailed;
+            _pendingOnShowFailed = null;
+            cb?.Invoke("Interstitial not ready");
         }
 
         void RefreshLoaderCallbacks()
@@ -798,7 +800,7 @@ namespace JisSDKAds.Providers.Max.SequentialTier
         void OnLoadSuccess()
         {
             var cb = _pendingOnLoaded;
-            _pendingOnLoaded = null;
+            ClearPendingLoadCallbacks();
             DebugAds.LogAdEvent("Interstitial", "load_success", _loader.ReadyCache?.AdUnitId, "provider=MAX tiered");
             cb?.Invoke();
         }
@@ -806,9 +808,25 @@ namespace JisSDKAds.Providers.Max.SequentialTier
         void OnLoadFailed()
         {
             var cb = _pendingOnFailed;
-            _pendingOnFailed = null;
+            ClearPendingLoadCallbacks();
             DebugAds.LogAdEvent("Interstitial", "load_fail", null, "provider=MAX tiered", "Sequential tier ladder failed");
             cb?.Invoke("Sequential tier ladder failed");
+        }
+
+        void FlushSupersededLoadCallbacks()
+        {
+            if (_pendingOnLoaded == null && _pendingOnFailed == null)
+                return;
+
+            var cb = _pendingOnFailed;
+            ClearPendingLoadCallbacks();
+            cb?.Invoke("Interstitial load superseded by a newer request");
+        }
+
+        void ClearPendingLoadCallbacks()
+        {
+            _pendingOnLoaded = null;
+            _pendingOnFailed = null;
         }
 
         void OnShowOpened()
@@ -835,7 +853,6 @@ namespace JisSDKAds.Providers.Max.SequentialTier
             var message = string.IsNullOrEmpty(error?.Message) ? "show_failed" : error.Value.Message;
             DebugAds.LogAdEvent("Interstitial", "show_failed", _loader.ReadyCache?.AdUnitId, "provider=MAX tiered", message);
             cb?.Invoke(message);
-            _loader.Load(forceReload: true);
         }
     }
 
@@ -864,6 +881,7 @@ namespace JisSDKAds.Providers.Max.SequentialTier
 
         public void Load(Action onLoaded = null, Action<string> onFailed = null)
         {
+            FlushSupersededLoadCallbacks();
             _pendingOnLoaded = onLoaded;
             _pendingOnFailed = onFailed;
             RefreshLoaderCallbacks();
@@ -884,8 +902,9 @@ namespace JisSDKAds.Providers.Max.SequentialTier
                 return;
 
             DebugAds.LogAdEvent("Rewarded", "show_blocked_not_loaded", unitId, "provider=MAX tiered");
-            _pendingOnShowFailed?.Invoke("Rewarded not ready");
-            _loader.Load(urgent: true);
+            var cb = _pendingOnShowFailed;
+            _pendingOnShowFailed = null;
+            cb?.Invoke("Rewarded not ready");
         }
 
         void RefreshLoaderCallbacks()
@@ -906,7 +925,7 @@ namespace JisSDKAds.Providers.Max.SequentialTier
         void OnLoadSuccess()
         {
             var cb = _pendingOnLoaded;
-            _pendingOnLoaded = null;
+            ClearPendingLoadCallbacks();
             DebugAds.LogAdEvent("Rewarded", "load_success", _loader.ReadyCache?.AdUnitId, "provider=MAX tiered");
             cb?.Invoke();
         }
@@ -914,9 +933,25 @@ namespace JisSDKAds.Providers.Max.SequentialTier
         void OnLoadFailed()
         {
             var cb = _pendingOnFailed;
-            _pendingOnFailed = null;
+            ClearPendingLoadCallbacks();
             DebugAds.LogAdEvent("Rewarded", "load_fail", null, "provider=MAX tiered", "Sequential tier ladder failed");
             cb?.Invoke("Sequential tier ladder failed");
+        }
+
+        void FlushSupersededLoadCallbacks()
+        {
+            if (_pendingOnLoaded == null && _pendingOnFailed == null)
+                return;
+
+            var cb = _pendingOnFailed;
+            ClearPendingLoadCallbacks();
+            cb?.Invoke("Rewarded load superseded by a newer request");
+        }
+
+        void ClearPendingLoadCallbacks()
+        {
+            _pendingOnLoaded = null;
+            _pendingOnFailed = null;
         }
 
         void OnShowOpened()
@@ -948,7 +983,6 @@ namespace JisSDKAds.Providers.Max.SequentialTier
             var message = string.IsNullOrEmpty(error?.Message) ? "show_failed" : error.Value.Message;
             DebugAds.LogAdEvent("Rewarded", "show_failed", _loader.ReadyCache?.AdUnitId, "provider=MAX tiered", message);
             cb?.Invoke(message);
-            _loader.Load(forceReload: true);
         }
     }
 

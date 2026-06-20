@@ -36,6 +36,7 @@ namespace JisSDKAds.Providers.AdMob.SequentialTier
 
         public void Load(Action onLoaded = null, Action<string> onFailed = null)
         {
+            FlushSupersededLoadCallbacks();
             _pendingOnLoaded = onLoaded;
             _pendingOnFailed = onFailed;
             RefreshLoaderCallbacks();
@@ -56,8 +57,9 @@ namespace JisSDKAds.Providers.AdMob.SequentialTier
                 return;
 
             DebugAds.LogAdEvent("Interstitial", "show_blocked_not_loaded", unitId, "provider=ADMOB tiered");
-            _pendingOnShowFailed?.Invoke("Interstitial not ready");
-            _loader.Load(urgent: false);
+            var cb = _pendingOnShowFailed;
+            _pendingOnShowFailed = null;
+            cb?.Invoke("Interstitial not ready");
         }
 
         public void Destroy() => _loader.Destroy();
@@ -79,7 +81,7 @@ namespace JisSDKAds.Providers.AdMob.SequentialTier
         void OnLoaderLoadSuccess()
         {
             var cb = _pendingOnLoaded;
-            _pendingOnLoaded = null;
+            ClearPendingLoadCallbacks();
             DebugAds.LogAdEvent("Interstitial", "load_success", _loader.ReadyCache?.AdUnitId, "provider=ADMOB tiered");
             cb?.Invoke();
         }
@@ -87,9 +89,25 @@ namespace JisSDKAds.Providers.AdMob.SequentialTier
         void OnLoaderLoadFailed()
         {
             var cb = _pendingOnFailed;
-            _pendingOnFailed = null;
+            ClearPendingLoadCallbacks();
             DebugAds.LogAdEvent("Interstitial", "load_fail", null, "provider=ADMOB tiered", "Sequential tier ladder failed");
             cb?.Invoke("Sequential tier ladder failed");
+        }
+
+        void FlushSupersededLoadCallbacks()
+        {
+            if (_pendingOnLoaded == null && _pendingOnFailed == null)
+                return;
+
+            var cb = _pendingOnFailed;
+            ClearPendingLoadCallbacks();
+            cb?.Invoke("Interstitial load superseded by a newer request");
+        }
+
+        void ClearPendingLoadCallbacks()
+        {
+            _pendingOnLoaded = null;
+            _pendingOnFailed = null;
         }
 
         void OnShowOpened()
@@ -116,7 +134,6 @@ namespace JisSDKAds.Providers.AdMob.SequentialTier
             var message = string.IsNullOrEmpty(error?.Message) ? "show_failed" : error.Value.Message;
             DebugAds.LogAdEvent("Interstitial", "show_failed", _loader.ReadyCache?.AdUnitId, "provider=ADMOB tiered", message);
             cb?.Invoke(message);
-            _loader.Load(forceReload: true);
         }
 
         void OnPaid(SequentialTierPaidEvent paid)

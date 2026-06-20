@@ -5,6 +5,7 @@ using JisSDKAds.Core.Events;
 using JisSDKAds.Core.Interfaces;
 using JisSDKAds.Core.Models;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace JisSDKAds.Core
 {
@@ -19,7 +20,9 @@ namespace JisSDKAds.Core
         [SerializeField] private AdProviderId primaryProvider = AdProviderId.Max;
         [SerializeField] private AdProviderId fallbackProvider = AdProviderId.None;
         [SerializeField] private bool allowCrossProviderFallback;
-        [SerializeField] private int maxRetries = 3;
+        [FormerlySerializedAs("maxRetries")]
+        [Tooltip("Maximum on-demand load attempts per provider before switching to fallback or failing.")]
+        [SerializeField, Min(0)] private int maxLoadAttemptsPerProvider = 3;
         [SerializeField] private float retryDelaySeconds = 2f;
 
         private readonly Dictionary<AdProviderId, IAdService> _providers = new Dictionary<AdProviderId, IAdService>();
@@ -291,7 +294,7 @@ namespace JisSDKAds.Core
 
             if (!provider.Interstitial.IsLoaded)
             {
-                if (attempt < maxRetries)
+                if (attempt < maxLoadAttemptsPerProvider)
                 {
                     provider.Interstitial.Load(
                         onLoaded: () =>
@@ -390,7 +393,7 @@ namespace JisSDKAds.Core
 
             if (!provider.Rewarded.IsLoaded)
             {
-                if (attempt < maxRetries)
+                if (attempt < maxLoadAttemptsPerProvider)
                 {
                     provider.Rewarded.Load(
                         onLoaded: () =>
@@ -550,19 +553,24 @@ namespace JisSDKAds.Core
             int showAttemptId,
             bool forceProviderFallback = false)
         {
-            if ((allowCrossProviderFallback || forceProviderFallback) && fallback != AdProviderId.None && fallback != primary)
-            {
-                StartCoroutine(CoDelayedRetry(() =>
-                    TryShowInterstitialWithFallback(
-                        fallback, primary, attempt + 1, onClosed, onFailed, showAttemptId, forceProviderFallback)));
-                return;
-            }
-
-            if (attempt < maxRetries)
+            if (attempt < maxLoadAttemptsPerProvider)
             {
                 StartCoroutine(CoDelayedRetry(() =>
                     TryShowInterstitialWithFallback(
                         primary, fallback, attempt + 1, onClosed, onFailed, showAttemptId, forceProviderFallback)));
+                return;
+            }
+
+            if ((allowCrossProviderFallback || forceProviderFallback) && fallback != AdProviderId.None && fallback != primary)
+            {
+                TryShowInterstitialWithFallback(
+                    fallback,
+                    AdProviderId.None,
+                    0,
+                    onClosed,
+                    onFailed,
+                    showAttemptId,
+                    forceProviderFallback);
                 return;
             }
 
@@ -582,19 +590,24 @@ namespace JisSDKAds.Core
             Action<string> onFailed,
             bool forceProviderFallback = false)
         {
-            if ((allowCrossProviderFallback || forceProviderFallback) && fallback != AdProviderId.None && fallback != primary)
-            {
-                StartCoroutine(CoDelayedRetry(() =>
-                    TryShowRewardedWithFallback(
-                        fallback, primary, attempt + 1, onRewardEarned, onClosed, onFailed, forceProviderFallback)));
-                return;
-            }
-
-            if (attempt < maxRetries)
+            if (attempt < maxLoadAttemptsPerProvider)
             {
                 StartCoroutine(CoDelayedRetry(() =>
                     TryShowRewardedWithFallback(
                         primary, fallback, attempt + 1, onRewardEarned, onClosed, onFailed, forceProviderFallback)));
+                return;
+            }
+
+            if ((allowCrossProviderFallback || forceProviderFallback) && fallback != AdProviderId.None && fallback != primary)
+            {
+                TryShowRewardedWithFallback(
+                    fallback,
+                    AdProviderId.None,
+                    0,
+                    onRewardEarned,
+                    onClosed,
+                    onFailed,
+                    forceProviderFallback);
                 return;
             }
 

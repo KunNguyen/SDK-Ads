@@ -733,17 +733,20 @@ namespace JisSDKAds.Ads
 
             _interstitialLoadInFlight = true;
             DebugAds.Log($"[JisAds][Interstitial][preload_start] mediation={providerId}");
+            var loadStartedAt = Time.unscaledTime;
             provider.Interstitial.Load(
                 onLoaded: () =>
                 {
                     _interstitialLoadInFlight = false;
                     RecordInterstitialLoaded(providerId);
                     OnPreloadSucceeded(StandardAdPreloadFormat.Interstitial);
+                    TrackCoreInterstitialLoadSuccess(loadStartedAt);
                     DebugAds.Log($"[JisAds][Interstitial][preload_success] mediation={providerId}");
                 },
                 onFailed: err =>
                 {
                     _interstitialLoadInFlight = false;
+                    TrackCoreInterstitialLoadFail(err, loadStartedAt);
                     DebugAds.LogWarning($"[JisAds][Interstitial][preload_fail] mediation={providerId} error={err}");
                     HandlePreloadFailedIfNoFormatReady(StandardAdPreloadFormat.Interstitial);
                 });
@@ -918,16 +921,19 @@ namespace JisSDKAds.Ads
                 startedAny = true;
                 BeginInterstitialLoadSlot();
                 DebugAds.Log($"[JisAds][Interstitial][preload_start] mediation={providerId}");
+                var loadStartedAt = Time.unscaledTime;
                 provider.Interstitial.Load(
                     onLoaded: () =>
                     {
                         RecordInterstitialLoaded(providerId);
                         OnPreloadSucceeded(StandardAdPreloadFormat.Interstitial);
+                        TrackCoreInterstitialLoadSuccess(loadStartedAt);
                         DebugAds.Log($"[JisAds][Interstitial][preload_success] mediation={providerId}");
                         EndInterstitialLoadSlot();
                     },
                     onFailed: err =>
                     {
+                        TrackCoreInterstitialLoadFail(err, loadStartedAt);
                         DebugAds.LogWarning($"[JisAds][Interstitial][preload_fail] mediation={providerId} error={err}");
                         HandlePreloadFailedIfNoFormatReady(StandardAdPreloadFormat.Interstitial);
                         EndInterstitialLoadSlot();
@@ -1040,17 +1046,20 @@ namespace JisSDKAds.Ads
 
             _interstitialLoadInFlight = true;
             DebugAds.Log($"[JisAds][Interstitial][preload_start] mediation={providerId}");
+            var loadStartedAt = Time.unscaledTime;
             provider.Interstitial.Load(
                 onLoaded: () =>
                 {
                     _interstitialLoadInFlight = false;
                     RecordInterstitialLoaded(providerId);
                     OnPreloadSucceeded(StandardAdPreloadFormat.Interstitial);
+                    TrackCoreInterstitialLoadSuccess(loadStartedAt);
                     DebugAds.Log($"[JisAds][Interstitial][preload_success] mediation={providerId}");
                 },
                 onFailed: err =>
                 {
                     _interstitialLoadInFlight = false;
+                    TrackCoreInterstitialLoadFail(err, loadStartedAt);
                     DebugAds.LogWarning($"[JisAds][Interstitial][preload_fail] mediation={providerId} error={err}");
                     HandlePreloadFailed(StandardAdPreloadFormat.Interstitial);
                 });
@@ -2322,6 +2331,38 @@ namespace JisSDKAds.Ads
             ConsumePendingInterstitialCallbacksOnFail();
         }
 
+        static float GetLoadRequestTimeSeconds(float loadStartedAtUnscaled)
+        {
+            if (loadStartedAtUnscaled <= 0f)
+                return 0f;
+
+            return Mathf.Round(Mathf.Max(0f, Time.unscaledTime - loadStartedAtUnscaled) * 2f) / 2f;
+        }
+
+        void TrackCoreInterstitialLoadSuccess(float loadStartedAtUnscaled)
+        {
+            var tracker = AdsTracker.Instance;
+            if (tracker == null)
+            {
+                DebugAds.LogWarning("[JisAds] AdsTracker.Instance is null. Skipping interstitial load-success tracking.");
+                return;
+            }
+
+            tracker.TrackAdsInterstitial_LoadedSuccess(GetLoadRequestTimeSeconds(loadStartedAtUnscaled));
+        }
+
+        void TrackCoreInterstitialLoadFail(string error, float loadStartedAtUnscaled)
+        {
+            var tracker = AdsTracker.Instance;
+            if (tracker == null)
+            {
+                DebugAds.LogWarning("[JisAds] AdsTracker.Instance is null. Skipping interstitial load-fail tracking.");
+                return;
+            }
+
+            tracker.TrackAdsInterstitial_LoadedFail(error ?? string.Empty, GetLoadRequestTimeSeconds(loadStartedAtUnscaled));
+        }
+
         void TrackPendingInterstitialShowFailure(bool isTracking)
         {
             if (!isTracking)
@@ -2491,6 +2532,7 @@ namespace JisSDKAds.Ads
             {
                 var id = ParseProviderId(providerId);
                 RecordInterstitialLoaded(id);
+                TrackCoreInterstitialLoadSuccess(0f);
             }
 
             DebugAds.Log($"[JisAds][{format}][load_success] mediation={providerId}");

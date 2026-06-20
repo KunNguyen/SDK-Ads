@@ -64,37 +64,9 @@ namespace JisSDKAds.Providers.Max.SequentialTier
             Action<string, MaxSdkBase.AdInfo> onPaid = null;
 
             var hooks = _hooks;
-
-            onDisplayed = (id, info) =>
-            {
-                if (id != _adUnitId) return;
-                MaxSdkCallbacks.Interstitial.OnAdDisplayedEvent -= onDisplayed;
-                hooks.onOpened?.Invoke();
-            };
-            onDisplayFailed = (id, error, info) =>
-            {
-                if (id != _adUnitId) return;
-                Unsubscribe();
-                _isReady = false;
-                hooks.onFailed?.Invoke(new SequentialTierShowError { Code = (int)error.Code, Message = error.Message });
-            };
-            onHidden = (id, info) =>
-            {
-                if (id != _adUnitId) return;
-                Unsubscribe();
-                hooks.onClosed?.Invoke();
-            };
-            onPaid = (id, info) =>
-            {
-                if (id != _adUnitId) return;
-                hooks.onPaid?.Invoke(new SequentialTierPaidEvent
-                {
-                    Revenue = info.Revenue,
-                    Currency = "USD",
-                    AdUnitId = id,
-                    AdSource = info.NetworkName
-                });
-            };
+            var adUnitId = _adUnitId;
+            var opened = false;
+            var completed = false;
 
             void Unsubscribe()
             {
@@ -104,13 +76,56 @@ namespace JisSDKAds.Providers.Max.SequentialTier
                 MaxSdkCallbacks.Interstitial.OnAdRevenuePaidEvent -= onPaid;
             }
 
+            onDisplayed = (id, info) =>
+            {
+                if (id != adUnitId || completed || opened) return;
+                opened = true;
+                // Only unsubscribe onDisplayed here; the rest stay until closed/failed.
+                MaxSdkCallbacks.Interstitial.OnAdDisplayedEvent -= onDisplayed;
+                hooks.onOpened?.Invoke();
+            };
+            onDisplayFailed = (id, error, info) =>
+            {
+                if (id != adUnitId || completed) return;
+                if (opened)
+                {
+                    // MAX should not report display failure after a successful display.
+                    // Ignore that invalid sequence and keep waiting for the hidden event.
+                    MaxSdkCallbacks.Interstitial.OnAdDisplayFailedEvent -= onDisplayFailed;
+                    return;
+                }
+
+                completed = true;
+                Unsubscribe();
+                _isReady = false;
+                hooks.onFailed?.Invoke(new SequentialTierShowError { Code = (int)error.Code, Message = error.Message });
+            };
+            onHidden = (id, info) =>
+            {
+                if (id != adUnitId || completed) return;
+                completed = true;
+                Unsubscribe();
+                hooks.onClosed?.Invoke();
+            };
+            onPaid = (id, info) =>
+            {
+                if (id != adUnitId) return;
+                hooks.onPaid?.Invoke(new SequentialTierPaidEvent
+                {
+                    Revenue = info.Revenue,
+                    Currency = "USD",
+                    AdUnitId = id,
+                    AdSource = info.NetworkName
+                });
+            };
+
             MaxSdkCallbacks.Interstitial.OnAdDisplayedEvent += onDisplayed;
             MaxSdkCallbacks.Interstitial.OnAdDisplayFailedEvent += onDisplayFailed;
             MaxSdkCallbacks.Interstitial.OnAdHiddenEvent += onHidden;
             MaxSdkCallbacks.Interstitial.OnAdRevenuePaidEvent += onPaid;
 
             _isReady = false;
-            MaxSdk.ShowInterstitial(_adUnitId);
+            MaxSdk.ShowInterstitial(adUnitId);
             return true;
         }
     }

@@ -208,6 +208,9 @@ namespace JisSDKAds.Ads
         static object BuildConsentRequestParameters()
         {
             var request = Activator.CreateInstance(_consentRequestParametersType);
+
+#if UNITY_EDITOR
+            // Debug-only: simulate EEA geography so the consent form appears in Editor testing.
             if (_consentDebugSettingsType != null && _debugGeographyType != null)
             {
                 var debug = Activator.CreateInstance(_consentDebugSettingsType);
@@ -222,6 +225,7 @@ namespace JisSDKAds.Ads
                     });
                 _consentRequestParametersType.GetProperty("ConsentDebugSettings")?.SetValue(request, debug);
             }
+#endif
 
             return request;
         }
