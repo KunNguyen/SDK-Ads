@@ -96,6 +96,7 @@ namespace JisSDKAds.Ads
         private Coroutine _bannerAutoRefreshCoroutine;
         private Coroutine _bannerRestoreCoroutine;
         private Coroutine _bannerPauseRestoreCoroutine;
+        private int _bannerRestoreGeneration;
         const string BannerRestoreLogPrefix = "[JisAds][BannerRestore]";
         const float FullscreenPreloadRemoteConfigWaitTimeoutSec = 10f;
         const float LoadedAdMaxAgeSec = 50f * 60f;
@@ -2942,6 +2943,8 @@ namespace JisSDKAds.Ads
             if (!_bannerWantsVisible)
                 return;
 
+            CancelPendingBannerRestore();
+            CancelPendingBannerPauseRestore();
             DebugAds.Log($"{BannerRestoreLogPrefix} hide reason={reason}");
             _core.HideBanner();
         }
@@ -2956,8 +2959,19 @@ namespace JisSDKAds.Ads
             if (!_bannerWantsVisible)
                 return;
 
+            // Fullscreen close is authoritative. Dismissing a native ad can also emit app-resume;
+            // both paths restoring would reload the banner that the first path has just shown.
+            StopBannerAutoRefresh();
+            CancelPendingBannerPauseRestore();
             CancelPendingBannerRestore();
-            _bannerRestoreCoroutine = StartCoroutine(CoRestoreBannerAfterFullscreenAd(reason));
+            var generation = _bannerRestoreGeneration;
+            // Wait for the post-fullscreen orientation/safe-area values to settle before the one
+            // intentional native reload. The app-resume fallback has already paid this debounce.
+            var restoreDelay = reason == "app_resume"
+                ? Mathf.Max(0f, bannerRestoreDelaySec)
+                : Mathf.Max(bannerRestoreDelaySec, bannerRestoreDebounceSec);
+            _bannerRestoreCoroutine = StartCoroutine(
+                CoRestoreBannerAfterFullscreenAd(reason, generation, restoreDelay));
         }
 
         void ScheduleBannerRestoreOnAppResume()
@@ -2967,12 +2981,20 @@ namespace JisSDKAds.Ads
             if (!_bannerWantsVisible || IsShowingAnyAd())
                 return;
 
+            // A fullscreen close callback already owns the pending reload. Do not create a second
+            // app-resume timer for the same native transition.
+            if (_bannerRestoreCoroutine != null)
+                return;
+
             CancelPendingBannerPauseRestore();
             _bannerPauseRestoreCoroutine = StartCoroutine(CoDebouncedBannerRestoreOnAppResume());
         }
 
         void CancelPendingBannerRestore()
         {
+            // Native load callbacks can still arrive after StopCoroutine.
+            _bannerRestoreGeneration++;
+
             if (_bannerRestoreCoroutine == null)
                 return;
 
@@ -2989,10 +3011,10 @@ namespace JisSDKAds.Ads
             _bannerPauseRestoreCoroutine = null;
         }
 
-        IEnumerator CoRestoreBannerAfterFullscreenAd(string reason)
+        IEnumerator CoRestoreBannerAfterFullscreenAd(string reason, int generation, float restoreDelay)
         {
-            if (bannerRestoreDelaySec > 0f)
-                yield return new WaitForSecondsRealtime(bannerRestoreDelaySec);
+            if (restoreDelay > 0f)
+                yield return new WaitForSecondsRealtime(restoreDelay);
 
             // Wait (bounded) until no fullscreen ad is on screen instead of silently dropping the restore.
             var fullscreenWait = 0f;
@@ -3028,10 +3050,14 @@ namespace JisSDKAds.Ads
                     yield break;
                 }
 
+                // Recreate the native view exactly once after orientation/safe-area has settled.
+                // AdMob happened to destroy on Load already; MAX requires an explicit Destroy.
+                bannerProvider.Banner.Destroy();
                 bannerProvider.Banner.Load(
                     onLoaded: () =>
                     {
-                        if (!_bannerWantsVisible || !CanShowAds())
+                        if (generation != _bannerRestoreGeneration ||
+                            !BannerRestorePreconditionsMet() || IsShowingAnyAd())
                         {
                             done = true;
                             succeeded = true; // intent changed — stop retrying.
@@ -3042,6 +3068,7 @@ namespace JisSDKAds.Ads
                             onShown: () =>
                             {
                                 DebugAds.Log($"{BannerRestoreLogPrefix} restore shown reason={reason}");
+                                RestartBannerAutoRefresh();
                                 succeeded = true;
                                 done = true;
                             },
@@ -3077,6 +3104,8 @@ namespace JisSDKAds.Ads
 
             DebugAds.LogWarning($"{BannerRestoreLogPrefix} restore failed after {maxAttempts} attempts reason={reason}");
             _bannerRestoreCoroutine = null;
+            if (BannerRestorePreconditionsMet())
+                RestartBannerAutoRefresh();
         }
 
         bool BannerRestorePreconditionsMet() =>
@@ -3093,6 +3122,14 @@ namespace JisSDKAds.Ads
                 yield break;
             if (!_bannerWantsVisible || IsShowingAnyAd())
                 yield break;
+
+            // The fullscreen close path may still be restoring, or may already have completed.
+            // The app-resume fallback must not start a destructive second reload.
+            if (_bannerRestoreCoroutine != null)
+            {
+                DebugAds.Log($"{BannerRestoreLogPrefix} app_resume skipped_restore_already_handled");
+                yield break;
+            }
 
             ScheduleBannerRestoreAfterFullscreenAd("app_resume");
         }
