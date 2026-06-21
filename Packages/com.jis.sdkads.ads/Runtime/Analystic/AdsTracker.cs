@@ -206,7 +206,7 @@ namespace JisSDKAds.Ads
             {
                 new Parameter("count", interstitialAdsLoadSuccess.ToString()),
                 new Parameter("request_time", timeFromStartRequest.ToString("F1")),
-                new Parameter(session_ad_index_parameter, interstitialAdsLoadSuccess),
+                new Parameter(session_ad_index_parameter, interstitialAdsLoadSuccess.ToString()),
             };
             FirebaseManager.Instance.LogEvent(ad_inter_load, parameters);
 #if UNITY_APPSFLYER
@@ -224,7 +224,7 @@ namespace JisSDKAds.Ads
                 {
                     new Parameter("count", interstitialAdsLoadSuccess.ToString()),
                     new Parameter("request_time", timeFromStartRequest.ToString("F1")),
-                    new Parameter(session_ad_index_parameter, interstitialAdsLoadSuccess),
+                    new Parameter(session_ad_index_parameter, interstitialAdsLoadSuccess.ToString()),
                 };
                 FirebaseManager.Instance.LogEvent(ad_inter_load, parameters);
             }
@@ -235,7 +235,7 @@ namespace JisSDKAds.Ads
                     new Parameter("count", interstitialAdsLoadSuccess.ToString()),
                     new Parameter("request_time", timeFromStartRequest.ToString("F1")),
                     new Parameter("placement", placement),
-                    new Parameter(session_ad_index_parameter, interstitialAdsLoadSuccess),
+                    new Parameter(session_ad_index_parameter, interstitialAdsLoadSuccess.ToString()),
                 };
                 FirebaseManager.Instance.LogEvent(ad_inter_load, parameters);
             }
@@ -256,7 +256,7 @@ namespace JisSDKAds.Ads
                     new Parameter("error", error),
                     new Parameter("request_time", timeFromStartRequest.ToString("F1")),
                     new Parameter("count", interstitialAdsLoadFail.ToString()),
-                    new Parameter(session_ad_index_parameter, interstitialAdsLoadFail),
+                    new Parameter(session_ad_index_parameter, interstitialAdsLoadFail.ToString()),
                 }
                 : new[]
                 {
@@ -264,7 +264,7 @@ namespace JisSDKAds.Ads
                     new Parameter("request_time", timeFromStartRequest.ToString("F1")),
                     new Parameter("placement", placement),
                     new Parameter("count", interstitialAdsLoadFail.ToString()),
-                    new Parameter(session_ad_index_parameter, interstitialAdsLoadFail),
+                    new Parameter(session_ad_index_parameter, interstitialAdsLoadFail.ToString()),
                 };
             FirebaseManager.Instance.LogEvent(ad_inter_load_fail, parameters);
         }
@@ -350,7 +350,7 @@ namespace JisSDKAds.Ads
 
         static Parameter[] CreateSessionAdIndexParameters(int sessionAdIndex)
         {
-            return new[] { new Parameter(session_ad_index_parameter, sessionAdIndex) };
+            return new[] { new Parameter(session_ad_index_parameter, sessionAdIndex.ToString()) };
         }
 
         static Parameter[] CreatePlacementSessionAdIndexParameters(string placement, int sessionAdIndex)
@@ -361,7 +361,7 @@ namespace JisSDKAds.Ads
             return new[]
             {
                 new Parameter("placement", placement),
-                new Parameter(session_ad_index_parameter, sessionAdIndex),
+                new Parameter(session_ad_index_parameter, sessionAdIndex.ToString()),
             };
         }
 

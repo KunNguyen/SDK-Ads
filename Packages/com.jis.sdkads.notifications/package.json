@@ -1,11 +1,11 @@
 {
   "name": "com.jis.sdkads.notifications",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "displayName": "JIS SDK - Local Notifications",
   "description": "Unity Mobile Notifications wrapper: daily play reminders, gameplay timers (energy, shop reset), permission flow.",
   "unity": "2022.3",
   "dependencies": {
-    "com.jis.sdkads.common": "5.0.0",
+    "com.jis.sdkads.common": "5.0.4",
     "com.unity.mobile.notifications": "2.4.3"
   },
   "author": {

@@ -1,6 +1,6 @@
 {
   "name": "com.jis.sdkads.hub",
-  "version": "5.0.5",
+  "version": "5.0.6",
   "displayName": "JIS SDK - Hub",
   "description": "Unity Editor hub to install and manage JIS SDK UPM packages.",
   "unity": "2022.3",

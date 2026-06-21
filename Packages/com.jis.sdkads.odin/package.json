@@ -1,6 +1,6 @@
 {
   "name": "com.jis.sdkads.odin",
-  "version": "5.0.0",
+  "version": "5.0.1",
   "displayName": "JIS SDK - Odin Inspector",
   "description": "Embedded Odin Inspector (Sirenix) for JIS SDK editor tooling. Install once per project; do not bundle Odin in other packages.",
   "unity": "2022.3",
