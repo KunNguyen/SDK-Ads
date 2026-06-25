@@ -166,36 +166,41 @@ namespace JisSDKAds.Ads
                return BannerViewAds != null && _bannerAdLoaded;
           }
 
-          private void OnAdBannerLoaded(BannerView bannerView)
+          private void OnAdBannerLoaded(BannerView bannerView) => AdMobMainThread.Run(() =>
           {
                DebugAds.Log("HandleAdLoaded event received");
                _bannerAdLoaded = true;
                BannerCallbacks.LoadedSuccess?.Invoke();
-          }
+          });
 
           private void OnAdBannerFailedToLoad(LoadAdError args)
           {
-               DebugAds.Log("AdmobBanner Fail: " + args.GetMessage());
-               _bannerAdLoaded = false;
-               BannerCallbacks.LoadedFail?.Invoke();
+               var message = args.GetMessage();
+               AdMobMainThread.Run(() =>
+               {
+                    DebugAds.Log("AdmobBanner Fail: " + message);
+                    _bannerAdLoaded = false;
+                    BannerCallbacks.LoadedFail?.Invoke();
+               });
           }
-          private void OnAdBannerOpened(BannerView bannerView)
+          private void OnAdBannerOpened(BannerView bannerView) => AdMobMainThread.Run(() =>
           {
                DebugAds.Log("AdmobBanner Opened");
                BannerCallbacks.Displayed?.Invoke();
-          }
+          });
 
-          private void OnAdBannerClosed()
+          private void OnAdBannerClosed() => AdMobMainThread.Run(() =>
           {
                DebugAds.Log("AdmobBanner Closed");
                BannerCallbacks.Collapsed?.Invoke();
-          }
-          private void OnAdBannerClicked()
+          });
+          private void OnAdBannerClicked() => AdMobMainThread.Run(() =>
           {
                DebugAds.Log("AdmobBanner Clicked");
                BannerCallbacks.Clicked?.Invoke();
-          }
+          });
 
+          // Revenue (ILAR) — keep immediate, do NOT marshal to the Unity main thread.
           private void OnAdBannerPaid(AdValue adValue)
           {
                DebugAds.Log("AdmobBanner Paid");
@@ -299,7 +304,7 @@ namespace JisSDKAds.Ads
                }
           }
 
-          private void OnCloseInterstitialAd()
+          private void OnCloseInterstitialAd() => AdMobMainThread.Run(() =>
           {
                DebugAds.Log("Close Interstitial");
                InterstitialCallbacks.Closed?.Invoke(true);
@@ -319,50 +324,54 @@ namespace JisSDKAds.Ads
                     InterstitialAds = null;
                     RequestInterstitialLegacy();
                }
-          }
+          });
 
-          private void OnAdInterstitialSuccessToLoad()
+          private void OnAdInterstitialSuccessToLoad() => AdMobMainThread.Run(() =>
           {
                DebugAds.Log("Load Interstitial success");
                InterstitialCallbacks.LoadedSuccess?.Invoke();
                if (!UseSequentialInterstitial)
                     m_AdmobAdSetup.InterstitialAdUnitID.Refresh();
-          }
+          });
 
-          private void OnAdInterstitialFailedToLoad()
+          private void OnAdInterstitialFailedToLoad() => AdMobMainThread.Run(() =>
           {
                DebugAds.Log("Load Interstitial failed Admob");
                InterstitialCallbacks.LoadedFail?.Invoke();
                if (!UseSequentialInterstitial)
                     m_AdmobAdSetup.InterstitialAdUnitID.ChangeID();
-          }
+          });
 
-          private void OnAdInterstitialOpening()
+          private void OnAdInterstitialOpening() => AdMobMainThread.Run(() =>
           {
                DebugAds.Log("Interstitial ad opened.");
                InterstitialCallbacks.Displayed?.Invoke();
-          }
+          });
 
           private void OnAdInterstitialFailToShow(AdError e)
           {
-               DebugAds.Log("Interstitial ad failed to show with error: " + (e != null ? e.GetMessage() : "unknown"));
-               InterstitialCallbacks.DisplayedFail?.Invoke();
-
-               // If the legacy instance got into a bad state, dispose and try to reload.
-               if (!UseSequentialInterstitial)
+               var message = e != null ? e.GetMessage() : "unknown";
+               AdMobMainThread.Run(() =>
                {
-                    try
-                    {
-                         InterstitialAds?.Destroy();
-                    }
-                    catch
-                    {
-                         // ignore best-effort cleanup
-                    }
+                    DebugAds.Log("Interstitial ad failed to show with error: " + message);
+                    InterstitialCallbacks.DisplayedFail?.Invoke();
 
-                    InterstitialAds = null;
-                    RequestInterstitialLegacy();
-               }
+                    // If the legacy instance got into a bad state, dispose and try to reload.
+                    if (!UseSequentialInterstitial)
+                    {
+                         try
+                         {
+                              InterstitialAds?.Destroy();
+                         }
+                         catch
+                         {
+                              // ignore best-effort cleanup
+                         }
+
+                         InterstitialAds = null;
+                         RequestInterstitialLegacy();
+                    }
+               });
           }
 
           public void DestroyInterstitialAd()
@@ -463,7 +472,7 @@ namespace JisSDKAds.Ads
 #endif
           }
 
-          private void OnRewardBasedVideoClosed()
+          private void OnRewardBasedVideoClosed() => AdMobMainThread.Run(() =>
           {
                DebugAds.Log("RewardedVideoAd ADMOB Closed");
                if (Application.platform == RuntimePlatform.IPhonePlayer)
@@ -481,9 +490,9 @@ namespace JisSDKAds.Ads
                {
                     EventManager.InvokeNextFrame(() => { RewardedVideoCallbacks.Closed.Invoke(IsWatchSuccess); });
                }
-          }
+          });
 
-          private void OnRewardBasedVideoRewarded()
+          private void OnRewardBasedVideoRewarded() => AdMobMainThread.Run(() =>
           {
                DebugAds.Log("RewardedVideoAd ADMOB Rewarded");
                IsWatchSuccess = true;
@@ -494,34 +503,38 @@ namespace JisSDKAds.Ads
                          EventManager.InvokeNextFrame(RewardedVideoCallbacks.Completed);
                     }
                }
-          }
+          });
 
-          private void OnRewardBasedVideoLoaded()
+          private void OnRewardBasedVideoLoaded() => AdMobMainThread.Run(() =>
           {
                DebugAds.Log("RewardedVideoAd ADMOB Load Success");
                RewardedVideoCallbacks.LoadedSuccess?.Invoke();
                if (!UseSequentialRewarded)
                     m_AdmobAdSetup.RewardedAdUnitID.Refresh();
-          }
+          });
 
-          private void OnRewardBasedVideoFailedToLoad()
+          private void OnRewardBasedVideoFailedToLoad() => AdMobMainThread.Run(() =>
           {
                DebugAds.Log("RewardedVideoAd ADMOB Load Fail");
                RewardedVideoCallbacks.LoadedFail?.Invoke();
                if (!UseSequentialRewarded)
                     m_AdmobAdSetup.RewardedAdUnitID.ChangeID();
-          }
+          });
 
           public void OnRewardedAdFailedToShow(AdError args)
           {
-               DebugAds.Log("RewardedVideoAd ADMOB Show Fail " + (args != null ? args.GetMessage() : "unknown"));
-               RewardedVideoCallbacks.DisplayedFailed?.Invoke();
+               var message = args != null ? args.GetMessage() : "unknown";
+               AdMobMainThread.Run(() =>
+               {
+                    DebugAds.Log("RewardedVideoAd ADMOB Show Fail " + message);
+                    RewardedVideoCallbacks.DisplayedFailed?.Invoke();
+               });
           }
 
-          private void OnRewardBasedVideoOpened()
+          private void OnRewardBasedVideoOpened() => AdMobMainThread.Run(() =>
           {
                DebugAds.Log("Opened video success");
-          }
+          });
 
           public void DestroyRewardedAd()
           {
@@ -605,47 +618,56 @@ namespace JisSDKAds.Ads
 
           #region App Open Ads Events
 
-          private void OnAppOpenAdLoadedSuccess(AppOpenAd appOpenAd)
+          private void OnAppOpenAdLoadedSuccess(AppOpenAd appOpenAd) => AdMobMainThread.Run(() =>
           {
                DebugAds.Log("Admob AppOpenAds Loaded");
                // App open ad is loaded.
                AppOpenAd = appOpenAd;
                RegisterAppOpenAdEventHandlers(appOpenAd);
                AppOpenAdCallbacks.LoadedSuccess?.Invoke();
-          }
+          });
 
           private void OnAppOpenAdFailedToLoad(LoadAdError error)
           {
-               DebugAds.LogFormat("Admob AppOpenAd Failed to load the ad. (reason: {0})", error.GetMessage());
-               AppOpenAdCallbacks.LoadedFail?.Invoke();
-               m_AdmobAdSetup.AppOpenAdUnitID.ChangeID();
+               var message = error.GetMessage();
+               AdMobMainThread.Run(() =>
+               {
+                    DebugAds.LogFormat("Admob AppOpenAd Failed to load the ad. (reason: {0})", message);
+                    AppOpenAdCallbacks.LoadedFail?.Invoke();
+                    m_AdmobAdSetup.AppOpenAdUnitID.ChangeID();
+               });
           }
 
-          private void OnAppOpenAdDidDismissFullScreenContent()
+          private void OnAppOpenAdDidDismissFullScreenContent() => AdMobMainThread.Run(() =>
           {
                DebugAds.Log("Admob AppOpenAds Dismissed");
                AppOpenAd = null;
                AppOpenAdCallbacks.Closed?.Invoke(true);
-          }
+          });
 
           private void OnAppOpenAdFailedToPresentFullScreenContent(AdError args)
           {
-               DebugAds.LogFormat("Admob AppOpenAd Failed to present the ad (reason: {0})", args.GetMessage());
-               AppOpenAd = null;
-               AppOpenAdCallbacks.DisplayedFail?.Invoke();
+               var message = args.GetMessage();
+               AdMobMainThread.Run(() =>
+               {
+                    DebugAds.LogFormat("Admob AppOpenAd Failed to present the ad (reason: {0})", message);
+                    AppOpenAd = null;
+                    AppOpenAdCallbacks.DisplayedFail?.Invoke();
+               });
           }
 
-          private void OnAppOpenAdDidPresentFullScreenContent()
+          private void OnAppOpenAdDidPresentFullScreenContent() => AdMobMainThread.Run(() =>
           {
                DebugAds.Log("Admob AppOpenAds opened");
                AppOpenAdCallbacks.Displayed?.Invoke();
-          }
+          });
 
           private void OnAppOpenAdDidRecordImpression()
           {
                DebugAds.Log("Admob AppOpenAds Recorded Impression");
           }
 
+          // Revenue (ILAR) — keep immediate, do NOT marshal to the Unity main thread.
           private void OnAppOpenAppPaidEvent(AdValue adValue)
           {
                DebugAds.Log("Admob AppOpenAds Paid");

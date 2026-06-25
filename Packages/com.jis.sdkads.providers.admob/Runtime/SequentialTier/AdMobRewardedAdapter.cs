@@ -32,20 +32,25 @@ namespace JisSDKAds.Providers.AdMob.SequentialTier
 
             RewardedAd.Load(adUnitId, request, (ad, error) =>
             {
-                if (loadGeneration != expectedGeneration)
+                var code = error?.GetCode() ?? 0;
+                var message = error?.GetMessage();
+                AdMobMainThread.Run(() =>
                 {
-                    ad?.Destroy();
-                    return;
-                }
+                    if (loadGeneration != expectedGeneration)
+                    {
+                        ad?.Destroy();
+                        return;
+                    }
 
-                if (error != null || ad == null)
-                {
-                    onFail?.Invoke(error?.GetCode() ?? 0, error?.GetMessage());
-                    return;
-                }
+                    if (error != null || ad == null)
+                    {
+                        onFail?.Invoke(code, message);
+                        return;
+                    }
 
-                _ad = ad;
-                onSuccess?.Invoke();
+                    _ad = ad;
+                    onSuccess?.Invoke();
+                });
             });
         }
 
@@ -65,20 +70,25 @@ namespace JisSDKAds.Providers.AdMob.SequentialTier
         {
             if (!IsReady) return false;
             _showCompletion.Reset();
-            _ad.Show(_ => _showCompletion.NotifyRewardGranted(() => _hooks.onRewardGranted?.Invoke()));
+            _ad.Show(_ => AdMobMainThread.Run(() =>
+                _showCompletion.NotifyRewardGranted(() => _hooks.onRewardGranted?.Invoke())));
             return true;
         }
 
         void HandleClosed() =>
-            _showCompletion.NotifyFullscreenClosed(() =>
+            AdMobMainThread.Run(() => _showCompletion.NotifyFullscreenClosed(() =>
             {
                 if (!_showCompletion.RewardGranted)
                     DebugAds.Log("[AdMob][Rewarded][Tier] show_closed_without_reward");
                 _hooks.onClosed?.Invoke();
-            });
-        void HandleOpened() => _hooks.onOpened?.Invoke();
-        void HandleFailed(AdError e) => _hooks.onFailed?.Invoke(
-            new SequentialTierShowError { Code = e.GetCode(), Message = e.GetMessage() });
+            }));
+        void HandleOpened() => AdMobMainThread.Run(() => _hooks.onOpened?.Invoke());
+        void HandleFailed(AdError e)
+        {
+            var error = new SequentialTierShowError { Code = e.GetCode(), Message = e.GetMessage() };
+            AdMobMainThread.Run(() => _hooks.onFailed?.Invoke(error));
+        }
+        // Revenue (ILAR) — keep immediate, do NOT marshal to the Unity main thread.
         void HandlePaid(AdValue v)
         {
             var adapter = _ad?.GetResponseInfo()?.GetLoadedAdapterResponseInfo();

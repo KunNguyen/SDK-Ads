@@ -2,6 +2,7 @@
 using System;
 using GoogleMobileAds.Api;
 using JisSDKAds.Common;
+using JisSDKAds.Providers.AdMob;
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -40,18 +41,24 @@ namespace JisSDKAds.Ads
             var request = new AdRequest();
             RewardedInterstitialAd.Load(unitId, request, (RewardedInterstitialAd ad, LoadAdError error) =>
             {
-                _rewardedInterstitialLoading = false;
-                if (error != null || ad == null)
+                var errorText = error?.ToString();
+                AdMobMainThread.Run(() =>
                 {
-                    DebugAds.LogWarning($"[AdMob][RewardedInterstitial] Load failed: {error}");
-                    _rewardedInterstitial = null;
-                    return;
-                }
+                    _rewardedInterstitialLoading = false;
+                    if (error != null || ad == null)
+                    {
+                        DebugAds.LogWarning($"[AdMob][RewardedInterstitial] Load failed: {errorText}");
+                        _rewardedInterstitial = null;
+                        return;
+                    }
 
-                _rewardedInterstitial = ad;
-                _rewardedInterstitial.OnAdFullScreenContentClosed += () => LoadRewardedInterstitial();
-                _rewardedInterstitial.OnAdFullScreenContentFailed += _ => LoadRewardedInterstitial();
-                DebugAds.Log("[AdMob][RewardedInterstitial] Loaded successfully");
+                    _rewardedInterstitial = ad;
+                    _rewardedInterstitial.OnAdFullScreenContentClosed += () =>
+                        AdMobMainThread.Run(() => LoadRewardedInterstitial());
+                    _rewardedInterstitial.OnAdFullScreenContentFailed += _ =>
+                        AdMobMainThread.Run(() => LoadRewardedInterstitial());
+                    DebugAds.Log("[AdMob][RewardedInterstitial] Loaded successfully");
+                });
             });
         }
 
@@ -72,26 +79,26 @@ namespace JisSDKAds.Ads
             JisAds.Instance?.HideBannerForFullscreenAd("rewarded_interstitial");
 
             var rewarded = false;
-            void OnClosed()
+            void OnClosed() => AdMobMainThread.Run(() =>
             {
                 closedCallback?.Invoke(rewarded);
                 JisAds.Instance?.ScheduleBannerRestoreAfterFullscreenAd("rewarded_interstitial");
-            }
+            });
 
-            void OnFailed()
+            void OnFailed() => AdMobMainThread.Run(() =>
             {
                 failedCallback?.Invoke();
                 closedCallback?.Invoke(false);
                 JisAds.Instance?.ScheduleBannerRestoreAfterFullscreenAd("rewarded_interstitial");
-            }
+            });
 
             try
             {
-                _rewardedInterstitial.Show(reward =>
+                _rewardedInterstitial.Show(reward => AdMobMainThread.Run(() =>
                 {
                     rewarded = true;
                     rewardCallback?.Invoke();
-                });
+                }));
             }
             catch (Exception e)
             {

@@ -131,18 +131,22 @@ namespace JisSDKAds.Providers.AdMob
             var request = new AdRequest();
             InterstitialAd.Load(_adUnitId, request, (ad, error) =>
             {
-                _isLoading = false;
-                AdLoadPipeline.NotifyInterstitialFinished();
-                if (error != null)
+                var message = error?.GetMessage();
+                AdMobMainThread.Run(() =>
                 {
-                    DebugAds.LogWarning($"[AdMob][Interstitial] load_fail adUnitId={_adUnitId} error={error.GetMessage()}");
-                    onFailed?.Invoke(error.GetMessage());
-                    return;
-                }
-                _ad = ad;
-                RegisterEvents();
-                DebugAds.Log($"[AdMob][Interstitial] load_success adUnitId={_adUnitId}");
-                onLoaded?.Invoke();
+                    _isLoading = false;
+                    AdLoadPipeline.NotifyInterstitialFinished();
+                    if (error != null)
+                    {
+                        DebugAds.LogWarning($"[AdMob][Interstitial] load_fail adUnitId={_adUnitId} error={message}");
+                        onFailed?.Invoke(message);
+                        return;
+                    }
+                    _ad = ad;
+                    RegisterEvents();
+                    DebugAds.Log($"[AdMob][Interstitial] load_success adUnitId={_adUnitId}");
+                    onLoaded?.Invoke();
+                });
             });
         }
 
@@ -150,22 +154,26 @@ namespace JisSDKAds.Providers.AdMob
         {
             if (_ad == null) return;
             // Interstitial is one-time-use. After close/fail, destroy and warm-load the next one.
-            _ad.OnAdFullScreenContentOpened += () =>
+            _ad.OnAdFullScreenContentOpened += () => AdMobMainThread.Run(() =>
             {
                 DebugAds.Log($"[AdMob][Interstitial] show_opened adUnitId={_adUnitId}");
                 _pendingOnShown?.Invoke();
-            };
-            _ad.OnAdFullScreenContentClosed += () =>
+            });
+            _ad.OnAdFullScreenContentClosed += () => AdMobMainThread.Run(() =>
             {
                 DebugAds.Log($"[AdMob][Interstitial] show_closed adUnitId={_adUnitId}");
                 _pendingOnClosed?.Invoke();
                 DestroyAndWarmReload();
-            };
+            });
             _ad.OnAdFullScreenContentFailed += err =>
             {
-                DebugAds.LogWarning($"[AdMob][Interstitial] show_failed adUnitId={_adUnitId} error={err.GetMessage()}");
-                _pendingOnFailed?.Invoke(err.GetMessage());
-                DestroyAndWarmReload();
+                var message = err.GetMessage();
+                AdMobMainThread.Run(() =>
+                {
+                    DebugAds.LogWarning($"[AdMob][Interstitial] show_failed adUnitId={_adUnitId} error={message}");
+                    _pendingOnFailed?.Invoke(message);
+                    DestroyAndWarmReload();
+                });
             };
         }
 
@@ -240,18 +248,22 @@ namespace JisSDKAds.Providers.AdMob
             var request = new AdRequest();
             RewardedAd.Load(_adUnitId, request, (ad, error) =>
             {
-                _isLoading = false;
-                AdLoadPipeline.NotifyRewardedFinished();
-                if (error != null)
+                var message = error?.GetMessage();
+                AdMobMainThread.Run(() =>
                 {
-                    DebugAds.LogWarning($"[AdMob][Rewarded] load_fail adUnitId={_adUnitId} error={error.GetMessage()}");
-                    onFailed?.Invoke(error.GetMessage());
-                    return;
-                }
-                _ad = ad;
-                RegisterEvents();
-                DebugAds.Log($"[AdMob][Rewarded] load_success adUnitId={_adUnitId}");
-                onLoaded?.Invoke();
+                    _isLoading = false;
+                    AdLoadPipeline.NotifyRewardedFinished();
+                    if (error != null)
+                    {
+                        DebugAds.LogWarning($"[AdMob][Rewarded] load_fail adUnitId={_adUnitId} error={message}");
+                        onFailed?.Invoke(message);
+                        return;
+                    }
+                    _ad = ad;
+                    RegisterEvents();
+                    DebugAds.Log($"[AdMob][Rewarded] load_success adUnitId={_adUnitId}");
+                    onLoaded?.Invoke();
+                });
             });
         }
 
@@ -270,11 +282,11 @@ namespace JisSDKAds.Providers.AdMob
             _showCompletion.Reset();
 
             DebugAds.Log($"[AdMob][Rewarded] show_call adUnitId={_adUnitId}");
-            _ad.Show(_ => _showCompletion.NotifyRewardGranted(() =>
+            _ad.Show(_ => AdMobMainThread.Run(() => _showCompletion.NotifyRewardGranted(() =>
             {
                 DebugAds.Log($"[AdMob][Rewarded] reward_granted adUnitId={_adUnitId}");
                 _pendingOnRewardEarned?.Invoke();
-            }));
+            })));
         }
 
         void RegisterEvents()
@@ -282,11 +294,11 @@ namespace JisSDKAds.Providers.AdMob
             if (_ad == null) return;
 
             // Rewarded is one-time-use. After close/fail, destroy and warm-load the next one.
-            _ad.OnAdFullScreenContentOpened += () =>
+            _ad.OnAdFullScreenContentOpened += () => AdMobMainThread.Run(() =>
             {
                 DebugAds.Log($"[AdMob][Rewarded] show_opened adUnitId={_adUnitId}");
-            };
-            _ad.OnAdFullScreenContentClosed += () =>
+            });
+            _ad.OnAdFullScreenContentClosed += () => AdMobMainThread.Run(() =>
             {
                 DebugAds.Log($"[AdMob][Rewarded] show_closed adUnitId={_adUnitId}");
                 _showCompletion.NotifyFullscreenClosed(() =>
@@ -301,16 +313,20 @@ namespace JisSDKAds.Providers.AdMob
                     onClosed?.Invoke();
                     DestroyAndWarmReload();
                 });
-            };
+            });
             _ad.OnAdFullScreenContentFailed += err =>
             {
-                DebugAds.LogWarning($"[AdMob][Rewarded] show_failed adUnitId={_adUnitId} error={err.GetMessage()}");
-                _showCompletion.Reset();
-                _pendingOnFailed?.Invoke(err.GetMessage());
-                _pendingOnFailed = null;
-                _pendingOnRewardEarned = null;
-                _pendingOnClosed = null;
-                DestroyAndWarmReload();
+                var message = err.GetMessage();
+                AdMobMainThread.Run(() =>
+                {
+                    DebugAds.LogWarning($"[AdMob][Rewarded] show_failed adUnitId={_adUnitId} error={message}");
+                    _showCompletion.Reset();
+                    _pendingOnFailed?.Invoke(message);
+                    _pendingOnFailed = null;
+                    _pendingOnRewardEarned = null;
+                    _pendingOnClosed = null;
+                    DestroyAndWarmReload();
+                });
             };
         }
 
@@ -367,17 +383,21 @@ namespace JisSDKAds.Providers.AdMob
 
             DebugAds.Log($"[AdMob][Banner] load_start adUnitId={_adUnitId}");
             _banner = new BannerView(_adUnitId.Trim(), AdSize.Banner, _position);
-            _banner.OnBannerAdLoaded += () =>
+            _banner.OnBannerAdLoaded += () => AdMobMainThread.Run(() =>
             {
                 _isAdLoaded = true;
                 DebugAds.Log($"[AdMob][Banner] load_success adUnitId={_adUnitId}");
                 onLoaded?.Invoke();
-            };
+            });
             _banner.OnBannerAdLoadFailed += err =>
             {
-                _isAdLoaded = false;
-                DebugAds.LogWarning($"[AdMob][Banner] load_fail adUnitId={_adUnitId} error={err.GetMessage()}");
-                onFailed?.Invoke(err.GetMessage());
+                var message = err.GetMessage();
+                AdMobMainThread.Run(() =>
+                {
+                    _isAdLoaded = false;
+                    DebugAds.LogWarning($"[AdMob][Banner] load_fail adUnitId={_adUnitId} error={message}");
+                    onFailed?.Invoke(message);
+                });
             };
             _banner.LoadAd(new AdRequest());
         }
@@ -431,16 +451,20 @@ namespace JisSDKAds.Providers.AdMob
             var request = new AdRequest();
             AppOpenAd.Load(_adUnitId, request, (ad, error) =>
             {
-                if (error != null)
+                var message = error?.GetMessage();
+                AdMobMainThread.Run(() =>
                 {
-                    DebugAds.LogWarning($"[AdMob][AppOpen] load_fail adUnitId={_adUnitId} error={error.GetMessage()}");
-                    onFailed?.Invoke(error.GetMessage());
-                    return;
-                }
+                    if (error != null)
+                    {
+                        DebugAds.LogWarning($"[AdMob][AppOpen] load_fail adUnitId={_adUnitId} error={message}");
+                        onFailed?.Invoke(message);
+                        return;
+                    }
 
-                _ad = ad;
-                DebugAds.Log($"[AdMob][AppOpen] load_success adUnitId={_adUnitId}");
-                onLoaded?.Invoke();
+                    _ad = ad;
+                    DebugAds.Log($"[AdMob][AppOpen] load_success adUnitId={_adUnitId}");
+                    onLoaded?.Invoke();
+                });
             });
         }
 
@@ -454,24 +478,28 @@ namespace JisSDKAds.Providers.AdMob
             }
 
             DebugAds.Log($"[AdMob][AppOpen] show_call adUnitId={_adUnitId}");
-            _ad.OnAdFullScreenContentOpened += () =>
+            _ad.OnAdFullScreenContentOpened += () => AdMobMainThread.Run(() =>
             {
                 DebugAds.Log($"[AdMob][AppOpen] show_opened adUnitId={_adUnitId}");
                 onShown?.Invoke();
-            };
-            _ad.OnAdFullScreenContentClosed += () =>
+            });
+            _ad.OnAdFullScreenContentClosed += () => AdMobMainThread.Run(() =>
             {
-                _ad.Destroy();
+                _ad?.Destroy();
                 _ad = null;
                 DebugAds.Log($"[AdMob][AppOpen] show_closed adUnitId={_adUnitId}");
                 onClosed?.Invoke();
-            };
+            });
             _ad.OnAdFullScreenContentFailed += err =>
             {
-                _ad.Destroy();
-                _ad = null;
-                DebugAds.LogWarning($"[AdMob][AppOpen] show_failed adUnitId={_adUnitId} error={err.GetMessage()}");
-                onFailed?.Invoke(err.GetMessage());
+                var message = err.GetMessage();
+                AdMobMainThread.Run(() =>
+                {
+                    _ad?.Destroy();
+                    _ad = null;
+                    DebugAds.LogWarning($"[AdMob][AppOpen] show_failed adUnitId={_adUnitId} error={message}");
+                    onFailed?.Invoke(message);
+                });
             };
             _ad.Show();
         }

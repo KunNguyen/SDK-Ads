@@ -30,20 +30,25 @@ namespace JisSDKAds.Providers.AdMob.SequentialTier
 
             InterstitialAd.Load(adUnitId, request, (ad, error) =>
             {
-                if (loadGeneration != expectedGeneration)
+                var code = error?.GetCode() ?? 0;
+                var message = error?.GetMessage();
+                AdMobMainThread.Run(() =>
                 {
-                    ad?.Destroy();
-                    return;
-                }
+                    if (loadGeneration != expectedGeneration)
+                    {
+                        ad?.Destroy();
+                        return;
+                    }
 
-                if (error != null || ad == null)
-                {
-                    onFail?.Invoke(error?.GetCode() ?? 0, error?.GetMessage());
-                    return;
-                }
+                    if (error != null || ad == null)
+                    {
+                        onFail?.Invoke(code, message);
+                        return;
+                    }
 
-                _ad = ad;
-                onSuccess?.Invoke();
+                    _ad = ad;
+                    onSuccess?.Invoke();
+                });
             });
         }
 
@@ -65,10 +70,14 @@ namespace JisSDKAds.Providers.AdMob.SequentialTier
             return true;
         }
 
-        void HandleClosed() => _hooks.onClosed?.Invoke();
-        void HandleOpened() => _hooks.onOpened?.Invoke();
-        void HandleFailed(AdError e) => _hooks.onFailed?.Invoke(
-            new SequentialTierShowError { Code = e.GetCode(), Message = e.GetMessage() });
+        void HandleClosed() => AdMobMainThread.Run(() => _hooks.onClosed?.Invoke());
+        void HandleOpened() => AdMobMainThread.Run(() => _hooks.onOpened?.Invoke());
+        void HandleFailed(AdError e)
+        {
+            var error = new SequentialTierShowError { Code = e.GetCode(), Message = e.GetMessage() };
+            AdMobMainThread.Run(() => _hooks.onFailed?.Invoke(error));
+        }
+        // Revenue (ILAR) — keep immediate, do NOT marshal to the Unity main thread.
         void HandlePaid(AdValue v)
         {
             var adapter = _ad?.GetResponseInfo()?.GetLoadedAdapterResponseInfo();

@@ -3,6 +3,7 @@ using GoogleMobileAds.Api;
 using JisSDKAds.Ads.SequentialTier;
 using static JisSDKAds.Ads.SequentialTier.AdLoadPipeline;
 using JisSDKAds.Common;
+using JisSDKAds.Providers.AdMob;
 using JisSDKAds.Providers.AdMob.SequentialTier;
 using UnityEngine;
 
@@ -76,17 +77,21 @@ namespace JisSDKAds.Ads
             var adRequest = new AdRequest();
             RewardedAd.Load(adUnitId, adRequest, (ad, error) =>
             {
-                NotifyRewardedFinished();
-                if (error != null || ad == null)
+                var errorText = error?.ToString();
+                AdMobMainThread.Run(() =>
                 {
-                    DebugAds.LogError("Rewarded ad failed to load: " + error);
-                    OnRewardBasedVideoFailedToLoad();
-                    return;
-                }
+                    NotifyRewardedFinished();
+                    if (error != null || ad == null)
+                    {
+                        DebugAds.LogError("Rewarded ad failed to load: " + errorText);
+                        OnRewardBasedVideoFailedToLoad();
+                        return;
+                    }
 
-                RewardVideoAds = ad;
-                RegisterRewardAdEvent(ad);
-                OnRewardBasedVideoLoaded();
+                    RewardVideoAds = ad;
+                    RegisterRewardAdEvent(ad);
+                    OnRewardBasedVideoLoaded();
+                });
             });
         }
 

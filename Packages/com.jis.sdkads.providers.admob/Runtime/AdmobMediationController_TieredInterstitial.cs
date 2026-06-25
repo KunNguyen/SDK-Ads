@@ -3,6 +3,7 @@ using GoogleMobileAds.Api;
 using JisSDKAds.Ads.SequentialTier;
 using static JisSDKAds.Ads.SequentialTier.AdLoadPipeline;
 using JisSDKAds.Common;
+using JisSDKAds.Providers.AdMob;
 using JisSDKAds.Providers.AdMob.SequentialTier;
 using UnityEngine;
 
@@ -96,18 +97,22 @@ namespace JisSDKAds.Ads
             DebugAds.LogAdEvent("interstitial", "load_start", adUnitId, "legacy");
             InterstitialAd.Load(adUnitId, adRequest, (ad, error) =>
             {
-                NotifyInterstitialFinished();
-                if (error != null || ad == null)
+                var errorText = error?.ToString() ?? "null ad";
+                AdMobMainThread.Run(() =>
                 {
-                    DebugAds.LogAdEvent("interstitial", "load_fail", adUnitId, "legacy", error?.ToString() ?? "null ad");
-                    OnAdInterstitialFailedToLoad();
-                    return;
-                }
+                    NotifyInterstitialFinished();
+                    if (error != null || ad == null)
+                    {
+                        DebugAds.LogAdEvent("interstitial", "load_fail", adUnitId, "legacy", errorText);
+                        OnAdInterstitialFailedToLoad();
+                        return;
+                    }
 
-                InterstitialAds = ad;
-                RegisterInterstitialAd(ad);
-                DebugAds.LogAdEvent("interstitial", "load_success", adUnitId, "legacy");
-                OnAdInterstitialSuccessToLoad();
+                    InterstitialAds = ad;
+                    RegisterInterstitialAd(ad);
+                    DebugAds.LogAdEvent("interstitial", "load_success", adUnitId, "legacy");
+                    OnAdInterstitialSuccessToLoad();
+                });
             });
         }
 
