@@ -75,6 +75,7 @@ namespace JisSDKAds.Providers.AdMob
 
         static IEnumerator CoInitialize(bool requestConsent)
         {
+            ForceAdEventsOnUnityMainThread();
             ApplyDefaultRequestConfiguration();
             AdMobInitRunner.Instance.StartCoroutine(CoWatchTimeout());
 
@@ -190,6 +191,18 @@ namespace JisSDKAds.Providers.AdMob
             MarkFailed(
                 $"timed out after {InitTimeoutSeconds}s — verify AdMob App ID, Google Play Services, and network. " +
                 $"UMP available: {AdmobUmpConsent.IsAvailable}");
+        }
+
+        // Route every GoogleMobileAds ad-event callback onto the Unity main thread. AdMob raises
+        // events on a background thread by default; when those handlers (or the plugin's internal
+        // bookkeeping) touch Unity engine state, they corrupt the native DelayedCallManager and crash
+        // with SIGSEGV in __tree_remove during DelayedCallManager::Update. Must be set before
+        // MobileAds.Initialize so it applies to all subsequent events.
+        static void ForceAdEventsOnUnityMainThread()
+        {
+#pragma warning disable 0618
+            MobileAds.RaiseAdEventsOnUnityMainThread = true;
+#pragma warning restore 0618
         }
 
         static void ApplyDefaultRequestConfiguration()
