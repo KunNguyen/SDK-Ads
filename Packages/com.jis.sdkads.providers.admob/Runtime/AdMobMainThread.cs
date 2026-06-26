@@ -17,9 +17,14 @@ namespace JisSDKAds.Providers.AdMob
     internal static class AdMobMainThread
     {
         static int _mainThreadId;
+        static SynchronizationContext _mainContext;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
-        static void CaptureMainThread() => _mainThreadId = Thread.CurrentThread.ManagedThreadId;
+        static void CaptureMainThread()
+        {
+            _mainThreadId = Thread.CurrentThread.ManagedThreadId;
+            _mainContext = SynchronizationContext.Current;
+        }
 
         public static void Run(Action action)
         {
@@ -27,15 +32,29 @@ namespace JisSDKAds.Providers.AdMob
                 return;
 
             // Already on the main thread (e.g. editor / synchronous paths): run immediately,
-            // avoiding a frame delay. GoogleMobileAds 10.x no longer exposes IsOnMainThread(),
-            // so compare against the thread captured during Unity runtime initialization.
-            if (_mainThreadId != 0 && Thread.CurrentThread.ManagedThreadId == _mainThreadId)
+            // avoiding a frame delay. Otherwise marshal onto the Unity main thread.
+            if (IsOnMainThread())
             {
                 action();
                 return;
             }
 
             MobileAdsEventExecutor.ExecuteInUpdate(action);
+        }
+
+        static bool IsOnMainThread()
+        {
+            // GoogleMobileAds raises ad events on a background JNI thread. IL2CPP attaches that
+            // native thread to the runtime and can hand it a ManagedThreadId that collides with the
+            // captured main-thread id, so ManagedThreadId alone is NOT a reliable main-thread check
+            // (a false positive runs the action on the JNI thread and crashes the native
+            // DelayedCallManager in StopCoroutine/StartCoroutine). Unity installs a
+            // SynchronizationContext only on the main thread; attached JNI threads never have it, so
+            // this is the authoritative signal. Fall back to the id only if the context is unknown.
+            if (_mainContext != null)
+                return SynchronizationContext.Current == _mainContext;
+
+            return _mainThreadId != 0 && Thread.CurrentThread.ManagedThreadId == _mainThreadId;
         }
     }
 }
