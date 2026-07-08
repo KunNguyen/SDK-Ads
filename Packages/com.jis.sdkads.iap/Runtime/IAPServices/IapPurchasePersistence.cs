@@ -14,22 +14,44 @@ namespace JisSDKAds.IAP
 
         public static PurchasedDataList LoadPurchasedData()
         {
-            var json = PlayerPrefs.GetString(PurchasedDataKey, string.Empty);
-            if (string.IsNullOrEmpty(json))
+            var stored = PlayerPrefs.GetString(PurchasedDataKey, string.Empty);
+            if (string.IsNullOrEmpty(stored))
                 return new PurchasedDataList();
+
+            if (IapLocalDataProtector.TryUnprotect(stored, out var json))
+            {
+                try
+                {
+                    return PurchasedDataList.FromJson(json) ?? new PurchasedDataList();
+                }
+                catch
+                {
+                    return new PurchasedDataList();
+                }
+            }
+
+            // Legacy (pre-protection) plain-text entries: migrate them once so paying users
+            // don't lose entitlements, then immediately re-save in protected form. Anything
+            // that fails both the protected and legacy parse is discarded rather than trusted,
+            // since an unreadable/tampered payload should never silently grant entitlement.
             try
             {
-                return PurchasedDataList.FromJson(json) ?? new PurchasedDataList();
+                var legacyList = PurchasedDataList.FromJson(stored);
+                if (legacyList == null)
+                    return new PurchasedDataList();
+                SavePurchasedData(legacyList);
+                return legacyList;
             }
             catch
             {
+                Debug.LogWarning("[IAP] Local entitlement data failed integrity check and could not be read as legacy data — discarding.");
                 return new PurchasedDataList();
             }
         }
 
         public static void SavePurchasedData(PurchasedDataList list)
         {
-            PlayerPrefs.SetString(PurchasedDataKey, list.ToJson());
+            PlayerPrefs.SetString(PurchasedDataKey, IapLocalDataProtector.Protect(list.ToJson()));
             PlayerPrefs.Save();
         }
 
@@ -52,12 +74,14 @@ namespace JisSDKAds.IAP
             if (_processedTransactions != null)
                 return;
             _processedTransactions = new HashSet<string>();
-            var json = PlayerPrefs.GetString(ProcessedTransactionsKey, string.Empty);
-            if (string.IsNullOrEmpty(json))
+            var stored = PlayerPrefs.GetString(ProcessedTransactionsKey, string.Empty);
+            if (string.IsNullOrEmpty(stored))
                 return;
+
+            var readable = IapLocalDataProtector.TryUnprotect(stored, out var json) ? json : stored;
             try
             {
-                var wrapper = JsonUtility.FromJson<TransactionIdList>(json);
+                var wrapper = JsonUtility.FromJson<TransactionIdList>(readable);
                 if (wrapper?.Ids != null)
                 {
                     foreach (var id in wrapper.Ids)
@@ -89,7 +113,7 @@ namespace JisSDKAds.IAP
             if (!_processedTransactions.Add(transactionId))
                 return;
             var wrapper = new TransactionIdList { Ids = new List<string>(_processedTransactions) };
-            PlayerPrefs.SetString(ProcessedTransactionsKey, JsonUtility.ToJson(wrapper));
+            PlayerPrefs.SetString(ProcessedTransactionsKey, IapLocalDataProtector.Protect(JsonUtility.ToJson(wrapper)));
             PlayerPrefs.Save();
         }
 

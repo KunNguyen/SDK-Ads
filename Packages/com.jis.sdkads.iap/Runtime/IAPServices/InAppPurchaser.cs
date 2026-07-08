@@ -57,8 +57,16 @@ namespace JisSDKAds.IAP
         public IAPLogger IAPLogger { get; set; } = new IAPLogger();
 
         UnityAction<string> OnExecutePurchaseCallback { get; set; }
-        UnityAction OnBuySuccessCallback { get; set; }
-        UnityAction OnBuyFailedCallback { get; set; }
+
+        /// <summary>
+        /// Per-product success/fail callbacks for in-flight <see cref="BuyIapProduct"/> calls.
+        /// Keyed by productId instead of a single global pair so two concurrent purchase
+        /// requests (e.g. two buy buttons tapped in quick succession) can't overwrite each
+        /// other's callback and notify the wrong caller.
+        /// </summary>
+        readonly Dictionary<string, (UnityAction onSuccess, UnityAction onFail)> _pendingPurchaseCallbacks =
+            new Dictionary<string, (UnityAction onSuccess, UnityAction onFail)>();
+
         bool isInitializing;
         bool _awaitingEntitlementsReplay;
         TaskCompletionSource<bool> _readyTcs;
@@ -187,7 +195,8 @@ namespace JisSDKAds.IAP
 
             foreach (var productConfig in IapProductConfigs.Packages)
             {
-                productConfig.SyncProductKindFromUnityType();
+                // ProductKind is already synced by IapProductConfigs.Validate(), which
+                // InitializeAsync always calls right before InitCatalog().
                 var productDefinition = new ProductDefinition(productConfig.ProductID, productConfig.ProductType);
                 initialProductsToFetch.Add(productDefinition);
 
@@ -306,8 +315,8 @@ namespace JisSDKAds.IAP
 
         public void BuyIapProduct(string productId, UnityAction buySuccessCallback, UnityAction buyFailCallback)
         {
-            OnBuySuccessCallback = buySuccessCallback;
-            OnBuyFailedCallback = buyFailCallback;
+            if (!string.IsNullOrEmpty(productId))
+                _pendingPurchaseCallbacks[productId] = (buySuccessCallback, buyFailCallback);
 
             if (!IsStoreReady)
             {
@@ -480,10 +489,6 @@ namespace JisSDKAds.IAP
             var kind = pack?.ProductKind ?? IapProductKind.Consumable;
             decimal price = pack?.LocalizedPrice ?? 0m;
             var currency = pack?.CurrencyCode ?? "USD";
-            if (productReceipt != null && pack != null)
-            {
-                // keep pack metadata
-            }
 
             return new IapPurchaseNotification
             {
@@ -538,7 +543,7 @@ namespace JisSDKAds.IAP
         {
             DebugAds.Log($"IAP purchase success: {notification.ProductId} (restore={notification.IsRestore})");
             OnExecutePurchaseCallback?.Invoke(notification.ProductId);
-            OnBuySuccessCallback?.Invoke();
+            TakePendingCallback(notification.ProductId).onSuccess?.Invoke();
             IapIntegration.NotifyPurchaseCompleted(notification);
             EventManager.Trigger(IapEvents.BuySuccess, notification);
             EventManager.Trigger(IapEvents.BuySuccess);
@@ -554,7 +559,7 @@ namespace JisSDKAds.IAP
 
         void NotifyPurchaseFailed(string productId, string reason)
         {
-            OnBuyFailedCallback?.Invoke();
+            TakePendingCallback(productId).onFail?.Invoke();
             var failure = new IapPurchaseFailure { ProductId = productId, Reason = reason };
             IapIntegration.NotifyPurchaseFailed(productId, reason);
             EventManager.Trigger(IapEvents.BuyFail, failure);
@@ -637,6 +642,15 @@ namespace JisSDKAds.IAP
         #endregion
 
         #region Helper Methods
+
+        /// <summary>Removes and returns the pending buy callback for a product, if any.</summary>
+        (UnityAction onSuccess, UnityAction onFail) TakePendingCallback(string productId)
+        {
+            if (string.IsNullOrEmpty(productId) || !_pendingPurchaseCallbacks.TryGetValue(productId, out var callbacks))
+                return (null, null);
+            _pendingPurchaseCallbacks.Remove(productId);
+            return callbacks;
+        }
 
         bool CanCrossPlatformValidate()
         {
