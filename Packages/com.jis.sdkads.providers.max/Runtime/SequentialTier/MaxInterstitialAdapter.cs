@@ -9,11 +9,18 @@ namespace JisSDKAds.Providers.Max.SequentialTier
         string _adUnitId;
         bool _isReady;
         SequentialTierShowHooks _hooks;
+        Action<string, MaxSdkBase.AdInfo> _paidHandler;
 
         public bool IsReady => _isReady && !string.IsNullOrEmpty(_adUnitId) && MaxSdk.IsInterstitialReady(_adUnitId);
 
         public void Destroy()
         {
+            // Revenue callback stays subscribed past OnAdHidden (MAX can pay late); release it only here.
+            if (_paidHandler != null)
+            {
+                MaxSdkCallbacks.Interstitial.OnAdRevenuePaidEvent -= _paidHandler;
+                _paidHandler = null;
+            }
             _isReady = false;
             _adUnitId = null;
         }
@@ -68,12 +75,13 @@ namespace JisSDKAds.Providers.Max.SequentialTier
             var opened = false;
             var completed = false;
 
+            // NOTE: onPaid is intentionally NOT unsubscribed here — it is released in Destroy() so a
+            // late OnAdRevenuePaidEvent (which MAX can fire after OnAdHidden) is still tracked.
             void Unsubscribe()
             {
                 MaxSdkCallbacks.Interstitial.OnAdDisplayedEvent -= onDisplayed;
                 MaxSdkCallbacks.Interstitial.OnAdDisplayFailedEvent -= onDisplayFailed;
                 MaxSdkCallbacks.Interstitial.OnAdHiddenEvent -= onHidden;
-                MaxSdkCallbacks.Interstitial.OnAdRevenuePaidEvent -= onPaid;
             }
 
             onDisplayed = (id, info) =>
@@ -122,7 +130,12 @@ namespace JisSDKAds.Providers.Max.SequentialTier
             MaxSdkCallbacks.Interstitial.OnAdDisplayedEvent += onDisplayed;
             MaxSdkCallbacks.Interstitial.OnAdDisplayFailedEvent += onDisplayFailed;
             MaxSdkCallbacks.Interstitial.OnAdHiddenEvent += onHidden;
-            MaxSdkCallbacks.Interstitial.OnAdRevenuePaidEvent += onPaid;
+
+            // Persist the paid handler so it survives OnAdHidden; Destroy() unsubscribes it.
+            if (_paidHandler != null)
+                MaxSdkCallbacks.Interstitial.OnAdRevenuePaidEvent -= _paidHandler;
+            _paidHandler = onPaid;
+            MaxSdkCallbacks.Interstitial.OnAdRevenuePaidEvent += _paidHandler;
 
             _isReady = false;
             MaxSdk.ShowInterstitial(adUnitId);

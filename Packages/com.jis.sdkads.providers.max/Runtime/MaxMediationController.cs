@@ -51,8 +51,14 @@ namespace JisSDKAds.Ads
             base.InitInterstitialAd(adClosedCallback, adLoadSuccessCallback, adLoadFailedCallback,
                 adShowSuccessCallback, adShowFailCallback);
             DebugAds.Log("[MAX] Init Interstitial");
-            MaxSdkCallbacks.Interstitial.OnAdRevenuePaidEvent += (adUnitID, adInfo) =>
-                OnAdRevenuePaidEvent(AdsType.INTERSTITIAL, adUnitID, adInfo);
+            // In tiered mode the sequential tier loader reports revenue via its own onPaid hook.
+            // Subscribing the global paid event here as well would double-count revenue, so only
+            // register it for the single-unit (non-tiered) legacy path.
+            if (!UseSequentialInterstitial)
+            {
+                MaxSdkCallbacks.Interstitial.OnAdRevenuePaidEvent += (adUnitID, adInfo) =>
+                    OnAdRevenuePaidEvent(AdsType.INTERSTITIAL, adUnitID, adInfo);
+            }
         }
 
         public override void RequestInterstitialAd()
@@ -185,8 +191,14 @@ namespace JisSDKAds.Ads
         {
             base.InitRewardVideoAd(videoSuccess, videoClosed, videoLoadSuccess, videoLoadFailed, videoStart);
             DebugAds.Log("[MAX] Init RewardedVideoAd");
-            MaxSdkCallbacks.Rewarded.OnAdRevenuePaidEvent += (adUnitID, adInfo) =>
-                OnAdRevenuePaidEvent(AdsType.REWARDED, adUnitID, adInfo);
+            // In tiered mode the sequential tier loader reports revenue via its own onPaid hook.
+            // Subscribing the global paid event here as well would double-count revenue, so only
+            // register it for the single-unit (non-tiered) legacy path.
+            if (!UseSequentialRewarded)
+            {
+                MaxSdkCallbacks.Rewarded.OnAdRevenuePaidEvent += (adUnitID, adInfo) =>
+                    OnAdRevenuePaidEvent(AdsType.REWARDED, adUnitID, adInfo);
+            }
             RequestRewardVideoAd();
         }
 

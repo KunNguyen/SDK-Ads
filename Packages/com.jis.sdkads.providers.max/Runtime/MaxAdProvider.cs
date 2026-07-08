@@ -136,6 +136,10 @@ namespace JisSDKAds.Providers.Max
             MaxSdkCallbacks.Interstitial.OnAdLoadedEvent += OnLoadResult;
             MaxSdkCallbacks.Interstitial.OnAdLoadFailedEvent -= OnLoadFailed;
             MaxSdkCallbacks.Interstitial.OnAdLoadFailedEvent += OnLoadFailed;
+            // Revenue callback is kept subscribed for the lifetime of this ad unit so late-arriving
+            // OnAdRevenuePaidEvent (which MAX can fire after OnAdHidden) is never dropped.
+            MaxSdkCallbacks.Interstitial.OnAdRevenuePaidEvent -= OnPaid;
+            MaxSdkCallbacks.Interstitial.OnAdRevenuePaidEvent += OnPaid;
             MaxSdk.LoadInterstitial(_adUnitId);
         }
 
@@ -186,8 +190,8 @@ namespace JisSDKAds.Providers.Max
             MaxSdkCallbacks.Interstitial.OnAdHiddenEvent += OnHidden;
             MaxSdkCallbacks.Interstitial.OnAdDisplayFailedEvent -= OnDisplayFailed;
             MaxSdkCallbacks.Interstitial.OnAdDisplayFailedEvent += OnDisplayFailed;
-            MaxSdkCallbacks.Interstitial.OnAdRevenuePaidEvent -= OnPaid;
-            MaxSdkCallbacks.Interstitial.OnAdRevenuePaidEvent += OnPaid;
+            // Note: OnAdRevenuePaidEvent is subscribed once in Load() and intentionally NOT
+            // re-subscribed per show, so it survives past OnAdHidden to catch late paid events.
             DebugAds.LogAdEvent("Interstitial", "show_call", _adUnitId, "provider=MAX");
             MaxSdk.ShowInterstitial(_adUnitId);
         }
@@ -237,7 +241,7 @@ namespace JisSDKAds.Providers.Max
             MaxSdkCallbacks.Interstitial.OnAdDisplayedEvent -= OnShown;
             MaxSdkCallbacks.Interstitial.OnAdHiddenEvent -= OnHidden;
             MaxSdkCallbacks.Interstitial.OnAdDisplayFailedEvent -= OnDisplayFailed;
-            MaxSdkCallbacks.Interstitial.OnAdRevenuePaidEvent -= OnPaid;
+            // OnPaid is deliberately left subscribed (see Load) so late paid events are still tracked.
         }
 
         void ClearShowCallbacks()
@@ -285,6 +289,10 @@ namespace JisSDKAds.Providers.Max
             MaxSdkCallbacks.Rewarded.OnAdLoadedEvent += OnLoadResult;
             MaxSdkCallbacks.Rewarded.OnAdLoadFailedEvent -= OnLoadFailed;
             MaxSdkCallbacks.Rewarded.OnAdLoadFailedEvent += OnLoadFailed;
+            // Revenue callback is kept subscribed for the lifetime of this ad unit so late-arriving
+            // OnAdRevenuePaidEvent (which MAX can fire after OnAdHidden) is never dropped.
+            MaxSdkCallbacks.Rewarded.OnAdRevenuePaidEvent -= OnPaid;
+            MaxSdkCallbacks.Rewarded.OnAdRevenuePaidEvent += OnPaid;
             MaxSdk.LoadRewardedAd(_adUnitId);
         }
 
@@ -338,8 +346,8 @@ namespace JisSDKAds.Providers.Max
             MaxSdkCallbacks.Rewarded.OnAdHiddenEvent += OnHidden;
             MaxSdkCallbacks.Rewarded.OnAdDisplayFailedEvent -= OnDisplayFailed;
             MaxSdkCallbacks.Rewarded.OnAdDisplayFailedEvent += OnDisplayFailed;
-            MaxSdkCallbacks.Rewarded.OnAdRevenuePaidEvent -= OnPaid;
-            MaxSdkCallbacks.Rewarded.OnAdRevenuePaidEvent += OnPaid;
+            // Note: OnAdRevenuePaidEvent is subscribed once in Load() and intentionally NOT
+            // re-subscribed per show, so it survives past OnAdHidden to catch late paid events.
             DebugAds.LogAdEvent("Rewarded", "show_call", _adUnitId, "provider=MAX");
             MaxSdk.ShowRewardedAd(_adUnitId);
         }
@@ -397,7 +405,7 @@ namespace JisSDKAds.Providers.Max
             MaxSdkCallbacks.Rewarded.OnAdDisplayedEvent -= OnShown;
             MaxSdkCallbacks.Rewarded.OnAdHiddenEvent -= OnHidden;
             MaxSdkCallbacks.Rewarded.OnAdDisplayFailedEvent -= OnDisplayFailed;
-            MaxSdkCallbacks.Rewarded.OnAdRevenuePaidEvent -= OnPaid;
+            // OnPaid is deliberately left subscribed (see Load) so late paid events are still tracked.
         }
 
         void UnsubscribeShowExceptReward()
@@ -405,7 +413,7 @@ namespace JisSDKAds.Providers.Max
             MaxSdkCallbacks.Rewarded.OnAdHiddenEvent -= OnHidden;
             MaxSdkCallbacks.Rewarded.OnAdDisplayedEvent -= OnShown;
             MaxSdkCallbacks.Rewarded.OnAdDisplayFailedEvent -= OnDisplayFailed;
-            MaxSdkCallbacks.Rewarded.OnAdRevenuePaidEvent -= OnPaid;
+            // OnPaid is deliberately left subscribed (see Load) so late paid events are still tracked.
         }
 
         void ClearShowCallbacks()

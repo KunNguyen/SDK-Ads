@@ -9,12 +9,19 @@ namespace JisSDKAds.Providers.Max.SequentialTier
         string _adUnitId;
         bool _isReady;
         SequentialTierShowHooks _hooks;
+        Action<string, MaxSdkBase.AdInfo> _paidHandler;
         readonly RewardedShowCompletionTracker _showCompletion = new RewardedShowCompletionTracker();
 
         public bool IsReady => _isReady && !string.IsNullOrEmpty(_adUnitId) && MaxSdk.IsRewardedAdReady(_adUnitId);
 
         public void Destroy()
         {
+            // Revenue callback stays subscribed past OnAdHidden (MAX can pay late); release it only here.
+            if (_paidHandler != null)
+            {
+                MaxSdkCallbacks.Rewarded.OnAdRevenuePaidEvent -= _paidHandler;
+                _paidHandler = null;
+            }
             _isReady = false;
             _adUnitId = null;
         }
@@ -70,13 +77,14 @@ namespace JisSDKAds.Providers.Max.SequentialTier
             _showCompletion.Reset();
 
             // Unsubscribe ALL show-related listeners.
+            // NOTE: onPaid is intentionally NOT unsubscribed here — it is released in Destroy() so a
+            // late OnAdRevenuePaidEvent (which MAX can fire after OnAdHidden) is still tracked.
             void Unsubscribe()
             {
                 MaxSdkCallbacks.Rewarded.OnAdDisplayedEvent -= onDisplayed;
                 MaxSdkCallbacks.Rewarded.OnAdDisplayFailedEvent -= onDisplayFailed;
                 MaxSdkCallbacks.Rewarded.OnAdHiddenEvent -= onHidden;
                 MaxSdkCallbacks.Rewarded.OnAdReceivedRewardEvent -= onRewarded;
-                MaxSdkCallbacks.Rewarded.OnAdRevenuePaidEvent -= onPaid;
             }
 
             // Unsubscribe everything except reward while waiting for the late-reward grace window.
@@ -85,7 +93,6 @@ namespace JisSDKAds.Providers.Max.SequentialTier
                 MaxSdkCallbacks.Rewarded.OnAdDisplayedEvent -= onDisplayed;
                 MaxSdkCallbacks.Rewarded.OnAdDisplayFailedEvent -= onDisplayFailed;
                 MaxSdkCallbacks.Rewarded.OnAdHiddenEvent -= onHidden;
-                MaxSdkCallbacks.Rewarded.OnAdRevenuePaidEvent -= onPaid;
             }
 
             onDisplayed = (id, info) =>
@@ -136,7 +143,12 @@ namespace JisSDKAds.Providers.Max.SequentialTier
             MaxSdkCallbacks.Rewarded.OnAdDisplayFailedEvent += onDisplayFailed;
             MaxSdkCallbacks.Rewarded.OnAdHiddenEvent += onHidden;
             MaxSdkCallbacks.Rewarded.OnAdReceivedRewardEvent += onRewarded;
-            MaxSdkCallbacks.Rewarded.OnAdRevenuePaidEvent += onPaid;
+
+            // Persist the paid handler so it survives OnAdHidden; Destroy() unsubscribes it.
+            if (_paidHandler != null)
+                MaxSdkCallbacks.Rewarded.OnAdRevenuePaidEvent -= _paidHandler;
+            _paidHandler = onPaid;
+            MaxSdkCallbacks.Rewarded.OnAdRevenuePaidEvent += _paidHandler;
 
             _isReady = false;
             MaxSdk.ShowRewardedAd(adUnitId);
