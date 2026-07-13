@@ -22,7 +22,7 @@ namespace JisSDKAds.Providers.Max
         public string rewardedAdUnitId;
         public string bannerAdUnitId;
         public string appOpenAdUnitId;
-        public int bannerPosition = (int)MaxSdkBase.BannerPosition.BottomCenter;
+        public int bannerPosition = (int)MaxSdkBase.AdViewPosition.BottomCenter;
 
         public AdProviderId ProviderId => AdProviderId.Max;
         public IAdService CreateProvider() => new MaxAdProvider(
@@ -31,7 +31,7 @@ namespace JisSDKAds.Providers.Max
             rewardedAdUnitId,
             bannerAdUnitId,
             appOpenAdUnitId,
-            (MaxSdkBase.BannerPosition)bannerPosition);
+            (MaxSdkBase.AdViewPosition)bannerPosition);
     }
 
     /// <summary>
@@ -44,7 +44,7 @@ namespace JisSDKAds.Providers.Max
         private readonly string _rewardedAdUnitId;
         private readonly string _bannerAdUnitId;
         private readonly string _appOpenAdUnitId;
-        private readonly MaxSdkBase.BannerPosition _bannerPosition;
+        private readonly MaxSdkBase.AdViewPosition _bannerPosition;
         private bool _isInitialized;
 
         public string ProviderId => "Max";
@@ -61,7 +61,7 @@ namespace JisSDKAds.Providers.Max
             string rewardedAdUnitId,
             string bannerAdUnitId,
             string appOpenAdUnitId = null,
-            MaxSdkBase.BannerPosition bannerPosition = MaxSdkBase.BannerPosition.BottomCenter)
+            MaxSdkBase.AdViewPosition bannerPosition = MaxSdkBase.AdViewPosition.BottomCenter)
         {
             _sdkKey = sdkKey;
             _interstitialAdUnitId = interstitialAdUnitId;
@@ -434,14 +434,14 @@ namespace JisSDKAds.Providers.Max
     internal class MaxBannerAd : IBannerAd
     {
         private readonly string _adUnitId;
-        private readonly MaxSdkBase.BannerPosition _position;
+        private readonly MaxSdkBase.AdViewPosition _position;
         private bool _isVisible;
         private bool _isLoaded;
         private bool _created;
         private Action _pendingOnLoaded;
         private Action<string> _pendingOnFailed;
 
-        public MaxBannerAd(string adUnitId, MaxSdkBase.BannerPosition position)
+        public MaxBannerAd(string adUnitId, MaxSdkBase.AdViewPosition position)
         {
             _adUnitId = adUnitId;
             _position = position;
@@ -471,7 +471,8 @@ namespace JisSDKAds.Providers.Max
                 _pendingOnLoaded = onLoaded;
                 _pendingOnFailed = onFailed;
                 DebugAds.LogAdEvent("Banner", "load_start", _adUnitId, "provider=MAX");
-                MaxSdk.CreateBanner(_adUnitId, _position);
+                var adViewConfiguration = new MaxSdk.AdViewConfiguration(_position);
+                MaxSdk.CreateBanner(_adUnitId, adViewConfiguration);
                 _created = true;
                 return;
             }
