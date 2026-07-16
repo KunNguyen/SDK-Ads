@@ -1,8 +1,9 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using Sirenix.OdinInspector;
+#if UNITY_EDITOR
 using UnityEditor;
+#endif
 using UnityEngine;
 
 public class MeldAppAdsManager : MonoBehaviour
@@ -10,7 +11,7 @@ public class MeldAppAdsManager : MonoBehaviour
     public TextAsset MainAppAds;
     public TextAsset SubAppAds;
 
-    [Button]
+    [ContextMenu("Meld")]
     public void Meld()
     {
         string mainAppAdsContent = MainAppAds.text;
@@ -34,7 +35,7 @@ public class MeldAppAdsManager : MonoBehaviour
 #endif
     }
 
-    [Button]
+    [ContextMenu("Find And Remove Same Line In MainAppAds")]
     public void FindAndRemoveSameLineInMainAppAds()
     {
         // Find all line in MainAppAds which is duplicate in MainAppAds
