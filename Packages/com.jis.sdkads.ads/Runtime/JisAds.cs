@@ -2629,7 +2629,8 @@ namespace JisSDKAds.Ads
                     ClearPendingInterstitialCallbacks();
                     closed?.Invoke();
                     ScheduleBannerRestoreAfterFullscreenAd("interstitial_resume");
-                    RequestInterstitialLoadIfNeeded();
+                    // Warm-load the next interstitial, but not sooner than the minimum gap after close.
+                    AdReloadScheduler.Schedule("jisads_resume_int", RequestInterstitialLoadIfNeeded);
                 },
                 onFailed: err =>
                 {
@@ -2637,7 +2638,7 @@ namespace JisSDKAds.Ads
                     ClearPendingInterstitialCallbacks();
                     failed?.Invoke(err);
                     ScheduleBannerRestoreAfterFullscreenAd("interstitial_resume");
-                    RequestInterstitialLoadIfNeeded();
+                    AdReloadScheduler.Schedule("jisads_resume_int", RequestInterstitialLoadIfNeeded);
                 },
                 showAttemptId: attemptId);
         }

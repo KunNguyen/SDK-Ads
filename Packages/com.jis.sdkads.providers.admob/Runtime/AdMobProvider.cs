@@ -205,8 +205,8 @@ namespace JisSDKAds.Providers.AdMob
             }
             _ad = null;
 
-            // Fire-and-forget preload for next impression.
-            Load();
+            // Preload the next impression, but never sooner than the minimum reload gap after close/fail.
+            AdReloadScheduler.Schedule("admob_int_" + _adUnitId, () => Load());
         }
     }
 
@@ -342,8 +342,8 @@ namespace JisSDKAds.Providers.AdMob
             }
             _ad = null;
 
-            // Fire-and-forget preload for next impression.
-            Load();
+            // Preload the next impression, but never sooner than the minimum reload gap after close/fail.
+            AdReloadScheduler.Schedule("admob_rew_" + _adUnitId, () => Load());
         }
     }
 

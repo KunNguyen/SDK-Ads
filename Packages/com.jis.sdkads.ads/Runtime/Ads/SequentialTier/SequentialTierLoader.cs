@@ -137,7 +137,12 @@ namespace JisSDKAds.Ads.SequentialTier
                         error?.Code ?? 0, error?.Message);
                     ClearReady();
                     hooks.onFailed?.Invoke(error);
-                    Load();
+                    // The failed display consumed the ad — reload, but not sooner than the minimum gap.
+                    AdReloadScheduler.Schedule($"tier_{_format}_showfail", () =>
+                    {
+                        if (!IsReady)
+                            Load();
+                    });
                 }
             });
 

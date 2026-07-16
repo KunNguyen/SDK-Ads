@@ -322,7 +322,8 @@ namespace JisSDKAds.Ads
                     }
 
                     InterstitialAds = null;
-                    RequestInterstitialLegacy();
+                    // Reload for the next impression, but not sooner than the minimum gap after close.
+                    AdReloadScheduler.Schedule("admob_legacy_int_close", RequestInterstitialLegacy);
                }
           });
 
@@ -369,7 +370,8 @@ namespace JisSDKAds.Ads
                          }
 
                          InterstitialAds = null;
-                         RequestInterstitialLegacy();
+                         // Reload for the next impression, but not sooner than the minimum gap after the failed show.
+                         AdReloadScheduler.Schedule("admob_legacy_int_close", RequestInterstitialLegacy);
                     }
                });
           }

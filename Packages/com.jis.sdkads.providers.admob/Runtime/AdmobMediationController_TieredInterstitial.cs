@@ -53,7 +53,8 @@ namespace JisSDKAds.Ads
                     onClosed = () =>
                     {
                         OnCloseInterstitialAd();
-                        _interstitialTierLoader?.Load();
+                        // Reload for the next impression, but not sooner than the minimum gap after close.
+                        AdReloadScheduler.Schedule("admob_tier_int_close", () => _interstitialTierLoader?.Load());
                     },
                     onOpened = () =>
                     {

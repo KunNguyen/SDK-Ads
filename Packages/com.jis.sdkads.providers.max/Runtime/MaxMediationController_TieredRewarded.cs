@@ -42,7 +42,8 @@ namespace JisSDKAds.Ads
                     onClosed = () =>
                     {
                         OnRewardBasedVideoClosed();
-                        _rewardedTierLoader?.Load();
+                        // Reload for the next impression, but not sooner than the minimum gap after close.
+                        AdReloadScheduler.Schedule("max_tier_rew_close", () => _rewardedTierLoader?.Load());
                     },
                     onOpened = OnRewardBasedVideoOpened,
                     onFailed = OnRewardedAdFailedToShow,

@@ -18,10 +18,12 @@ namespace JisSDKAds.Ads.UnitAdManagers.Service
                Failed
           }
           private const int max_interval_time = 6;
+          private const float min_delay_after_close = 2f;
           [field: SerializeField] private UnitAdManager Owner { get; set; }
           [field: SerializeField] private int IntervalTime { get; set; }
           [field: SerializeField] public LoadState State { get; private set; } = LoadState.None;
           [field: SerializeField] public bool IsActiveLogging { get; set; } = false;
+          private float _nextLoadAllowedRealtime;
 
           public Action OnReload { get; set; } = null;
           
@@ -65,6 +67,13 @@ namespace JisSDKAds.Ads.UnitAdManagers.Service
                     {
                          case LoadState.ReadyToLoad:
                          {
+                              // After an ad is closed, wait out the minimum gap before requesting a new load.
+                              var wait = _nextLoadAllowedRealtime - Time.realtimeSinceStartup;
+                              if (wait > 0f)
+                              {
+                                   yield return Yields.Get(wait);
+                                   break;
+                              }
                               OnReload?.Invoke();
                               State = LoadState.Loading;
                               break;
@@ -97,6 +106,7 @@ namespace JisSDKAds.Ads.UnitAdManagers.Service
           public void OnAdClosed()
           {
                State = LoadState.ReadyToLoad;
+               _nextLoadAllowedRealtime = Time.realtimeSinceStartup + min_delay_after_close;
           }
           public void OnLoadSuccess()
           {

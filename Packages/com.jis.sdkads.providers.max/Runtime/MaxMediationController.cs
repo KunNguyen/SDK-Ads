@@ -142,7 +142,10 @@ namespace JisSDKAds.Ads
             DebugAds.Log("[MAX] Interstitial closed");
             InterstitialCallbacks.Closed?.Invoke(true);
             if (!UseSequentialInterstitial)
-                RequestInterstitialLegacy();
+            {
+                // Reload for the next impression, but not sooner than the minimum gap after close.
+                AdReloadScheduler.Schedule("max_legacy_int_close", RequestInterstitialLegacy);
+            }
         }
 
         void RequestInterstitialLegacy()

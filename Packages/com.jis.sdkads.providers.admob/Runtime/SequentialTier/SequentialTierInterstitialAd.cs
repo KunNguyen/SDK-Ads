@@ -124,7 +124,12 @@ namespace JisSDKAds.Providers.AdMob.SequentialTier
             _pendingOnClosed = null;
             DebugAds.LogAdEvent("Interstitial", "show_closed", _loader.ReadyCache?.AdUnitId, "provider=ADMOB tiered");
             cb?.Invoke();
-            _loader.Load(forceReload: true);
+            // Never start the next load right after close — respect the minimum reload gap.
+            AdReloadScheduler.Schedule("admob_tier_int", () =>
+            {
+                if (!_loader.IsReady)
+                    _loader.Load(forceReload: true);
+            });
         }
 
         void OnShowFailed(SequentialTierShowError? error)

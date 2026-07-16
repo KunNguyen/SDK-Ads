@@ -255,7 +255,12 @@ namespace JisSDKAds.Providers.Max
         {
             if (string.IsNullOrEmpty(_adUnitId) || MaxSdk.IsInterstitialReady(_adUnitId))
                 return;
-            MaxSdk.LoadInterstitial(_adUnitId);
+            // Never start the next load right after close/fail — respect the minimum reload gap.
+            AdReloadScheduler.Schedule("max_int_" + _adUnitId, () =>
+            {
+                if (!MaxSdk.IsInterstitialReady(_adUnitId))
+                    MaxSdk.LoadInterstitial(_adUnitId);
+            });
         }
     }
 
@@ -427,7 +432,12 @@ namespace JisSDKAds.Providers.Max
         {
             if (string.IsNullOrEmpty(_adUnitId) || MaxSdk.IsRewardedAdReady(_adUnitId))
                 return;
-            MaxSdk.LoadRewardedAd(_adUnitId);
+            // Never start the next load right after close/fail — respect the minimum reload gap.
+            AdReloadScheduler.Schedule("max_rew_" + _adUnitId, () =>
+            {
+                if (!MaxSdk.IsRewardedAdReady(_adUnitId))
+                    MaxSdk.LoadRewardedAd(_adUnitId);
+            });
         }
     }
 
