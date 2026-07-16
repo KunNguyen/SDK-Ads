@@ -1,79 +1,38 @@
-# Odin Inspector (Sirenix) — một nguồn duy nhất
+# Odin Inspector (Sirenix) — SDK ≥ 5.1 không còn dùng Odin
 
-Unity **không** cho phép hai bản `Sirenix.OdinInspector.Attributes.dll` (và các DLL Odin khác) cùng tên assembly trong một project. Khi trùng, Unity thường **không load được assembly nào** → lỗi:
+Từ **SDK 5.1**, JIS SDK **không dùng và không ship Odin Inspector** nữa:
 
-```text
-error CS0246: The type or namespace name 'Sirenix' could not be found
-```
+- Package `com.jis.sdkads.odin` đã bị **xóa hẳn** khỏi SDK.
+- `com.jis.sdkads.core` / `com.jis.sdkads.editor` không còn dependency tới Odin.
+- Editor của SDK (`AdsManagerEditor`, `JisSDKAdsSettingsEditor`) dùng `UnityEditor.Editor` thuần.
+- Runtime chưa bao giờ dùng Odin — không đổi gì về serialize, prefab, build.
 
-## Kiến trúc JIS SDK ≥ 5.0.0
+Nhờ vậy SDK **không còn xung đột** với bản Odin Inspector riêng của từng project (Asset Store), và không còn vấn đề license khi phân phối DLL Sirenix.
 
-| Package | Odin |
-|---------|------|
-| **com.jis.sdkads.odin** | Chứa toàn bộ `Plugins/Sirenix` (DLL + editor) — **nguồn duy nhất** |
-| **com.jis.sdkads.core** | Không chứa Sirenix; phụ thuộc `com.jis.sdkads.odin` (UPM tự cài) |
-| **com.jis.sdkads.ads** | **Runtime không dùng Odin** (chỉ `SerializeField` / Unity Inspector) |
-| **com.jis.sdkads.editor** | Odin cho `AdsManagerEditor` (OdinEditor) |
-| **com.tw.\*** (bên ngoài) | Chỉ dùng attribute; **không** ship DLL — cần reference tới `com.jis.sdkads.odin` |
+## Migration từ SDK ≤ 5.0.x
 
-## Nguyên tắc
+Project cũ vẫn còn `com.jis.sdkads.odin` trong `Packages/manifest.json`. Nó không tự biến mất khi update SDK.
 
-| Quy tắc | Chi tiết |
-|--------|----------|
-| **Một nguồn Odin** | `com.jis.sdkads.odin` **hoặc** Asset Store `Assets/Plugins/Sirenix` — không trộn |
-| **Không nhúng Sirenix** trong package UPM khác | Fork vendor và xóa `Plugins/Sirenix` |
-| **Không copy config vào Assets** | Không cần `Assets/Packages/com.jis.sdkads.core/Plugins/Sirenix` |
-| **Hub** | Tự quét duplicate + cố gắng disable plugin import thừa |
+1. Update các package `com.jis.sdkads.*` lên ≥ 5.1 (Hub → **Fix com.jis.sdkads.\* revisions**)
+2. Mở **JIS SDK → Hub** — nếu còn `com.jis.sdkads.odin`, Hub hiện cảnh báo kèm nút **Remove legacy com.jis.sdkads.odin** (gỡ khỏi manifest + flush PackageCache)
+3. Package Manager → **Resolve** (hoặc restart Unity)
 
-## Cách tìm bản trùng
+Gỡ tay (không cần Hub): xóa dòng `"com.jis.sdkads.odin"` trong `Packages/manifest.json`, xóa `Library/PackageCache/com.jis.sdkads.odin@*`, rồi Resolve.
 
-1. **JIS SDK → Hub** — cảnh báo liệt kê mọi `Sirenix.OdinInspector.Attributes.dll`
-2. PowerShell:
+## Nếu code của bạn (hoặc package `com.tw.*`) đang dùng Odin
 
-```powershell
-Get-ChildItem -Recurse -Filter "Sirenix.OdinInspector.Attributes.dll" `
-  Assets, Packages, Library\PackageCache -ErrorAction SilentlyContinue |
-  Select-Object FullName
-```
+Trước đây các code này compile được nhờ bản Odin mà SDK bundle. Sau khi gỡ:
 
-## Các tình huống
+- Cài **Odin Inspector chính chủ từ Asset Store** vào `Assets/Plugins/Sirenix` (cần license hợp lệ).
+- Asmdef nào reference DLL Sirenix qua `precompiledReferences` vẫn hoạt động bình thường với bản Asset Store (Unity resolve theo tên DLL).
 
-### A) Project mới / cập nhật lên SDK 5.x (khuyến nghị)
+## Checklist sau migration
 
-1. Hub → **Fix com.jis.sdkads.\* revisions** (≥ 5.0.0)
-2. Import **Firebase** hoặc **Editor** module (cài `com.jis.sdkads.odin` + `core`)
-3. Xóa `Assets/Plugins/Sirenix` nếu có
-4. Package khác có `Plugins/Sirenix` → fork và xóa thư mục đó
-5. Hub → Flush PackageCache → Resolve
-6. Kiểm tra Hub: một DLL, compile sạch
-
-### B) Đã có Odin Asset Store trong Assets
-
-1. Chọn **một**: giữ Asset Store **hoặc** `com.jis.sdkads.odin`
-2. Nếu giữ Asset Store: gỡ `com.jis.sdkads.odin` khỏi manifest (không khuyến nghị với JIS editor)
-3. Nếu giữ JIS odin: xóa `Assets/Plugins/Sirenix`
-
-### C) `com.tw.*` lỗi CS0246 sau khi cài SDK
-
-TW không ship DLL. Cần asmdef reference tới Odin trong `com.jis.sdkads.odin`:
-
-- Sửa repo TW: thêm `precompiledReferences` + `overrideReferences: true` (khuyến nghị)
-- Hoặc script game `TwOdinAsmdefPatcher` (workaround tạm)
-
-## Nâng cấp từ 4.x → 5.0
-
-- Odin chuyển từ `core` → **`com.jis.sdkads.odin`**
-- `ads` runtime **không còn** attribute Odin — không cần patch asmdef ads
-- Xóa folder tùy biến `Assets/Packages/com.jis.sdkads.core` chỉ chứa config Sirenix (nếu có)
-- Manifest: thêm/để UPM resolve `com.jis.sdkads.odin` qua dependency `core`
-
-## Checklist
-
-- [ ] Chỉ một `Sirenix.OdinInspector.Attributes.dll` active
-- [ ] `com.jis.sdkads.odin` ≥ 5.0.0 (trực tiếp hoặc qua `core`)
-- [ ] Không `Assets/Plugins/Sirenix` khi dùng JIS odin
-- [ ] Package vendor khác không bundle Sirenix
-- [ ] Hub không báo "Multiple Odin copies"
+- [ ] Manifest không còn `com.jis.sdkads.odin`
+- [ ] `Library/PackageCache` không còn `com.jis.sdkads.odin@*`
+- [ ] Nếu project dùng Odin: chỉ một bản duy nhất tại `Assets/Plugins/Sirenix` (Asset Store)
+- [ ] Hub không hiện cảnh báo Odin
+- [ ] Compile sạch, inspector `AdsManager` / `JisSDKAdsSettings` hiển thị bình thường
 
 ## Liên quan
 

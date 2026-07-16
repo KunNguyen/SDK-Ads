@@ -1,6 +1,5 @@
 ﻿#if UNITY_EDITOR
 using JisSDKAds.Ads;
-using Sirenix.OdinInspector.Editor;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -8,7 +7,7 @@ using UnityEngine;
 namespace JisSDKAds.Editor
 {
     [CustomEditor(typeof(AdsManager))]
-    public class AdsManagerEditor : OdinEditor
+    public class AdsManagerEditor : UnityEditor.Editor
     {
         private void OnEnable()
         {

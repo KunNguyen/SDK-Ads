@@ -1,7 +1,7 @@
 {
   "dependencies": {
     "com.applovin.mediation.ads": {
-      "version": "8.6.3",
+      "version": "8.6.4",
       "depth": 0,
       "source": "registry",
       "dependencies": {
@@ -30,7 +30,7 @@
       "depth": 0,
       "source": "embedded",
       "dependencies": {
-        "com.jis.sdkads.core": "5.0.1",
+        "com.jis.sdkads.core": "5.1.0",
         "com.jis.sdkads.common": "5.0.4",
         "com.jis.sdkads.firebase": "5.0.3"
       }
@@ -81,9 +81,7 @@
       "version": "file:com.jis.sdkads.core",
       "depth": 0,
       "source": "embedded",
-      "dependencies": {
-        "com.jis.sdkads.odin": "5.0.1"
-      }
+      "dependencies": {}
     },
     "com.jis.sdkads.editor": {
       "version": "file:com.jis.sdkads.editor",
@@ -91,8 +89,7 @@
       "source": "embedded",
       "dependencies": {
         "com.jis.sdkads.ads": "5.1.2",
-        "com.jis.sdkads.iap": "5.0.1",
-        "com.jis.sdkads.odin": "5.0.1"
+        "com.jis.sdkads.iap": "5.0.1"
       }
     },
     "com.jis.sdkads.firebase": {
@@ -127,12 +124,6 @@
         "com.jis.sdkads.common": "5.0.4",
         "com.unity.mobile.notifications": "2.4.3"
       }
-    },
-    "com.jis.sdkads.odin": {
-      "version": "file:com.jis.sdkads.odin",
-      "depth": 0,
-      "source": "embedded",
-      "dependencies": {}
     },
     "com.jis.sdkads.providers.admob": {
       "version": "file:com.jis.sdkads.providers.admob",

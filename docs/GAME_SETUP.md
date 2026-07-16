@@ -81,14 +81,11 @@ See [NAMESPACES.md](NAMESPACES.md).
 
 ### Lỗi `Sirenix` / `Odin` trong `com.tw.utility`, `com.tw.gui`, `com.tw.ugui`, …
 
-Các package **TW** dùng Odin Inspector (attributes + editor drawers). SDK cung cấp Odin qua **`com.jis.sdkads.odin`** (≥ **5.0.0**, tự cài khi có `core`). Runtime **`com.jis.sdkads.ads`** không phụ thuộc Odin.
+**SDK ≥ 5.1 không dùng và không ship Odin** — package `com.jis.sdkads.odin` đã bị xóa (xem [ODIN_CONFLICT.md](ODIN_CONFLICT.md)).
 
-1. **Manifest** phải có `com.jis.sdkads.core` (thường qua Ads / Hub import Firebase+Ads).
-2. **Xóa** `Assets/Plugins/Sirenix` nếu còn bản cũ — trùng DLL trong package → Unity không load assembly.
+1. Code game / package **TW** dùng Odin → cài **Odin Inspector từ Asset Store** (`Assets/Plugins/Sirenix`, cần license).
+2. Project còn `com.jis.sdkads.odin` từ SDK cũ → Hub hiện cảnh báo, bấm **Remove legacy com.jis.sdkads.odin**.
 3. Hub → **Fix com.jis.sdkads.\* revisions** → **Flush PackageCache** → Package Manager → **Resolve**.
-4. Hub hiển thị cảnh báo **Odin assemblies missing** nếu vẫn lỗi — cập nhật core hoặc cài Odin từ Asset Store.
-5. **Odin Module Manager:** tắt module **Unity Addressables** nếu không dùng (xem [MIGRATION_GUID_CONFLICT.md](MIGRATION_GUID_CONFLICT.md)).
-6. **Package khác cũng nhúng Odin:** chỉ giữ **một** bản — xem [ODIN_CONFLICT.md](ODIN_CONFLICT.md).
 
 Assertion `newChildren.size() == childrenArray.size()` thường là lỗi phụ khi Inspector/layout lỗi — thử sau khi compile sạch, hoặc tắt component `HorizontalAutoResizeFitter` / `VerticalAutoResizeFitter` trên object đang chọn.
 

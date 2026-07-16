@@ -256,8 +256,7 @@ namespace JisSDKAds.Hub
             }
 
             JisSDKHubPackageHealth.DrawFlushPackageCacheButton();
-            JisSDKHubPackageHealth.DrawResolveOdinDuplicatesButton();
-            JisSDKHubPackageHealth.DrawOdinHealthWarning();
+            JisSDKHubPackageHealth.DrawOdinMigrationWarning();
             JisSDKHubSolarEngineHealth.DrawSolarEngineSetupWarning();
             JisSDKHubPackageHealth.DrawIapCommonMismatchWarning();
         }

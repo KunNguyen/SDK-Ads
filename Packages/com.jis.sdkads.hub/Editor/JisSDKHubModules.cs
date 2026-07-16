@@ -51,7 +51,6 @@ namespace JisSDKAds.Hub
             {
                 case ModuleKind.Firebase:
                     yield return ("com.jis.sdkads.hub", "com.jis.sdkads.hub");
-                    yield return ("com.jis.sdkads.odin", "com.jis.sdkads.odin");
                     yield return ("com.jis.sdkads.core", "com.jis.sdkads.core");
                     yield return ("com.jis.sdkads.common", "com.jis.sdkads.common");
                     yield return ("com.jis.sdkads.firebase", "com.jis.sdkads.firebase");
@@ -84,7 +83,6 @@ namespace JisSDKAds.Hub
                     yield return ("com.jis.sdkads.notifications", "com.jis.sdkads.notifications");
                     break;
                 case ModuleKind.Editor:
-                    yield return ("com.jis.sdkads.odin", "com.jis.sdkads.odin");
                     yield return ("com.jis.sdkads.editor", "com.jis.sdkads.editor");
                     break;
             }
@@ -151,6 +149,7 @@ namespace JisSDKAds.Hub
             switch (kind)
             {
                 case ModuleKind.Firebase:
+                    // com.jis.sdkads.odin: legacy (≤ 5.0.x bundled Odin) — remove it from old manifests too.
                     yield return "com.jis.sdkads.odin";
                     yield return "com.jis.sdkads.core";
                     yield return "com.jis.sdkads.common";

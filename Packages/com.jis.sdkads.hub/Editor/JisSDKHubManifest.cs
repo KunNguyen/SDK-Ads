@@ -21,7 +21,7 @@ namespace JisSDKAds.Hub
         public static bool IsSdkAdsDevRepo() =>
             HasEmbeddedPackage("com.jis.sdkads.hub") &&
             HasEmbeddedPackage("com.jis.sdkads.core") &&
-            HasEmbeddedPackage("com.jis.sdkads.odin");
+            HasEmbeddedPackage("com.jis.sdkads.editor");
 
         public static bool HasDependency(string packageName)
         {

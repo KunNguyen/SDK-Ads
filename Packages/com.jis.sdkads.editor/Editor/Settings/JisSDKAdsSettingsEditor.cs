@@ -2,14 +2,13 @@
 using System;
 using JisSDKAds.Ads;
 using JisSDKAds.Ads.Settings;
-using Sirenix.OdinInspector.Editor;
 using UnityEditor;
 using UnityEngine;
 
 namespace JisSDKAds.Editor
 {
     [CustomEditor(typeof(JisSDKAdsSettings))]
-    public class JisSDKAdsSettingsEditor : OdinEditor
+    public class JisSDKAdsSettingsEditor : UnityEditor.Editor
     {
         BuildTargetPlatform _selectedPlatform = BuildTargetPlatform.Android;
         int _selectedFormatTab;
