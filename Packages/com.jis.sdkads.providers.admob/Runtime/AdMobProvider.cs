@@ -99,6 +99,7 @@ namespace JisSDKAds.Providers.AdMob
         private readonly string _adUnitId;
         private InterstitialAd _ad;
         private bool _isLoading;
+        private readonly AdLoadWaiters _loadWaiters = new AdLoadWaiters();
 
         Action _pendingOnShown;
         Action _pendingOnClosed;
@@ -109,16 +110,23 @@ namespace JisSDKAds.Providers.AdMob
 
         public void Load(Action onLoaded = null, Action<string> onFailed = null)
         {
+            // A Load() that joins a queued or running load still gets the result (never dropped).
+            // While queued, the pipeline keeps a single pending generic load per format.
+            _loadWaiters.Add(onLoaded, onFailed);
             if (_isLoading)
                 return;
 
-            AdLoadPipeline.RunInterstitialLoad(() => RunLoad(onLoaded, onFailed));
+            AdLoadPipeline.RunInterstitialLoad(RunLoad);
         }
 
-        void RunLoad(Action onLoaded, Action<string> onFailed)
+        void RunLoad()
         {
             if (_isLoading)
+            {
+                // Never hold the pipeline slot without a load running.
+                AdLoadPipeline.NotifyInterstitialFinished();
                 return;
+            }
 
             if (_ad != null)
             {
@@ -139,13 +147,13 @@ namespace JisSDKAds.Providers.AdMob
                     if (error != null)
                     {
                         DebugAds.LogWarning($"[AdMob][Interstitial] load_fail adUnitId={_adUnitId} error={message}");
-                        onFailed?.Invoke(message);
+                        _loadWaiters.NotifyFailed(message);
                         return;
                     }
                     _ad = ad;
                     RegisterEvents();
                     DebugAds.Log($"[AdMob][Interstitial] load_success adUnitId={_adUnitId}");
-                    onLoaded?.Invoke();
+                    _loadWaiters.NotifyLoaded();
                 });
             });
         }
@@ -153,7 +161,7 @@ namespace JisSDKAds.Providers.AdMob
         private void RegisterEvents()
         {
             if (_ad == null) return;
-            // Interstitial is one-time-use. After close/fail, destroy and warm-load the next one.
+            // Interstitial is one-time-use. After close/fail, destroy it; JisAds schedules the next load.
             _ad.OnAdFullScreenContentOpened += () => AdMobMainThread.Run(() =>
             {
                 DebugAds.Log($"[AdMob][Interstitial] show_opened adUnitId={_adUnitId}");
@@ -163,7 +171,7 @@ namespace JisSDKAds.Providers.AdMob
             {
                 DebugAds.Log($"[AdMob][Interstitial] show_closed adUnitId={_adUnitId}");
                 _pendingOnClosed?.Invoke();
-                DestroyAndWarmReload();
+                DestroyShownAd();
             });
             _ad.OnAdFullScreenContentFailed += err =>
             {
@@ -172,7 +180,7 @@ namespace JisSDKAds.Providers.AdMob
                 {
                     DebugAds.LogWarning($"[AdMob][Interstitial] show_failed adUnitId={_adUnitId} error={message}");
                     _pendingOnFailed?.Invoke(message);
-                    DestroyAndWarmReload();
+                    DestroyShownAd();
                 });
             };
         }
@@ -193,7 +201,7 @@ namespace JisSDKAds.Providers.AdMob
             _ad.Show();
         }
 
-        void DestroyAndWarmReload()
+        void DestroyShownAd()
         {
             try
             {
@@ -204,9 +212,6 @@ namespace JisSDKAds.Providers.AdMob
                 // best effort
             }
             _ad = null;
-
-            // Preload the next impression, but never sooner than the minimum reload gap after close/fail.
-            AdReloadScheduler.Schedule("admob_int_" + _adUnitId, () => Load());
         }
     }
 
@@ -215,6 +220,7 @@ namespace JisSDKAds.Providers.AdMob
         private readonly string _adUnitId;
         private RewardedAd _ad;
         private bool _isLoading;
+        private readonly AdLoadWaiters _loadWaiters = new AdLoadWaiters();
 
         Action _pendingOnRewardEarned;
         Action _pendingOnClosed;
@@ -226,16 +232,23 @@ namespace JisSDKAds.Providers.AdMob
 
         public void Load(Action onLoaded = null, Action<string> onFailed = null)
         {
+            // A Load() that joins a queued or running load still gets the result (never dropped).
+            // While queued, the pipeline keeps a single pending generic load per format.
+            _loadWaiters.Add(onLoaded, onFailed);
             if (_isLoading)
                 return;
 
-            AdLoadPipeline.RunRewardedLoad(() => RunLoad(onLoaded, onFailed));
+            AdLoadPipeline.RunRewardedLoad(RunLoad);
         }
 
-        void RunLoad(Action onLoaded, Action<string> onFailed)
+        void RunLoad()
         {
             if (_isLoading)
+            {
+                // Never hold the pipeline slot without a load running.
+                AdLoadPipeline.NotifyRewardedFinished();
                 return;
+            }
 
             if (_ad != null)
             {
@@ -256,13 +269,13 @@ namespace JisSDKAds.Providers.AdMob
                     if (error != null)
                     {
                         DebugAds.LogWarning($"[AdMob][Rewarded] load_fail adUnitId={_adUnitId} error={message}");
-                        onFailed?.Invoke(message);
+                        _loadWaiters.NotifyFailed(message);
                         return;
                     }
                     _ad = ad;
                     RegisterEvents();
                     DebugAds.Log($"[AdMob][Rewarded] load_success adUnitId={_adUnitId}");
-                    onLoaded?.Invoke();
+                    _loadWaiters.NotifyLoaded();
                 });
             });
         }
@@ -293,7 +306,7 @@ namespace JisSDKAds.Providers.AdMob
         {
             if (_ad == null) return;
 
-            // Rewarded is one-time-use. After close/fail, destroy and warm-load the next one.
+            // Rewarded is one-time-use. After close/fail, destroy it; JisAds schedules the next load.
             _ad.OnAdFullScreenContentOpened += () => AdMobMainThread.Run(() =>
             {
                 DebugAds.Log($"[AdMob][Rewarded] show_opened adUnitId={_adUnitId}");
@@ -311,7 +324,7 @@ namespace JisSDKAds.Providers.AdMob
                     _pendingOnRewardEarned = null;
                     _pendingOnFailed = null;
                     onClosed?.Invoke();
-                    DestroyAndWarmReload();
+                    DestroyShownAd();
                 });
             });
             _ad.OnAdFullScreenContentFailed += err =>
@@ -325,12 +338,12 @@ namespace JisSDKAds.Providers.AdMob
                     _pendingOnFailed = null;
                     _pendingOnRewardEarned = null;
                     _pendingOnClosed = null;
-                    DestroyAndWarmReload();
+                    DestroyShownAd();
                 });
             };
         }
 
-        void DestroyAndWarmReload()
+        void DestroyShownAd()
         {
             try
             {
@@ -341,9 +354,6 @@ namespace JisSDKAds.Providers.AdMob
                 // best effort
             }
             _ad = null;
-
-            // Preload the next impression, but never sooner than the minimum reload gap after close/fail.
-            AdReloadScheduler.Schedule("admob_rew_" + _adUnitId, () => Load());
         }
     }
 

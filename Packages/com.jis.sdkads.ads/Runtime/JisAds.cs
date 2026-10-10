@@ -945,6 +945,8 @@ namespace JisSDKAds.Ads
             {
                 _interstitialLoadInFlight = false;
                 _interstitialLoadsPending = 0;
+                if (IsInterstitialAdLoaded())
+                    OnPreloadSucceeded(StandardAdPreloadFormat.Interstitial);
             }
         }
 
@@ -1007,6 +1009,8 @@ namespace JisSDKAds.Ads
             {
                 _rewardedLoadInFlight = false;
                 _rewardedLoadsPending = 0;
+                if (IsRewardedVideoLoaded())
+                    OnPreloadSucceeded(StandardAdPreloadFormat.Rewarded);
             }
         }
 
@@ -2317,12 +2321,14 @@ namespace JisSDKAds.Ads
                     onClosed: () =>
                     {
                         ConsumePendingInterstitialCallbacksOnClose();
+                        ScheduleInterstitialReloadAfterShow();
                     },
                     onFailed: err =>
                     {
                         Debug.LogWarning($"[JisAds] Core interstitial failed: {err}");
                         TrackPendingInterstitialShowFailure(isTracking);
                         ConsumePendingInterstitialCallbacksOnFail();
+                        ScheduleInterstitialReloadAfterShow();
                     },
                     showAttemptId: _interstitialShowAttemptId);
                 return;
@@ -2533,6 +2539,7 @@ namespace JisSDKAds.Ads
             {
                 var id = ParseProviderId(providerId);
                 RecordInterstitialLoaded(id);
+                OnPreloadSucceeded(StandardAdPreloadFormat.Interstitial);
                 TrackCoreInterstitialLoadSuccess(0f);
             }
 
@@ -2545,6 +2552,7 @@ namespace JisSDKAds.Ads
             {
                 var id = ParseProviderId(providerId);
                 RecordRewardedLoaded(id);
+                OnPreloadSucceeded(StandardAdPreloadFormat.Rewarded);
             }
 
             DebugAds.Log($"[JisAds][{format}][load_success] mediation={providerId}");
@@ -2629,8 +2637,7 @@ namespace JisSDKAds.Ads
                     ClearPendingInterstitialCallbacks();
                     closed?.Invoke();
                     ScheduleBannerRestoreAfterFullscreenAd("interstitial_resume");
-                    // Warm-load the next interstitial, but not sooner than the minimum gap after close.
-                    AdReloadScheduler.Schedule("jisads_resume_int", RequestInterstitialLoadIfNeeded);
+                    ScheduleInterstitialReloadAfterShow();
                 },
                 onFailed: err =>
                 {
@@ -2638,7 +2645,7 @@ namespace JisSDKAds.Ads
                     ClearPendingInterstitialCallbacks();
                     failed?.Invoke(err);
                     ScheduleBannerRestoreAfterFullscreenAd("interstitial_resume");
-                    AdReloadScheduler.Schedule("jisads_resume_int", RequestInterstitialLoadIfNeeded);
+                    ScheduleInterstitialReloadAfterShow();
                 },
                 showAttemptId: attemptId);
         }
@@ -2721,12 +2728,17 @@ namespace JisSDKAds.Ads
                     provider,
                     fallback,
                     onRewardEarned: ConsumePendingRewardedCallbacksOnRewardGranted,
-                    onClosed: () => ConsumePendingRewardedCallbacksOnClose(_pendingRewardedRewardGranted),
+                    onClosed: () =>
+                    {
+                        ConsumePendingRewardedCallbacksOnClose(_pendingRewardedRewardGranted);
+                        ScheduleRewardedReloadAfterShow();
+                    },
                     onFailed: err =>
                     {
                         Debug.LogWarning($"[JisAds] Core rewarded failed: {err}");
                         TrackPendingRewardedShowFailure();
                         ConsumePendingRewardedCallbacksOnFail();
+                        ScheduleRewardedReloadAfterShow();
                     });
                 return;
             }
@@ -3140,7 +3152,11 @@ namespace JisSDKAds.Ads
             if (!CanOperateFullscreen())
                 return;
             if (IsInterstitialAdLoaded())
+            {
+                // Loaded by a path JisAds did not start (Core show-time load, tier fill retry) — still resets backoff.
+                OnPreloadSucceeded(StandardAdPreloadFormat.Interstitial);
                 return;
+            }
             PreloadInterstitialAd();
         }
 
@@ -3150,9 +3166,20 @@ namespace JisSDKAds.Ads
             if (!CanOperateFullscreen())
                 return;
             if (IsRewardedVideoLoaded())
+            {
+                OnPreloadSucceeded(StandardAdPreloadFormat.Rewarded);
                 return;
+            }
             PreloadRewardedAd();
         }
+
+        // Providers no longer reload after close / show fail: the next load goes through JisAds so its result
+        // reaches backoff + load tracking. One pending reload per format (scheduler coalesces by tag).
+        void ScheduleInterstitialReloadAfterShow() =>
+            AdReloadScheduler.Schedule("jisads_int", RequestInterstitialLoadIfNeeded);
+
+        void ScheduleRewardedReloadAfterShow() =>
+            AdReloadScheduler.Schedule("jisads_rew", RequestRewardedLoadIfNeeded);
 
         public bool IsInterstitialAdLoaded() =>
             IsInterstitialAdLoaded(GetCachedFullscreenShowProviderOrder(AdFormat.Interstitial));

@@ -110,8 +110,7 @@ namespace JisSDKAds.Providers.Max
     internal class MaxInterstitialAd : IInterstitialAd
     {
         private readonly string _adUnitId;
-        private Action _pendingOnLoaded;
-        private Action<string> _pendingOnLoadFailed;
+        private readonly AdLoadWaiters _loadWaiters = new AdLoadWaiters();
         private Action _pendingOnShown;
         private Action _pendingOnClosed;
         private Action<string> _pendingOnShowFailed;
@@ -127,8 +126,8 @@ namespace JisSDKAds.Providers.Max
                 return;
             }
 
-            _pendingOnLoaded = onLoaded;
-            _pendingOnLoadFailed = onFailed;
+            // Keep every caller's callbacks: a Load() joining an in-flight load still gets the result.
+            _loadWaiters.Add(onLoaded, onFailed);
 
             DebugAds.LogAdEvent("Interstitial", "load_start", _adUnitId, "provider=MAX");
             // Idempotent: never stack handlers when Load is called repeatedly before a result.
@@ -147,22 +146,16 @@ namespace JisSDKAds.Providers.Max
         {
             if (id != _adUnitId) return;
             UnsubscribeLoad();
-            var cb = _pendingOnLoaded;
-            _pendingOnLoaded = null;
-            _pendingOnLoadFailed = null;
             DebugAds.LogAdEvent("Interstitial", "load_success", _adUnitId, "provider=MAX");
-            cb?.Invoke();
+            _loadWaiters.NotifyLoaded();
         }
 
         void OnLoadFailed(string id, MaxSdkBase.ErrorInfo err)
         {
             if (id != _adUnitId) return;
             UnsubscribeLoad();
-            var cb = _pendingOnLoadFailed;
-            _pendingOnLoaded = null;
-            _pendingOnLoadFailed = null;
             DebugAds.LogAdEvent("Interstitial", "load_fail", _adUnitId, "provider=MAX", err.Message);
-            cb?.Invoke(err.Message);
+            _loadWaiters.NotifyFailed(err.Message);
         }
 
         void UnsubscribeLoad()
@@ -214,8 +207,6 @@ namespace JisSDKAds.Providers.Max
             ClearShowCallbacks();
             DebugAds.LogAdEvent("Interstitial", "show_closed", _adUnitId, "provider=MAX");
             cb?.Invoke();
-            // MAX interstitial is one-time-use â€” warm-load the next impression after close.
-            WarmReload();
         }
 
         void OnDisplayFailed(string id, MaxSdkBase.ErrorInfo err, MaxSdkBase.AdInfo info)
@@ -226,8 +217,6 @@ namespace JisSDKAds.Providers.Max
             ClearShowCallbacks();
             DebugAds.LogAdEvent("Interstitial", "show_failed", _adUnitId, "provider=MAX", err.Message);
             cb?.Invoke(err.Message);
-            // Display failed consumed/invalidated the loaded ad — reload a fresh one.
-            WarmReload();
         }
 
         void OnPaid(string id, MaxSdkBase.AdInfo info)
@@ -250,25 +239,12 @@ namespace JisSDKAds.Providers.Max
             _pendingOnClosed = null;
             _pendingOnShowFailed = null;
         }
-
-        void WarmReload()
-        {
-            if (string.IsNullOrEmpty(_adUnitId) || MaxSdk.IsInterstitialReady(_adUnitId))
-                return;
-            // Never start the next load right after close/fail — respect the minimum reload gap.
-            AdReloadScheduler.Schedule("max_int_" + _adUnitId, () =>
-            {
-                if (!MaxSdk.IsInterstitialReady(_adUnitId))
-                    MaxSdk.LoadInterstitial(_adUnitId);
-            });
-        }
     }
 
     internal class MaxRewardedAd : IRewardedAd
     {
         private readonly string _adUnitId;
-        private Action _pendingOnLoaded;
-        private Action<string> _pendingOnLoadFailed;
+        private readonly AdLoadWaiters _loadWaiters = new AdLoadWaiters();
         private Action _pendingOnRewardEarned;
         private Action _pendingOnClosed;
         private Action<string> _pendingOnShowFailed;
@@ -285,8 +261,8 @@ namespace JisSDKAds.Providers.Max
                 return;
             }
 
-            _pendingOnLoaded = onLoaded;
-            _pendingOnLoadFailed = onFailed;
+            // Keep every caller's callbacks: a Load() joining an in-flight load still gets the result.
+            _loadWaiters.Add(onLoaded, onFailed);
 
             DebugAds.LogAdEvent("Rewarded", "load_start", _adUnitId, "provider=MAX");
             // Idempotent: never stack handlers when Load is called repeatedly before a result.
@@ -305,22 +281,16 @@ namespace JisSDKAds.Providers.Max
         {
             if (id != _adUnitId) return;
             UnsubscribeLoad();
-            var cb = _pendingOnLoaded;
-            _pendingOnLoaded = null;
-            _pendingOnLoadFailed = null;
             DebugAds.LogAdEvent("Rewarded", "load_success", _adUnitId, "provider=MAX");
-            cb?.Invoke();
+            _loadWaiters.NotifyLoaded();
         }
 
         void OnLoadFailed(string id, MaxSdkBase.ErrorInfo err)
         {
             if (id != _adUnitId) return;
             UnsubscribeLoad();
-            var cb = _pendingOnLoadFailed;
-            _pendingOnLoaded = null;
-            _pendingOnLoadFailed = null;
             DebugAds.LogAdEvent("Rewarded", "load_fail", _adUnitId, "provider=MAX", err.Message);
-            cb?.Invoke(err.Message);
+            _loadWaiters.NotifyFailed(err.Message);
         }
 
         void UnsubscribeLoad()
@@ -382,7 +352,6 @@ namespace JisSDKAds.Providers.Max
                 UnsubscribeShow();
                 ClearShowCallbacks();
                 onClosed?.Invoke();
-                WarmReload();
             });
         }
 
@@ -394,8 +363,6 @@ namespace JisSDKAds.Providers.Max
             ClearShowCallbacks();
             DebugAds.LogAdEvent("Rewarded", "show_failed", _adUnitId, "provider=MAX", err.Message);
             cb?.Invoke(err.Message);
-            // Display failed consumed/invalidated the loaded ad — reload a fresh one.
-            WarmReload();
         }
 
         void OnPaid(string id, MaxSdkBase.AdInfo info)
@@ -426,18 +393,6 @@ namespace JisSDKAds.Providers.Max
             _pendingOnRewardEarned = null;
             _pendingOnClosed = null;
             _pendingOnShowFailed = null;
-        }
-
-        void WarmReload()
-        {
-            if (string.IsNullOrEmpty(_adUnitId) || MaxSdk.IsRewardedAdReady(_adUnitId))
-                return;
-            // Never start the next load right after close/fail — respect the minimum reload gap.
-            AdReloadScheduler.Schedule("max_rew_" + _adUnitId, () =>
-            {
-                if (!MaxSdk.IsRewardedAdReady(_adUnitId))
-                    MaxSdk.LoadRewardedAd(_adUnitId);
-            });
         }
     }
 
@@ -563,8 +518,7 @@ namespace JisSDKAds.Providers.Max
     internal class MaxAppOpenAd : IAppOpenAd
     {
         private readonly string _adUnitId;
-        private Action _pendingOnLoaded;
-        private Action<string> _pendingOnLoadFailed;
+        private readonly AdLoadWaiters _loadWaiters = new AdLoadWaiters();
         private Action _pendingOnShown;
         private Action _pendingOnClosed;
         private Action<string> _pendingOnShowFailed;
@@ -580,8 +534,8 @@ namespace JisSDKAds.Providers.Max
                 return;
             }
 
-            _pendingOnLoaded = onLoaded;
-            _pendingOnLoadFailed = onFailed;
+            // Keep every caller's callbacks: a Load() joining an in-flight load still gets the result.
+            _loadWaiters.Add(onLoaded, onFailed);
 
             DebugAds.LogAdEvent("AppOpen", "load_start", _adUnitId, "provider=MAX");
             MaxSdkCallbacks.AppOpen.OnAdLoadedEvent -= OnLoadResult;
@@ -595,22 +549,16 @@ namespace JisSDKAds.Providers.Max
         {
             if (id != _adUnitId) return;
             UnsubscribeLoad();
-            var cb = _pendingOnLoaded;
-            _pendingOnLoaded = null;
-            _pendingOnLoadFailed = null;
             DebugAds.LogAdEvent("AppOpen", "load_success", _adUnitId, "provider=MAX");
-            cb?.Invoke();
+            _loadWaiters.NotifyLoaded();
         }
 
         void OnLoadFailed(string id, MaxSdkBase.ErrorInfo err)
         {
             if (id != _adUnitId) return;
             UnsubscribeLoad();
-            var cb = _pendingOnLoadFailed;
-            _pendingOnLoaded = null;
-            _pendingOnLoadFailed = null;
             DebugAds.LogAdEvent("AppOpen", "load_fail", _adUnitId, "provider=MAX", err.Message);
-            cb?.Invoke(err.Message);
+            _loadWaiters.NotifyFailed(err.Message);
         }
 
         void UnsubscribeLoad()
@@ -862,7 +810,6 @@ namespace JisSDKAds.Providers.Max.SequentialTier
             _pendingOnClosed = null;
             DebugAds.LogAdEvent("Interstitial", "show_closed", _loader.ReadyCache?.AdUnitId, "provider=MAX tiered");
             cb?.Invoke();
-            _loader.Load(forceReload: true);
         }
 
         void OnShowFailed(SequentialTierShowError? error)
@@ -992,7 +939,6 @@ namespace JisSDKAds.Providers.Max.SequentialTier
             _pendingOnClosed = null;
             DebugAds.LogAdEvent("Rewarded", "show_closed", _loader.ReadyCache?.AdUnitId, "provider=MAX tiered");
             cb?.Invoke();
-            _loader.Load(forceReload: true);
         }
 
         void OnShowFailed(SequentialTierShowError? error)
