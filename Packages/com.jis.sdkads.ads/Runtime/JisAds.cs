@@ -102,10 +102,8 @@ namespace JisSDKAds.Ads
         const float LoadedAdMaxAgeSec = 50f * 60f;
         const int MaxProviderInitRetries = 5;
         const int MaxCoreInitRetries = 3;
-        private bool _interstitialLoadInFlight;
-        private int _interstitialLoadsPending;
-        private bool _rewardedLoadInFlight;
-        private int _rewardedLoadsPending;
+        private readonly FullscreenLoadGate _interstitialLoadGate = new FullscreenLoadGate("Interstitial");
+        private readonly FullscreenLoadGate _rewardedLoadGate = new FullscreenLoadGate("Rewarded");
         private bool _forceFullscreenPreloadWithoutRemoteConfig;
         private bool _fullscreenPreloadRemoteConfigWaitStarted;
         private Coroutine _fullscreenPreloadRemoteConfigWaitCoroutine;
@@ -693,7 +691,7 @@ namespace JisSDKAds.Ads
         void TryPreloadRewardedForProvider(AdProviderId providerId)
         {
             var provider = _core?.GetProvider(providerId);
-            if (!CanOperateFullscreen() || provider?.Rewarded == null || _rewardedLoadInFlight)
+            if (!CanOperateFullscreen() || provider?.Rewarded == null || _rewardedLoadGate.IsLoadInFlight())
                 return;
 
             if (IsProviderRewardedLoadedFresh(providerId))
@@ -702,19 +700,21 @@ namespace JisSDKAds.Ads
                 return;
             }
 
-            _rewardedLoadInFlight = true;
+            var loadGeneration = _rewardedLoadGate.Begin();
             DebugAds.Log($"[JisAds][Rewarded][preload_start] mediation={providerId}");
             provider.Rewarded.Load(
                 onLoaded: () =>
                 {
-                    _rewardedLoadInFlight = false;
                     RecordRewardedLoaded(providerId);
+                    if (!_rewardedLoadGate.End(loadGeneration))
+                        return;
                     OnPreloadSucceeded(StandardAdPreloadFormat.Rewarded);
                     DebugAds.Log($"[JisAds][Rewarded][preload_success] mediation={providerId}");
                 },
                 onFailed: err =>
                 {
-                    _rewardedLoadInFlight = false;
+                    if (!_rewardedLoadGate.End(loadGeneration))
+                        return;
                     DebugAds.LogWarning($"[JisAds][Rewarded][preload_fail] mediation={providerId} error={err}");
                     HandlePreloadFailedIfNoFormatReady(StandardAdPreloadFormat.Rewarded);
                 });
@@ -723,7 +723,7 @@ namespace JisSDKAds.Ads
         void TryPreloadInterstitialForProvider(AdProviderId providerId)
         {
             var provider = _core?.GetProvider(providerId);
-            if (!CanOperateFullscreen() || provider?.Interstitial == null || _interstitialLoadInFlight)
+            if (!CanOperateFullscreen() || provider?.Interstitial == null || _interstitialLoadGate.IsLoadInFlight())
                 return;
 
             if (IsProviderInterstitialLoadedFresh(providerId))
@@ -732,21 +732,23 @@ namespace JisSDKAds.Ads
                 return;
             }
 
-            _interstitialLoadInFlight = true;
+            var loadGeneration = _interstitialLoadGate.Begin();
             DebugAds.Log($"[JisAds][Interstitial][preload_start] mediation={providerId}");
             var loadStartedAt = Time.unscaledTime;
             provider.Interstitial.Load(
                 onLoaded: () =>
                 {
-                    _interstitialLoadInFlight = false;
                     RecordInterstitialLoaded(providerId);
+                    if (!_interstitialLoadGate.End(loadGeneration))
+                        return;
                     OnPreloadSucceeded(StandardAdPreloadFormat.Interstitial);
                     TrackCoreInterstitialLoadSuccess(loadStartedAt);
                     DebugAds.Log($"[JisAds][Interstitial][preload_success] mediation={providerId}");
                 },
                 onFailed: err =>
                 {
-                    _interstitialLoadInFlight = false;
+                    if (!_interstitialLoadGate.End(loadGeneration))
+                        return;
                     TrackCoreInterstitialLoadFail(err, loadStartedAt);
                     DebugAds.LogWarning($"[JisAds][Interstitial][preload_fail] mediation={providerId} error={err}");
                     HandlePreloadFailedIfNoFormatReady(StandardAdPreloadFormat.Interstitial);
@@ -888,11 +890,13 @@ namespace JisSDKAds.Ads
             if (!CanOperateFullscreen() || _core == null)
                 return;
 
-            if (!TryBeginInterstitialLoadBatch(forceReload))
+            if (!forceReload && _interstitialLoadGate.IsLoadInFlight())
             {
                 DebugAds.Log("[JisAds][Interstitial][preload_skip] reason=load_in_flight");
                 return;
             }
+
+            var loadGeneration = _interstitialLoadGate.Begin();
 
             var providerIds = GetFullscreenPreloadProviderIds(AdFormat.Interstitial);
             LogFullscreenLoadPlan(AdFormat.Interstitial, providerIds);
@@ -920,31 +924,36 @@ namespace JisSDKAds.Ads
                 }
 
                 startedAny = true;
-                BeginInterstitialLoadSlot();
+                _interstitialLoadGate.BeginSlot();
                 DebugAds.Log($"[JisAds][Interstitial][preload_start] mediation={providerId}");
                 var loadStartedAt = Time.unscaledTime;
                 provider.Interstitial.Load(
                     onLoaded: () =>
                     {
                         RecordInterstitialLoaded(providerId);
+                        // A superseded batch (re-arm, in-flight timeout) shares the provider's real load with the
+                        // newer one: only the current batch reports, so one load is tracked once.
+                        if (!_interstitialLoadGate.IsCurrent(loadGeneration))
+                            return;
                         OnPreloadSucceeded(StandardAdPreloadFormat.Interstitial);
                         TrackCoreInterstitialLoadSuccess(loadStartedAt);
                         DebugAds.Log($"[JisAds][Interstitial][preload_success] mediation={providerId}");
-                        EndInterstitialLoadSlot();
+                        _interstitialLoadGate.EndSlot(loadGeneration);
                     },
                     onFailed: err =>
                     {
+                        if (!_interstitialLoadGate.IsCurrent(loadGeneration))
+                            return;
                         TrackCoreInterstitialLoadFail(err, loadStartedAt);
                         DebugAds.LogWarning($"[JisAds][Interstitial][preload_fail] mediation={providerId} error={err}");
                         HandlePreloadFailedIfNoFormatReady(StandardAdPreloadFormat.Interstitial);
-                        EndInterstitialLoadSlot();
+                        _interstitialLoadGate.EndSlot(loadGeneration);
                     });
             }
 
             if (!startedAny)
             {
-                _interstitialLoadInFlight = false;
-                _interstitialLoadsPending = 0;
+                _interstitialLoadGate.End(loadGeneration);
                 if (IsInterstitialAdLoaded())
                     OnPreloadSucceeded(StandardAdPreloadFormat.Interstitial);
             }
@@ -955,11 +964,13 @@ namespace JisSDKAds.Ads
             if (!CanOperateFullscreen() || _core == null)
                 return;
 
-            if (!TryBeginRewardedLoadBatch(forceReload))
+            if (!forceReload && _rewardedLoadGate.IsLoadInFlight())
             {
                 DebugAds.Log("[JisAds][Rewarded][preload_skip] reason=load_in_flight");
                 return;
             }
+
+            var loadGeneration = _rewardedLoadGate.Begin();
 
             var providerIds = GetFullscreenPreloadProviderIds(AdFormat.Rewarded);
             LogFullscreenLoadPlan(AdFormat.Rewarded, providerIds);
@@ -987,28 +998,31 @@ namespace JisSDKAds.Ads
                 }
 
                 startedAny = true;
-                BeginRewardedLoadSlot();
+                _rewardedLoadGate.BeginSlot();
                 DebugAds.Log($"[JisAds][Rewarded][preload_start] mediation={providerId}");
                 provider.Rewarded.Load(
                     onLoaded: () =>
                     {
                         RecordRewardedLoaded(providerId);
+                        if (!_rewardedLoadGate.IsCurrent(loadGeneration))
+                            return;
                         OnPreloadSucceeded(StandardAdPreloadFormat.Rewarded);
                         DebugAds.Log($"[JisAds][Rewarded][preload_success] mediation={providerId}");
-                        EndRewardedLoadSlot();
+                        _rewardedLoadGate.EndSlot(loadGeneration);
                     },
                     onFailed: err =>
                     {
+                        if (!_rewardedLoadGate.IsCurrent(loadGeneration))
+                            return;
                         DebugAds.LogWarning($"[JisAds][Rewarded][preload_fail] mediation={providerId} error={err}");
                         HandlePreloadFailedIfNoFormatReady(StandardAdPreloadFormat.Rewarded);
-                        EndRewardedLoadSlot();
+                        _rewardedLoadGate.EndSlot(loadGeneration);
                     });
             }
 
             if (!startedAny)
             {
-                _rewardedLoadInFlight = false;
-                _rewardedLoadsPending = 0;
+                _rewardedLoadGate.End(loadGeneration);
                 if (IsRewardedVideoLoaded())
                     OnPreloadSucceeded(StandardAdPreloadFormat.Rewarded);
             }
@@ -1040,7 +1054,7 @@ namespace JisSDKAds.Ads
             if (!CanOperateFullscreen() || provider?.Interstitial == null || _core == null || !_core.IsProviderInitialized(providerId))
                 return;
 
-            if (_interstitialLoadInFlight)
+            if (_interstitialLoadGate.IsLoadInFlight())
                 return;
 
             if (IsProviderInterstitialLoadedFresh(providerId))
@@ -1049,21 +1063,23 @@ namespace JisSDKAds.Ads
                 return;
             }
 
-            _interstitialLoadInFlight = true;
+            var loadGeneration = _interstitialLoadGate.Begin();
             DebugAds.Log($"[JisAds][Interstitial][preload_start] mediation={providerId}");
             var loadStartedAt = Time.unscaledTime;
             provider.Interstitial.Load(
                 onLoaded: () =>
                 {
-                    _interstitialLoadInFlight = false;
                     RecordInterstitialLoaded(providerId);
+                    if (!_interstitialLoadGate.End(loadGeneration))
+                        return;
                     OnPreloadSucceeded(StandardAdPreloadFormat.Interstitial);
                     TrackCoreInterstitialLoadSuccess(loadStartedAt);
                     DebugAds.Log($"[JisAds][Interstitial][preload_success] mediation={providerId}");
                 },
                 onFailed: err =>
                 {
-                    _interstitialLoadInFlight = false;
+                    if (!_interstitialLoadGate.End(loadGeneration))
+                        return;
                     TrackCoreInterstitialLoadFail(err, loadStartedAt);
                     DebugAds.LogWarning($"[JisAds][Interstitial][preload_fail] mediation={providerId} error={err}");
                     HandlePreloadFailed(StandardAdPreloadFormat.Interstitial);
@@ -1076,7 +1092,7 @@ namespace JisSDKAds.Ads
             if (!CanOperateFullscreen() || provider?.Rewarded == null || _core == null || !_core.IsProviderInitialized(providerId))
                 return;
 
-            if (_rewardedLoadInFlight)
+            if (_rewardedLoadGate.IsLoadInFlight())
                 return;
 
             if (IsProviderRewardedLoadedFresh(providerId))
@@ -1085,19 +1101,21 @@ namespace JisSDKAds.Ads
                 return;
             }
 
-            _rewardedLoadInFlight = true;
+            var loadGeneration = _rewardedLoadGate.Begin();
             DebugAds.Log($"[JisAds][Rewarded][preload_start] mediation={providerId}");
             provider.Rewarded.Load(
                 onLoaded: () =>
                 {
-                    _rewardedLoadInFlight = false;
                     RecordRewardedLoaded(providerId);
+                    if (!_rewardedLoadGate.End(loadGeneration))
+                        return;
                     OnPreloadSucceeded(StandardAdPreloadFormat.Rewarded);
                     DebugAds.Log($"[JisAds][Rewarded][preload_success] mediation={providerId}");
                 },
                 onFailed: err =>
                 {
-                    _rewardedLoadInFlight = false;
+                    if (!_rewardedLoadGate.End(loadGeneration))
+                        return;
                     DebugAds.LogWarning($"[JisAds][Rewarded][preload_fail] mediation={providerId} error={err}");
                     HandlePreloadFailed(StandardAdPreloadFormat.Rewarded);
                 });
@@ -1809,7 +1827,7 @@ namespace JisSDKAds.Ads
 
             DebugAds.Log($"[JisAds][Interstitial][stale] mediation={providerId} age={(Time.unscaledTime - loadedAt):0.#}s");
             _interstitialLoadedAtUnscaled.Remove(providerId);
-            if (!_interstitialLoadInFlight)
+            if (!_interstitialLoadGate.IsLoadInFlight())
                 PreloadSingleProviderInterstitial(providerId);
             return false;
         }
@@ -1830,57 +1848,9 @@ namespace JisSDKAds.Ads
 
             DebugAds.Log($"[JisAds][Rewarded][stale] mediation={providerId} age={(Time.unscaledTime - loadedAt):0.#}s");
             _rewardedLoadedAtUnscaled.Remove(providerId);
-            if (!_rewardedLoadInFlight)
+            if (!_rewardedLoadGate.IsLoadInFlight())
                 PreloadSingleProviderRewarded(providerId);
             return false;
-        }
-
-        bool TryBeginInterstitialLoadBatch(bool forceReload = false)
-        {
-            if (_interstitialLoadInFlight && !forceReload)
-                return false;
-            _interstitialLoadInFlight = true;
-            _interstitialLoadsPending = 0;
-            return true;
-        }
-
-        void BeginInterstitialLoadSlot()
-        {
-            _interstitialLoadsPending++;
-        }
-
-        void EndInterstitialLoadSlot()
-        {
-            _interstitialLoadsPending = Mathf.Max(0, _interstitialLoadsPending - 1);
-            if (_interstitialLoadsPending <= 0)
-            {
-                _interstitialLoadsPending = 0;
-                _interstitialLoadInFlight = false;
-            }
-        }
-
-        bool TryBeginRewardedLoadBatch(bool forceReload = false)
-        {
-            if (_rewardedLoadInFlight && !forceReload)
-                return false;
-            _rewardedLoadInFlight = true;
-            _rewardedLoadsPending = 0;
-            return true;
-        }
-
-        void BeginRewardedLoadSlot()
-        {
-            _rewardedLoadsPending++;
-        }
-
-        void EndRewardedLoadSlot()
-        {
-            _rewardedLoadsPending = Mathf.Max(0, _rewardedLoadsPending - 1);
-            if (_rewardedLoadsPending <= 0)
-            {
-                _rewardedLoadsPending = 0;
-                _rewardedLoadInFlight = false;
-            }
         }
 
         void HandleNetworkReachabilityChanged()
@@ -2095,8 +2065,7 @@ namespace JisSDKAds.Ads
 
             _preloadFailCounts[PreloadFormatIndex(StandardAdPreloadFormat.Interstitial)] = 0;
             StopPreloadRetryCoroutine(StandardAdPreloadFormat.Interstitial);
-            _interstitialLoadInFlight = false;
-            _interstitialLoadsPending = 0;
+            _interstitialLoadGate.Reset();
             _interstitialLoadedAtUnscaled.Clear();
 
             if (!CanOperateFullscreen())
@@ -2119,8 +2088,7 @@ namespace JisSDKAds.Ads
 
             _preloadFailCounts[PreloadFormatIndex(StandardAdPreloadFormat.Rewarded)] = 0;
             StopPreloadRetryCoroutine(StandardAdPreloadFormat.Rewarded);
-            _rewardedLoadInFlight = false;
-            _rewardedLoadsPending = 0;
+            _rewardedLoadGate.Reset();
             _rewardedLoadedAtUnscaled.Clear();
 
             if (!CanOperateFullscreen())
@@ -2846,7 +2814,9 @@ namespace JisSDKAds.Ads
             DebugAds.LogWarning(
                 "[JisAds] Interstitial in-flight watchdog fired — close callback never arrived. Recovering so future shows aren't blocked.");
             ConsumePendingInterstitialCallbacksOnFail();
-            RequestInterstitialLoadIfNeeded();
+            // No load here: the ad may still be on screen (iOS keeps running during playables / App Store
+            // overlay) and MAX drops a load sent to a showing unit without any callback. The late close
+            // schedules the reload; if it never comes, the next show request warm-loads.
         }
 
         void StartRewardedInFlightWatchdog(int attemptId)
@@ -2876,7 +2846,7 @@ namespace JisSDKAds.Ads
             DebugAds.LogWarning(
                 "[JisAds] Rewarded in-flight watchdog fired — close callback never arrived. Recovering so future shows aren't blocked.");
             ConsumePendingRewardedCallbacksOnFail();
-            RequestRewardedLoadIfNeeded();
+            // No load here — see CoInterstitialInFlightWatchdog.
         }
 
         public void ShowBannerAds()
@@ -3209,5 +3179,78 @@ namespace JisSDKAds.Ads
         public bool IsAppOpenAdLoaded() => _appOpen != null && _appOpen.IsLoaded();
         public void PreloadAppOpenAd() => _appOpen?.Preload();
         #endregion
+
+        /// <summary>
+        /// In-flight state of JisAds-started loads for one fullscreen format. Expires after
+        /// <see cref="TimeoutSeconds"/> so an SDK that never answers a load cannot block reloads for the
+        /// rest of the session; callbacks from an expired or superseded load are ignored by generation.
+        /// </summary>
+        sealed class FullscreenLoadGate
+        {
+            const float TimeoutSeconds = 60f;
+
+            readonly string _format;
+            bool _inFlight;
+            int _pendingSlots;
+            int _generation;
+            float _startedAtUnscaled;
+
+            public FullscreenLoadGate(string format) => _format = format;
+
+            public bool IsLoadInFlight()
+            {
+                if (!_inFlight)
+                    return false;
+
+                var age = Time.unscaledTime - _startedAtUnscaled;
+                if (age < TimeoutSeconds)
+                    return true;
+
+                DebugAds.LogWarning(
+                    $"[JisAds][{_format}] load_in_flight expired after {age:0.#}s without a callback — allowing a new load.");
+                Reset();
+                return false;
+            }
+
+            /// <summary>Starts a load (or a batch of per-provider slots) and returns its generation.</summary>
+            public int Begin()
+            {
+                _generation++;
+                _inFlight = true;
+                _pendingSlots = 0;
+                _startedAtUnscaled = Time.unscaledTime;
+                return _generation;
+            }
+
+            public void BeginSlot() => _pendingSlots++;
+
+            public bool IsCurrent(int generation) => generation == _generation;
+
+            /// <summary>Ends a single-load generation. False when that load was already superseded.</summary>
+            public bool End(int generation)
+            {
+                if (!IsCurrent(generation))
+                    return false;
+                _inFlight = false;
+                _pendingSlots = 0;
+                return true;
+            }
+
+            public void EndSlot(int generation)
+            {
+                if (!IsCurrent(generation))
+                    return;
+                _pendingSlots = Mathf.Max(0, _pendingSlots - 1);
+                if (_pendingSlots == 0)
+                    _inFlight = false;
+            }
+
+            public void Reset()
+            {
+                _generation++;
+                _inFlight = false;
+                _pendingSlots = 0;
+            }
+        }
     }
 }
