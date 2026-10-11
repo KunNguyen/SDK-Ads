@@ -15,12 +15,15 @@ namespace JisSDKAds.Ads.SequentialTier
         bool _rewardGranted;
         bool _finished;
         bool _graceScheduled;
+        int _showGeneration;
         Action _pendingDeliverClosed;
 
         public bool RewardGranted => _rewardGranted;
 
         public void Reset()
         {
+            // A grace timer from the previous show must not complete the next one.
+            _showGeneration++;
             _fullscreenClosed = false;
             _rewardGranted = false;
             _finished = false;
@@ -64,8 +67,12 @@ namespace JisSDKAds.Ads.SequentialTier
                 return;
 
             _graceScheduled = true;
+            var generation = _showGeneration;
             EventManager.InvokeDelayed(() =>
             {
+                if (generation != _showGeneration)
+                    return;
+
                 _graceScheduled = false;
                 if (_finished)
                     return;

@@ -45,6 +45,8 @@ namespace JisSDKAds.Providers.Max
             }
 
             _state = InitState.Initializing;
+            // Ad callbacks touch JisAds / Firebase / Unity APIs: never raise them off the main thread.
+            MaxSdkBase.InvokeEventsOnUnityMainThread = true;
             MaxSdk.SetSdkKey(sdkKey);
             MaxSdkCallbacks.OnSdkInitializedEvent -= OnSdkInitialized;
             MaxSdkCallbacks.OnSdkInitializedEvent += OnSdkInitialized;

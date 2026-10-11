@@ -126,6 +126,20 @@ namespace JisSDKAds.Providers.Max
                 return;
             }
 
+            // A load sent before MaxSdk is initialized gets no callback from the native side.
+            if (!MaxSdkInitializer.IsReady)
+            {
+                onFailed?.Invoke("MAX SDK not initialized");
+                return;
+            }
+
+            // Already ready: MAX may not raise OnAdLoaded again for a unit that holds an ad.
+            if (IsLoaded)
+            {
+                onLoaded?.Invoke();
+                return;
+            }
+
             // Keep every caller's callbacks: a Load() joining an in-flight load still gets the result.
             _loadWaiters.Add(onLoaded, onFailed);
 
@@ -258,6 +272,20 @@ namespace JisSDKAds.Providers.Max
             if (string.IsNullOrEmpty(_adUnitId))
             {
                 onFailed?.Invoke("Rewarded ad unit id is empty");
+                return;
+            }
+
+            // A load sent before MaxSdk is initialized gets no callback from the native side.
+            if (!MaxSdkInitializer.IsReady)
+            {
+                onFailed?.Invoke("MAX SDK not initialized");
+                return;
+            }
+
+            // Already ready: MAX may not raise OnAdLoaded again for a unit that holds an ad.
+            if (IsLoaded)
+            {
+                onLoaded?.Invoke();
                 return;
             }
 
@@ -702,8 +730,7 @@ namespace JisSDKAds.Providers.Max.SequentialTier
     sealed class MaxSequentialTierInterstitialAd : IInterstitialAd
     {
         readonly SequentialTierLoader _loader;
-        Action _pendingOnLoaded;
-        Action<string> _pendingOnFailed;
+        readonly AdLoadWaiters _loadWaiters = new AdLoadWaiters();
         Action _pendingOnShown;
         Action _pendingOnClosed;
         Action<string> _pendingOnShowFailed;
@@ -724,9 +751,8 @@ namespace JisSDKAds.Providers.Max.SequentialTier
 
         public void Load(Action onLoaded = null, Action<string> onFailed = null)
         {
-            FlushSupersededLoadCallbacks();
-            _pendingOnLoaded = onLoaded;
-            _pendingOnFailed = onFailed;
+            // Join an in-flight ladder instead of failing the earlier caller.
+            _loadWaiters.Add(onLoaded, onFailed);
             RefreshLoaderCallbacks();
             DebugAds.LogAdEvent("Interstitial", "load_start", null, "provider=MAX tiered");
             _loader.Load();
@@ -766,34 +792,14 @@ namespace JisSDKAds.Providers.Max.SequentialTier
 
         void OnLoadSuccess()
         {
-            var cb = _pendingOnLoaded;
-            ClearPendingLoadCallbacks();
             DebugAds.LogAdEvent("Interstitial", "load_success", _loader.ReadyCache?.AdUnitId, "provider=MAX tiered");
-            cb?.Invoke();
+            _loadWaiters.NotifyLoaded();
         }
 
         void OnLoadFailed()
         {
-            var cb = _pendingOnFailed;
-            ClearPendingLoadCallbacks();
             DebugAds.LogAdEvent("Interstitial", "load_fail", null, "provider=MAX tiered", "Sequential tier ladder failed");
-            cb?.Invoke("Sequential tier ladder failed");
-        }
-
-        void FlushSupersededLoadCallbacks()
-        {
-            if (_pendingOnLoaded == null && _pendingOnFailed == null)
-                return;
-
-            var cb = _pendingOnFailed;
-            ClearPendingLoadCallbacks();
-            cb?.Invoke("Interstitial load superseded by a newer request");
-        }
-
-        void ClearPendingLoadCallbacks()
-        {
-            _pendingOnLoaded = null;
-            _pendingOnFailed = null;
+            _loadWaiters.NotifyFailed("Sequential tier ladder failed");
         }
 
         void OnShowOpened()
@@ -825,8 +831,7 @@ namespace JisSDKAds.Providers.Max.SequentialTier
     sealed class MaxSequentialTierRewardedAd : IRewardedAd
     {
         readonly SequentialTierLoader _loader;
-        Action _pendingOnLoaded;
-        Action<string> _pendingOnFailed;
+        readonly AdLoadWaiters _loadWaiters = new AdLoadWaiters();
         Action _pendingOnRewardGranted;
         Action _pendingOnClosed;
         Action<string> _pendingOnShowFailed;
@@ -847,9 +852,8 @@ namespace JisSDKAds.Providers.Max.SequentialTier
 
         public void Load(Action onLoaded = null, Action<string> onFailed = null)
         {
-            FlushSupersededLoadCallbacks();
-            _pendingOnLoaded = onLoaded;
-            _pendingOnFailed = onFailed;
+            // Join an in-flight ladder instead of failing the earlier caller.
+            _loadWaiters.Add(onLoaded, onFailed);
             RefreshLoaderCallbacks();
             DebugAds.LogAdEvent("Rewarded", "load_start", null, "provider=MAX tiered");
             _loader.Load();
@@ -890,34 +894,14 @@ namespace JisSDKAds.Providers.Max.SequentialTier
 
         void OnLoadSuccess()
         {
-            var cb = _pendingOnLoaded;
-            ClearPendingLoadCallbacks();
             DebugAds.LogAdEvent("Rewarded", "load_success", _loader.ReadyCache?.AdUnitId, "provider=MAX tiered");
-            cb?.Invoke();
+            _loadWaiters.NotifyLoaded();
         }
 
         void OnLoadFailed()
         {
-            var cb = _pendingOnFailed;
-            ClearPendingLoadCallbacks();
             DebugAds.LogAdEvent("Rewarded", "load_fail", null, "provider=MAX tiered", "Sequential tier ladder failed");
-            cb?.Invoke("Sequential tier ladder failed");
-        }
-
-        void FlushSupersededLoadCallbacks()
-        {
-            if (_pendingOnLoaded == null && _pendingOnFailed == null)
-                return;
-
-            var cb = _pendingOnFailed;
-            ClearPendingLoadCallbacks();
-            cb?.Invoke("Rewarded load superseded by a newer request");
-        }
-
-        void ClearPendingLoadCallbacks()
-        {
-            _pendingOnLoaded = null;
-            _pendingOnFailed = null;
+            _loadWaiters.NotifyFailed("Sequential tier ladder failed");
         }
 
         void OnShowOpened()

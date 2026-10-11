@@ -66,7 +66,8 @@ namespace JisSDKAds.Common
             for (int i = delayedEvents.Count - 1; i >= 0; i--)
             {
                 var (evt, delay) = delayedEvents[i];
-                delay -= Time.deltaTime;
+                // Unscaled: delayed SDK callbacks must still fire while the game is paused (timeScale = 0).
+                delay -= Time.unscaledDeltaTime;
 
                 if (delay <= 0f)
                 {

@@ -76,8 +76,14 @@ namespace JisSDKAds.Ads.SequentialTier
 
         public void Load(bool forceReload = false, bool urgent = false)
         {
+            // An in-flight ladder reports through the current callbacks when it finishes.
             if (_isLoading) return;
-            if (IsReady && !forceReload) return;
+            if (IsReady && !forceReload)
+            {
+                // Nothing to load, but the caller still waits for a result.
+                _onLoadedSuccess?.Invoke();
+                return;
+            }
 
             AdLoadCoordinator.Instance.RequestTierLoad(this, _loadFormat, forceReload, urgent);
         }
@@ -85,7 +91,13 @@ namespace JisSDKAds.Ads.SequentialTier
         internal void ExecuteLoad(bool forceReload)
         {
             if (_isLoading) return;
-            if (IsReady && !forceReload) return;
+            if (IsReady && !forceReload)
+            {
+                // Started by the coordinator with nothing to do: free its slot or the pipeline stalls.
+                AdLoadCoordinator.Instance.NotifyTierSessionEnded(this);
+                _onLoadedSuccess?.Invoke();
+                return;
+            }
 
             if (forceReload)
                 ClearReady();
@@ -235,7 +247,8 @@ namespace JisSDKAds.Ads.SequentialTier
 
         IEnumerator TimeoutCoroutine(AdTier tier, string adUnitId, int generation, float timeoutSeconds)
         {
-            yield return new WaitForSeconds(timeoutSeconds);
+            // Realtime: the game pauses with Time.timeScale = 0 and a scaled timeout would never fire.
+            yield return new WaitForSecondsRealtime(timeoutSeconds);
             if (generation != _loadGeneration || !_isLoading || _currentTier != tier)
                 yield break;
 

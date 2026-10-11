@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace JisSDKAds.Ads.SequentialTier
 {
@@ -25,7 +26,11 @@ namespace JisSDKAds.Ads.SequentialTier
             var callbacks = _onLoaded.ToArray();
             Clear();
             foreach (var cb in callbacks)
-                cb();
+            {
+                // One throwing caller must not drop the result for the others.
+                try { cb(); }
+                catch (Exception e) { Debug.LogException(e); }
+            }
         }
 
         public void NotifyFailed(string error)
@@ -33,7 +38,10 @@ namespace JisSDKAds.Ads.SequentialTier
             var callbacks = _onFailed.ToArray();
             Clear();
             foreach (var cb in callbacks)
-                cb(error);
+            {
+                try { cb(error); }
+                catch (Exception e) { Debug.LogException(e); }
+            }
         }
 
         void Clear()

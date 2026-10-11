@@ -11,9 +11,8 @@ namespace JisSDKAds.Providers.AdMob.SequentialTier
     internal sealed class SequentialTierRewardedAd : IRewardedAd
     {
         readonly SequentialTierLoader _loader;
+        readonly AdLoadWaiters _loadWaiters = new AdLoadWaiters();
 
-        Action _pendingOnLoaded;
-        Action<string> _pendingOnFailed;
         Action _pendingOnRewardGranted;
         Action _pendingOnClosed;
         Action<string> _pendingOnShowFailed;
@@ -34,9 +33,8 @@ namespace JisSDKAds.Providers.AdMob.SequentialTier
 
         public void Load(Action onLoaded = null, Action<string> onFailed = null)
         {
-            FlushSupersededLoadCallbacks();
-            _pendingOnLoaded = onLoaded;
-            _pendingOnFailed = onFailed;
+            // Every caller joins the in-flight ladder result (never dropped as "superseded").
+            _loadWaiters.Add(onLoaded, onFailed);
             RefreshLoaderCallbacks();
             DebugAds.LogAdEvent("Rewarded", "load_start", null, "provider=ADMOB tiered");
             _loader.Load();
@@ -79,34 +77,14 @@ namespace JisSDKAds.Providers.AdMob.SequentialTier
 
         void OnLoaderLoadSuccess()
         {
-            var cb = _pendingOnLoaded;
-            ClearPendingLoadCallbacks();
             DebugAds.LogAdEvent("Rewarded", "load_success", _loader.ReadyCache?.AdUnitId, "provider=ADMOB tiered");
-            cb?.Invoke();
+            _loadWaiters.NotifyLoaded();
         }
 
         void OnLoaderLoadFailed()
         {
-            var cb = _pendingOnFailed;
-            ClearPendingLoadCallbacks();
             DebugAds.LogAdEvent("Rewarded", "load_fail", null, "provider=ADMOB tiered", "Sequential tier ladder failed");
-            cb?.Invoke("Sequential tier ladder failed");
-        }
-
-        void FlushSupersededLoadCallbacks()
-        {
-            if (_pendingOnLoaded == null && _pendingOnFailed == null)
-                return;
-
-            var cb = _pendingOnFailed;
-            ClearPendingLoadCallbacks();
-            cb?.Invoke("Rewarded load superseded by a newer request");
-        }
-
-        void ClearPendingLoadCallbacks()
-        {
-            _pendingOnLoaded = null;
-            _pendingOnFailed = null;
+            _loadWaiters.NotifyFailed("Sequential tier ladder failed");
         }
 
         void OnShowOpened()

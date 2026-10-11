@@ -35,11 +35,24 @@ namespace JisSDKAds.Providers.AdMob
             // avoiding a frame delay. Otherwise marshal onto the Unity main thread.
             if (IsOnMainThread())
             {
-                action();
+                RunGuarded(action);
                 return;
             }
 
-            MobileAdsEventExecutor.ExecuteInUpdate(action);
+            MobileAdsEventExecutor.ExecuteInUpdate(() => RunGuarded(action));
+        }
+
+        // The executor drains its queue without a per-action catch: one throwing callback would drop the rest.
+        static void RunGuarded(Action action)
+        {
+            try
+            {
+                action();
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+            }
         }
 
         static bool IsOnMainThread()

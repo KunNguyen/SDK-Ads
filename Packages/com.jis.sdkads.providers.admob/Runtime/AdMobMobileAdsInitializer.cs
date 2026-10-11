@@ -16,6 +16,8 @@ namespace JisSDKAds.Providers.AdMob
     public static class AdMobMobileAdsInitializer
     {
         const float InitTimeoutSeconds = 90f;
+        // Upper bound for the UMP step (user may sit on the consent form); a hung UMP must not block init forever.
+        const float ConsentTimeoutSeconds = 600f;
 
         enum InitState
         {
@@ -76,11 +78,11 @@ namespace JisSDKAds.Providers.AdMob
         static IEnumerator CoInitialize(bool requestConsent)
         {
             ApplyDefaultRequestConfiguration();
-            AdMobInitRunner.Instance.StartCoroutine(CoWatchTimeout());
 
             if (requestConsent && AdmobUmpConsent.IsAvailable)
             {
                 var consentDone = false;
+                var consentDeadline = Time.realtimeSinceStartup + ConsentTimeoutSeconds;
 
                 AdmobUmpConsent.RequestConsentAndInitialize(
                     () => consentDone = true,
@@ -90,8 +92,11 @@ namespace JisSDKAds.Providers.AdMob
                         consentDone = true;
                     });
 
-                while (!consentDone)
+                while (!consentDone && Time.realtimeSinceStartup < consentDeadline)
                     yield return null;
+
+                if (!consentDone)
+                    DebugAds.LogError($"[AdMob] UMP consent did not finish within {ConsentTimeoutSeconds}s. Falling back to MobileAds.Initialize.");
             }
             else if (requestConsent && !AdmobUmpConsent.IsAvailable)
             {
@@ -101,6 +106,8 @@ namespace JisSDKAds.Providers.AdMob
             if (_state != InitState.Initializing)
                 yield break;
 
+            // Timeout covers MobileAds.Initialize only, not time spent on the consent form.
+            AdMobInitRunner.Instance.StartCoroutine(CoWatchTimeout());
             MobileAds.Initialize(OnMobileAdsInitializationComplete);
 
             while (true)
@@ -141,10 +148,12 @@ namespace JisSDKAds.Providers.AdMob
                 var adapterStatusMap = initStatus.getAdapterStatusMap();
                 if (adapterStatusMap == null)
                 {
-                    DebugAds.LogSdkInit("AdMob", "MobileAds.Initialize", false, "adapterStatusMap is null");
+                    success = true;
+                    DebugAds.LogSdkInit("AdMob", "MobileAds.Initialize", true, "adapterStatusMap is null");
                 }
                 else
                 {
+                    // Adapter readiness is informational: the callback completing means init succeeded.
                     var readyCount = 0;
                     foreach (var keyValuePair in adapterStatusMap)
                     {
@@ -162,7 +171,7 @@ namespace JisSDKAds.Providers.AdMob
                         }
                     }
 
-                    success = readyCount > 0;
+                    success = true;
                     DebugAds.LogSdkInit("AdMob", "MobileAds.Initialize", success,
                         $"adapters={adapterStatusMap.Count} ready={readyCount}");
                 }
@@ -194,10 +203,19 @@ namespace JisSDKAds.Providers.AdMob
 
         static void ApplyDefaultRequestConfiguration()
         {
-            var requestConfiguration = new RequestConfiguration();
-            requestConfiguration.TestDeviceIds.Add("F0DE51766DB7C0740DEF1633ACCB3755");
-            requestConfiguration.TestDeviceIds.Add("4849D928DCE8B9A471CE3BAB5E57E08A");
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            // Test devices are dev-only. Build on the current global configuration instead of replacing it
+            // (keeps child-directed / max content rating flags the game may have set).
+            var requestConfiguration = MobileAds.GetRequestConfiguration() ?? new RequestConfiguration();
+            if (requestConfiguration.TestDeviceIds == null)
+                requestConfiguration.TestDeviceIds = new List<string>();
+            foreach (var id in new[] { "F0DE51766DB7C0740DEF1633ACCB3755", "4849D928DCE8B9A471CE3BAB5E57E08A" })
+            {
+                if (!requestConfiguration.TestDeviceIds.Contains(id))
+                    requestConfiguration.TestDeviceIds.Add(id);
+            }
             MobileAds.SetRequestConfiguration(requestConfiguration);
+#endif
         }
 
         static void MarkReady()

@@ -1048,7 +1048,7 @@ namespace JisSDKAds.Ads
         /*
          * Kept in this region because preload retries call the method by format.
          */
-        void PreloadSingleProviderInterstitial(AdProviderId providerId)
+        void PreloadSingleProviderInterstitial(AdProviderId providerId, bool forceReload = false)
         {
             var provider = _core?.GetProvider(providerId);
             if (!CanOperateFullscreen() || provider?.Interstitial == null || _core == null || !_core.IsProviderInitialized(providerId))
@@ -1057,7 +1057,7 @@ namespace JisSDKAds.Ads
             if (_interstitialLoadGate.IsLoadInFlight())
                 return;
 
-            if (IsProviderInterstitialLoadedFresh(providerId))
+            if (!forceReload && IsProviderInterstitialLoadedFresh(providerId))
             {
                 DebugAds.Log($"[JisAds][Interstitial][preload_skip] mediation={providerId} reason=already_loaded");
                 return;
@@ -1086,7 +1086,7 @@ namespace JisSDKAds.Ads
                 });
         }
 
-        void PreloadSingleProviderRewarded(AdProviderId providerId)
+        void PreloadSingleProviderRewarded(AdProviderId providerId, bool forceReload = false)
         {
             var provider = _core?.GetProvider(providerId);
             if (!CanOperateFullscreen() || provider?.Rewarded == null || _core == null || !_core.IsProviderInitialized(providerId))
@@ -1095,7 +1095,7 @@ namespace JisSDKAds.Ads
             if (_rewardedLoadGate.IsLoadInFlight())
                 return;
 
-            if (IsProviderRewardedLoadedFresh(providerId))
+            if (!forceReload && IsProviderRewardedLoadedFresh(providerId))
             {
                 DebugAds.Log($"[JisAds][Rewarded][preload_skip] mediation={providerId} reason=already_loaded");
                 return;
@@ -1816,6 +1816,10 @@ namespace JisSDKAds.Ads
             if (_core == null || !_core.IsInterstitialLoaded(providerId))
                 return false;
 
+            // MAX reloads expired ads natively; only AdMob ads need the age check.
+            if (providerId == AdProviderId.Max)
+                return true;
+
             if (!_interstitialLoadedAtUnscaled.TryGetValue(providerId, out var loadedAt))
             {
                 RecordInterstitialLoaded(providerId);
@@ -1825,10 +1829,10 @@ namespace JisSDKAds.Ads
             if (Time.unscaledTime - loadedAt <= LoadedAdMaxAgeSec)
                 return true;
 
+            // Keep the timestamp: the ad stays stale until the forced reload records a new one.
             DebugAds.Log($"[JisAds][Interstitial][stale] mediation={providerId} age={(Time.unscaledTime - loadedAt):0.#}s");
-            _interstitialLoadedAtUnscaled.Remove(providerId);
             if (!_interstitialLoadGate.IsLoadInFlight())
-                PreloadSingleProviderInterstitial(providerId);
+                PreloadSingleProviderInterstitial(providerId, forceReload: true);
             return false;
         }
 
@@ -1836,6 +1840,10 @@ namespace JisSDKAds.Ads
         {
             if (_core == null || !_core.IsRewardedLoaded(providerId))
                 return false;
+
+            // MAX reloads expired ads natively; only AdMob ads need the age check.
+            if (providerId == AdProviderId.Max)
+                return true;
 
             if (!_rewardedLoadedAtUnscaled.TryGetValue(providerId, out var loadedAt))
             {
@@ -1846,10 +1854,10 @@ namespace JisSDKAds.Ads
             if (Time.unscaledTime - loadedAt <= LoadedAdMaxAgeSec)
                 return true;
 
+            // Keep the timestamp: the ad stays stale until the forced reload records a new one.
             DebugAds.Log($"[JisAds][Rewarded][stale] mediation={providerId} age={(Time.unscaledTime - loadedAt):0.#}s");
-            _rewardedLoadedAtUnscaled.Remove(providerId);
             if (!_rewardedLoadGate.IsLoadInFlight())
-                PreloadSingleProviderRewarded(providerId);
+                PreloadSingleProviderRewarded(providerId, forceReload: true);
             return false;
         }
 

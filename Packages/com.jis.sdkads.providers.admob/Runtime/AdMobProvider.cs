@@ -1,5 +1,6 @@
 #if UNITY_AD_ADMOB
 using System;
+using System.Collections;
 using GoogleMobileAds.Api;
 using JisSDKAds.Ads.SequentialTier;
 using JisSDKAds.Common;
@@ -97,8 +98,9 @@ namespace JisSDKAds.Providers.AdMob
     internal class AdMobInterstitialAd : IInterstitialAd
     {
         private readonly string _adUnitId;
-        private InterstitialAd _ad;
+        private InterstitialAd _ad; // loaded, not yet shown; the on-screen ad is owned by its own event closures
         private bool _isLoading;
+        private int _loadGeneration;
         private readonly AdLoadWaiters _loadWaiters = new AdLoadWaiters();
 
         Action _pendingOnShown;
@@ -110,6 +112,13 @@ namespace JisSDKAds.Providers.AdMob
 
         public void Load(Action onLoaded = null, Action<string> onFailed = null)
         {
+            if (string.IsNullOrWhiteSpace(_adUnitId))
+            {
+                DebugAds.LogWarning("[AdMob][Interstitial] load_fail ad unit id is empty");
+                onFailed?.Invoke("Interstitial ad unit id is empty");
+                return;
+            }
+
             // A Load() that joins a queued or running load still gets the result (never dropped).
             // While queued, the pipeline keeps a single pending generic load per format.
             _loadWaiters.Add(onLoaded, onFailed);
@@ -135,52 +144,85 @@ namespace JisSDKAds.Providers.AdMob
             }
 
             _isLoading = true;
+            var generation = ++_loadGeneration;
             DebugAds.Log($"[AdMob][Interstitial] load_start adUnitId={_adUnitId}");
-            var request = new AdRequest();
-            InterstitialAd.Load(_adUnitId, request, (ad, error) =>
+            AdMobLoadWatchdog.Start(() =>
+                FailLoad(generation, $"load timed out after {AdMobLoadWatchdog.TimeoutSeconds}s"));
+            try
             {
-                var message = error?.GetMessage();
-                AdMobMainThread.Run(() =>
+                var request = new AdRequest();
+                InterstitialAd.Load(_adUnitId, request, (ad, error) =>
                 {
-                    _isLoading = false;
-                    AdLoadPipeline.NotifyInterstitialFinished();
-                    if (error != null)
-                    {
-                        DebugAds.LogWarning($"[AdMob][Interstitial] load_fail adUnitId={_adUnitId} error={message}");
-                        _loadWaiters.NotifyFailed(message);
-                        return;
-                    }
-                    _ad = ad;
-                    RegisterEvents();
-                    DebugAds.Log($"[AdMob][Interstitial] load_success adUnitId={_adUnitId}");
-                    _loadWaiters.NotifyLoaded();
+                    var message = error != null
+                        ? error.GetMessage() ?? "load error"
+                        : ad == null ? "InterstitialAd.Load returned no ad and no error" : null;
+                    AdMobMainThread.Run(() => OnLoadResult(generation, ad, message));
                 });
-            });
+            }
+            catch (Exception e)
+            {
+                FailLoad(generation, $"InterstitialAd.Load threw: {e.Message}");
+            }
         }
 
-        private void RegisterEvents()
+        void OnLoadResult(int generation, InterstitialAd ad, string error)
         {
-            if (_ad == null) return;
-            // Interstitial is one-time-use. After close/fail, destroy it; JisAds schedules the next load.
-            _ad.OnAdFullScreenContentOpened += () => AdMobMainThread.Run(() =>
+            if (!_isLoading || generation != _loadGeneration)
+            {
+                // Expired (watchdog/exception) generation: drop the late ad so it doesn't leak.
+                DebugAds.LogWarning($"[AdMob][Interstitial] load_result_ignored_expired adUnitId={_adUnitId}");
+                DestroyAd(ad);
+                return;
+            }
+
+            if (error != null)
+            {
+                DestroyAd(ad);
+                FailLoad(generation, error);
+                return;
+            }
+
+            _isLoading = false;
+            AdLoadPipeline.NotifyInterstitialFinished();
+            _ad = ad;
+            RegisterEvents(ad);
+            DebugAds.Log($"[AdMob][Interstitial] load_success adUnitId={_adUnitId}");
+            _loadWaiters.NotifyLoaded();
+        }
+
+        void FailLoad(int generation, string error)
+        {
+            if (!_isLoading || generation != _loadGeneration)
+                return;
+
+            _isLoading = false;
+            AdLoadPipeline.NotifyInterstitialFinished();
+            DebugAds.LogWarning($"[AdMob][Interstitial] load_fail adUnitId={_adUnitId} error={error}");
+            _loadWaiters.NotifyFailed(error);
+        }
+
+        private void RegisterEvents(InterstitialAd ad)
+        {
+            // Interstitial is one-time-use. After close/fail, destroy this instance; JisAds schedules the next load.
+            ad.OnAdFullScreenContentOpened += () => AdMobMainThread.Run(() =>
             {
                 DebugAds.Log($"[AdMob][Interstitial] show_opened adUnitId={_adUnitId}");
                 _pendingOnShown?.Invoke();
             });
-            _ad.OnAdFullScreenContentClosed += () => AdMobMainThread.Run(() =>
+            ad.OnAdFullScreenContentClosed += () => AdMobMainThread.Run(() =>
             {
                 DebugAds.Log($"[AdMob][Interstitial] show_closed adUnitId={_adUnitId}");
                 _pendingOnClosed?.Invoke();
-                DestroyShownAd();
+                DestroyAd(ad);
             });
-            _ad.OnAdFullScreenContentFailed += err =>
+            ad.OnAdFullScreenContentFailed += err =>
             {
                 var message = err.GetMessage();
                 AdMobMainThread.Run(() =>
                 {
                     DebugAds.LogWarning($"[AdMob][Interstitial] show_failed adUnitId={_adUnitId} error={message}");
                     _pendingOnFailed?.Invoke(message);
-                    DestroyShownAd();
+                    DestroyAd(ad);
                 });
             };
         }
@@ -198,28 +240,31 @@ namespace JisSDKAds.Providers.AdMob
             _pendingOnClosed = onClosed;
             _pendingOnFailed = onFailed;
             DebugAds.Log($"[AdMob][Interstitial] show_call adUnitId={_adUnitId}");
-            _ad.Show();
+            // Hand the instance to its close/fail handlers so a Load during the show can't destroy it.
+            var ad = _ad;
+            _ad = null;
+            ad.Show();
         }
 
-        void DestroyShownAd()
+        static void DestroyAd(InterstitialAd ad)
         {
             try
             {
-                _ad?.Destroy();
+                ad?.Destroy();
             }
             catch
             {
                 // best effort
             }
-            _ad = null;
         }
     }
 
     internal class AdMobRewardedAd : IRewardedAd
     {
         private readonly string _adUnitId;
-        private RewardedAd _ad;
+        private RewardedAd _ad; // loaded, not yet shown; the on-screen ad is owned by its own event closures
         private bool _isLoading;
+        private int _loadGeneration;
         private readonly AdLoadWaiters _loadWaiters = new AdLoadWaiters();
 
         Action _pendingOnRewardEarned;
@@ -232,6 +277,13 @@ namespace JisSDKAds.Providers.AdMob
 
         public void Load(Action onLoaded = null, Action<string> onFailed = null)
         {
+            if (string.IsNullOrWhiteSpace(_adUnitId))
+            {
+                DebugAds.LogWarning("[AdMob][Rewarded] load_fail ad unit id is empty");
+                onFailed?.Invoke("Rewarded ad unit id is empty");
+                return;
+            }
+
             // A Load() that joins a queued or running load still gets the result (never dropped).
             // While queued, the pipeline keeps a single pending generic load per format.
             _loadWaiters.Add(onLoaded, onFailed);
@@ -257,27 +309,61 @@ namespace JisSDKAds.Providers.AdMob
             }
 
             _isLoading = true;
+            var generation = ++_loadGeneration;
             DebugAds.Log($"[AdMob][Rewarded] load_start adUnitId={_adUnitId}");
-            var request = new AdRequest();
-            RewardedAd.Load(_adUnitId, request, (ad, error) =>
+            AdMobLoadWatchdog.Start(() =>
+                FailLoad(generation, $"load timed out after {AdMobLoadWatchdog.TimeoutSeconds}s"));
+            try
             {
-                var message = error?.GetMessage();
-                AdMobMainThread.Run(() =>
+                var request = new AdRequest();
+                RewardedAd.Load(_adUnitId, request, (ad, error) =>
                 {
-                    _isLoading = false;
-                    AdLoadPipeline.NotifyRewardedFinished();
-                    if (error != null)
-                    {
-                        DebugAds.LogWarning($"[AdMob][Rewarded] load_fail adUnitId={_adUnitId} error={message}");
-                        _loadWaiters.NotifyFailed(message);
-                        return;
-                    }
-                    _ad = ad;
-                    RegisterEvents();
-                    DebugAds.Log($"[AdMob][Rewarded] load_success adUnitId={_adUnitId}");
-                    _loadWaiters.NotifyLoaded();
+                    var message = error != null
+                        ? error.GetMessage() ?? "load error"
+                        : ad == null ? "RewardedAd.Load returned no ad and no error" : null;
+                    AdMobMainThread.Run(() => OnLoadResult(generation, ad, message));
                 });
-            });
+            }
+            catch (Exception e)
+            {
+                FailLoad(generation, $"RewardedAd.Load threw: {e.Message}");
+            }
+        }
+
+        void OnLoadResult(int generation, RewardedAd ad, string error)
+        {
+            if (!_isLoading || generation != _loadGeneration)
+            {
+                // Expired (watchdog/exception) generation: drop the late ad so it doesn't leak.
+                DebugAds.LogWarning($"[AdMob][Rewarded] load_result_ignored_expired adUnitId={_adUnitId}");
+                DestroyAd(ad);
+                return;
+            }
+
+            if (error != null)
+            {
+                DestroyAd(ad);
+                FailLoad(generation, error);
+                return;
+            }
+
+            _isLoading = false;
+            AdLoadPipeline.NotifyRewardedFinished();
+            _ad = ad;
+            RegisterEvents(ad);
+            DebugAds.Log($"[AdMob][Rewarded] load_success adUnitId={_adUnitId}");
+            _loadWaiters.NotifyLoaded();
+        }
+
+        void FailLoad(int generation, string error)
+        {
+            if (!_isLoading || generation != _loadGeneration)
+                return;
+
+            _isLoading = false;
+            AdLoadPipeline.NotifyRewardedFinished();
+            DebugAds.LogWarning($"[AdMob][Rewarded] load_fail adUnitId={_adUnitId} error={error}");
+            _loadWaiters.NotifyFailed(error);
         }
 
         public void Show(Action onRewardEarned = null, Action onClosed = null, Action<string> onFailed = null)
@@ -295,23 +381,24 @@ namespace JisSDKAds.Providers.AdMob
             _showCompletion.Reset();
 
             DebugAds.Log($"[AdMob][Rewarded] show_call adUnitId={_adUnitId}");
-            _ad.Show(_ => AdMobMainThread.Run(() => _showCompletion.NotifyRewardGranted(() =>
+            // Hand the instance to its close/fail handlers so a Load during the show can't destroy it.
+            var ad = _ad;
+            _ad = null;
+            ad.Show(_ => AdMobMainThread.Run(() => _showCompletion.NotifyRewardGranted(() =>
             {
                 DebugAds.Log($"[AdMob][Rewarded] reward_granted adUnitId={_adUnitId}");
                 _pendingOnRewardEarned?.Invoke();
             })));
         }
 
-        void RegisterEvents()
+        void RegisterEvents(RewardedAd ad)
         {
-            if (_ad == null) return;
-
-            // Rewarded is one-time-use. After close/fail, destroy it; JisAds schedules the next load.
-            _ad.OnAdFullScreenContentOpened += () => AdMobMainThread.Run(() =>
+            // Rewarded is one-time-use. After close/fail, destroy this instance; JisAds schedules the next load.
+            ad.OnAdFullScreenContentOpened += () => AdMobMainThread.Run(() =>
             {
                 DebugAds.Log($"[AdMob][Rewarded] show_opened adUnitId={_adUnitId}");
             });
-            _ad.OnAdFullScreenContentClosed += () => AdMobMainThread.Run(() =>
+            ad.OnAdFullScreenContentClosed += () => AdMobMainThread.Run(() =>
             {
                 DebugAds.Log($"[AdMob][Rewarded] show_closed adUnitId={_adUnitId}");
                 _showCompletion.NotifyFullscreenClosed(() =>
@@ -324,10 +411,10 @@ namespace JisSDKAds.Providers.AdMob
                     _pendingOnRewardEarned = null;
                     _pendingOnFailed = null;
                     onClosed?.Invoke();
-                    DestroyShownAd();
+                    DestroyAd(ad);
                 });
             });
-            _ad.OnAdFullScreenContentFailed += err =>
+            ad.OnAdFullScreenContentFailed += err =>
             {
                 var message = err.GetMessage();
                 AdMobMainThread.Run(() =>
@@ -338,22 +425,21 @@ namespace JisSDKAds.Providers.AdMob
                     _pendingOnFailed = null;
                     _pendingOnRewardEarned = null;
                     _pendingOnClosed = null;
-                    DestroyShownAd();
+                    DestroyAd(ad);
                 });
             };
         }
 
-        void DestroyShownAd()
+        static void DestroyAd(RewardedAd ad)
         {
             try
             {
-                _ad?.Destroy();
+                ad?.Destroy();
             }
             catch
             {
                 // best effort
             }
-            _ad = null;
         }
     }
 
@@ -443,44 +529,104 @@ namespace JisSDKAds.Providers.AdMob
 
     internal class AdMobAppOpenAd : IAppOpenAd
     {
+        // App open ads expire 4 hours after load; an older ad must not count as loaded.
+        static readonly TimeSpan MaxAdAge = TimeSpan.FromHours(4);
+
         private readonly string _adUnitId;
-        private AppOpenAd _ad;
+        private AppOpenAd _ad; // loaded, not yet shown; the on-screen ad is owned by its own event closures
+        private DateTime _loadedAtUtc;
+        private bool _isLoading;
+        private int _loadGeneration;
+        private readonly AdLoadWaiters _loadWaiters = new AdLoadWaiters();
 
         public AdMobAppOpenAd(string adUnitId) => _adUnitId = adUnitId;
-        public bool IsLoaded => _ad != null && _ad.CanShowAd();
+        public bool IsLoaded => _ad != null && _ad.CanShowAd() && DateTime.UtcNow - _loadedAtUtc < MaxAdAge;
 
         public void Load(Action onLoaded = null, Action<string> onFailed = null)
         {
+            if (string.IsNullOrWhiteSpace(_adUnitId))
+            {
+                DebugAds.LogWarning("[AdMob][AppOpen] load_fail ad unit id is empty");
+                onFailed?.Invoke("App open ad unit id is empty");
+                return;
+            }
+
+            // Join an in-flight load; a still-valid ad answers immediately instead of being destroyed.
+            _loadWaiters.Add(onLoaded, onFailed);
+            if (_isLoading)
+                return;
+
+            if (IsLoaded)
+            {
+                _loadWaiters.NotifyLoaded();
+                return;
+            }
+
             if (_ad != null)
             {
-                _ad.Destroy();
+                DestroyAd(_ad);
                 _ad = null;
             }
 
+            _isLoading = true;
+            var generation = ++_loadGeneration;
             DebugAds.Log($"[AdMob][AppOpen] load_start adUnitId={_adUnitId}");
-            var request = new AdRequest();
-            AppOpenAd.Load(_adUnitId, request, (ad, error) =>
+            AdMobLoadWatchdog.Start(() =>
+                FailLoad(generation, $"load timed out after {AdMobLoadWatchdog.TimeoutSeconds}s"));
+            try
             {
-                var message = error?.GetMessage();
-                AdMobMainThread.Run(() =>
+                var request = new AdRequest();
+                AppOpenAd.Load(_adUnitId, request, (ad, error) =>
                 {
-                    if (error != null)
-                    {
-                        DebugAds.LogWarning($"[AdMob][AppOpen] load_fail adUnitId={_adUnitId} error={message}");
-                        onFailed?.Invoke(message);
-                        return;
-                    }
-
-                    _ad = ad;
-                    DebugAds.Log($"[AdMob][AppOpen] load_success adUnitId={_adUnitId}");
-                    onLoaded?.Invoke();
+                    var message = error != null
+                        ? error.GetMessage() ?? "load error"
+                        : ad == null ? "AppOpenAd.Load returned no ad and no error" : null;
+                    AdMobMainThread.Run(() => OnLoadResult(generation, ad, message));
                 });
-            });
+            }
+            catch (Exception e)
+            {
+                FailLoad(generation, $"AppOpenAd.Load threw: {e.Message}");
+            }
+        }
+
+        void OnLoadResult(int generation, AppOpenAd ad, string error)
+        {
+            if (!_isLoading || generation != _loadGeneration)
+            {
+                // Expired (watchdog/exception) generation: drop the late ad so it doesn't leak.
+                DebugAds.LogWarning($"[AdMob][AppOpen] load_result_ignored_expired adUnitId={_adUnitId}");
+                DestroyAd(ad);
+                return;
+            }
+
+            if (error != null)
+            {
+                DestroyAd(ad);
+                FailLoad(generation, error);
+                return;
+            }
+
+            _isLoading = false;
+            _ad = ad;
+            _loadedAtUtc = DateTime.UtcNow;
+            DebugAds.Log($"[AdMob][AppOpen] load_success adUnitId={_adUnitId}");
+            _loadWaiters.NotifyLoaded();
+        }
+
+        void FailLoad(int generation, string error)
+        {
+            if (!_isLoading || generation != _loadGeneration)
+                return;
+
+            _isLoading = false;
+            DebugAds.LogWarning($"[AdMob][AppOpen] load_fail adUnitId={_adUnitId} error={error}");
+            _loadWaiters.NotifyFailed(error);
         }
 
         public void Show(Action onShown = null, Action onClosed = null, Action<string> onFailed = null)
         {
-            if (_ad == null || !_ad.CanShowAd())
+            if (!IsLoaded)
             {
                 DebugAds.LogWarning($"[AdMob][AppOpen] show_blocked_not_loaded adUnitId={_adUnitId}");
                 onFailed?.Invoke("App open ad not loaded");
@@ -488,30 +634,60 @@ namespace JisSDKAds.Providers.AdMob
             }
 
             DebugAds.Log($"[AdMob][AppOpen] show_call adUnitId={_adUnitId}");
-            _ad.OnAdFullScreenContentOpened += () => AdMobMainThread.Run(() =>
+            // Hand the instance to its close/fail handlers so a Load during the show can't destroy it.
+            var ad = _ad;
+            _ad = null;
+            ad.OnAdFullScreenContentOpened += () => AdMobMainThread.Run(() =>
             {
                 DebugAds.Log($"[AdMob][AppOpen] show_opened adUnitId={_adUnitId}");
                 onShown?.Invoke();
             });
-            _ad.OnAdFullScreenContentClosed += () => AdMobMainThread.Run(() =>
+            ad.OnAdFullScreenContentClosed += () => AdMobMainThread.Run(() =>
             {
-                _ad?.Destroy();
-                _ad = null;
+                DestroyAd(ad);
                 DebugAds.Log($"[AdMob][AppOpen] show_closed adUnitId={_adUnitId}");
                 onClosed?.Invoke();
             });
-            _ad.OnAdFullScreenContentFailed += err =>
+            ad.OnAdFullScreenContentFailed += err =>
             {
                 var message = err.GetMessage();
                 AdMobMainThread.Run(() =>
                 {
-                    _ad?.Destroy();
-                    _ad = null;
+                    DestroyAd(ad);
                     DebugAds.LogWarning($"[AdMob][AppOpen] show_failed adUnitId={_adUnitId} error={message}");
                     onFailed?.Invoke(message);
                 });
             };
-            _ad.Show();
+            ad.Show();
+        }
+
+        static void DestroyAd(AppOpenAd ad)
+        {
+            try
+            {
+                ad?.Destroy();
+            }
+            catch
+            {
+                // best effort
+            }
+        }
+    }
+
+    /// <summary>
+    /// Provider-side load timeout. Realtime, so it keeps running while Time.timeScale == 0.
+    /// </summary>
+    internal static class AdMobLoadWatchdog
+    {
+        public const float TimeoutSeconds = 45f;
+
+        public static void Start(Action onExpired) =>
+            AdMobInitRunner.Instance.StartCoroutine(CoExpire(onExpired));
+
+        static IEnumerator CoExpire(Action onExpired)
+        {
+            yield return new WaitForSecondsRealtime(TimeoutSeconds);
+            onExpired();
         }
     }
 }
