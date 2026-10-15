@@ -57,18 +57,7 @@ namespace JisSDKAds.Editor
             TryInitializeSetupDefaults(settings.ios?.sdkSetup);
             TryInitializeSetupDefaults(activeSetup);
 
-            var adsManager = Object.FindFirstObjectByType<AdsManager>();
-            if (adsManager != null)
-            {
-                settings.ApplyToAdsManager(adsManager);
-                EditorUtility.SetDirty(adsManager);
-                EditorSceneManager.MarkSceneDirty(adsManager.gameObject.scene);
-            }
-            else
-            {
-                Debug.Log($"[JIS SDK] {reason}: No AdsManager in scene — applied scripting defines only.");
-            }
-
+            activeSetup.SyncMaxSdkKeyToAppLovinSettings();
             SyncJisAdsInScene(settings);
 
             Debug.Log(
@@ -97,7 +86,7 @@ namespace JisSDKAds.Editor
             var autoInitProp = so.FindProperty("autoInitializeOnStart");
             if (autoInitProp != null)
                 autoInitProp.boolValue =
-                    settings.adsInitializationMode == AdsManager.AdsInitializationMode.AutoOnStart;
+                    settings.adsInitializationMode == AdsInitializationMode.AutoOnStart;
 
             so.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(jisAds);

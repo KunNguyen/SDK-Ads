@@ -312,7 +312,7 @@ namespace JisSDKAds.Hub
         private void DrawAdsModule()
         {
             const string title = "Ads";
-            const string desc = "Ads runtime (JisAds / AdsManager). Enable MAX or AdMob below.";
+            const string desc = "Ads runtime (JisAds Core). Enable MAX or AdMob below.";
             var kind = ModuleKind.Ads;
             var status = JisSDKHubModules.GetStatus(kind);
             var statusLabel = JisSDKHubModules.GetStatusLabel(kind);

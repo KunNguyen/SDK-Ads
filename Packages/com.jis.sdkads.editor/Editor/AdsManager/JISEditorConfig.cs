@@ -86,24 +86,6 @@ namespace JisSDKAds.Editor
             EditorGUIUtility.PingObject(selectedScriptableObject);
         }
 
-        [MenuItem(JisSDKMenuPaths.AdsCreateRewardPlacements, false, 105)]
-        public static void OpenRewardAdsPlacementConfig()
-        {
-            var directory = CreateConfigFolder();
-            var assetName = "RewardAdsPlacementConfig.asset";
-            var assetPath = $"{directory}{assetName}";
-            var selectedScriptableObject = AssetDatabase.LoadAssetAtPath<RewardAdsPlacementConfig>(assetPath);
-            if (selectedScriptableObject == null)
-            {
-                selectedScriptableObject = ScriptableObject.CreateInstance<RewardAdsPlacementConfig>();
-                AssetDatabase.CreateAsset(selectedScriptableObject, assetPath);
-                AssetDatabase.SaveAssets();
-            }
-
-            Selection.activeObject = selectedScriptableObject;
-            EditorGUIUtility.PingObject(selectedScriptableObject);
-        }
-
         static void AddDefineSymbol(string defineSymbol)
         {
             SymbolHelper.AddDefineSymbol(defineSymbol);

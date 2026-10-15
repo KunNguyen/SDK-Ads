@@ -19,6 +19,14 @@ namespace JisSDKAds.Editor
             "Assets/JisSDKConfigs/Prefabs"
         };
 
+        [MenuItem(JisSDKMenuPaths.AdsSceneAddManager, false, 200)]
+        public static void AddManagerPrefabToCurrentScene() =>
+            AddPrefabToActiveScene(JisSDKSceneSetupBuilder.PrefabAssetName);
+
+        [MenuItem(JisSDKMenuPaths.GameObjectAddManager, false, 10)]
+        public static void AddManagerPrefabFromHierarchyContext() =>
+            AddManagerPrefabToCurrentScene();
+
         public static void AddPrefabToActiveScene(string prefabName)
         {
             var activeScene = SceneManager.GetActiveScene();
@@ -90,7 +98,7 @@ namespace JisSDKAds.Editor
         public static bool TryFocusExistingManager(out GameObject root)
         {
             root = null;
-            var existingAds = UnityEngine.Object.FindFirstObjectByType<AdsManager>(
+            var existingAds = UnityEngine.Object.FindFirstObjectByType<JisAds>(
                 FindObjectsInactive.Include);
             if (existingAds == null)
                 return false;
