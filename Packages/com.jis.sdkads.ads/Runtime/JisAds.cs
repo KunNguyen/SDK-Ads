@@ -42,6 +42,8 @@ namespace JisSDKAds.Ads
         [Header("Fullscreen in-flight watchdog (recover stuck callbacks)")]
         [SerializeField] private bool enableFullscreenInFlightWatchdog = true;
         [SerializeField] private float fullscreenInFlightWatchdogSec = 60f;
+        // Longer than RewardedShowCompletionTracker's late-reward grace, so a close that is still being delivered wins.
+        const float RewardedWatchdogFocusGraceSec = 5f;
         [Header("Network recovery")]
         [SerializeField] private bool enableNetworkReachabilityPolling = true;
         [SerializeField] private float networkReachabilityPollIntervalSec = 5f;
@@ -2878,6 +2880,16 @@ namespace JisSDKAds.Ads
         IEnumerator CoRewardedInFlightWatchdog(int attemptId)
         {
             yield return new WaitForSecondsRealtime(fullscreenInFlightWatchdogSec);
+
+            // Unity keeps running while an ad activity is on top (Android), and pods / playables / store
+            // click-outs easily pass the timeout. Firing then clears the callbacks and drops the reward
+            // granted later, so only recover once the player has been back in the game for a while.
+            var focusedSec = 0f;
+            while (focusedSec < RewardedWatchdogFocusGraceSec)
+            {
+                focusedSec = Application.isFocused ? focusedSec + Time.unscaledDeltaTime : 0f;
+                yield return null;
+            }
             _rewardedWatchdogCoroutine = null;
 
             if (!_rewardedCallbacksInFlight || attemptId != _rewardedShowAttemptId)
