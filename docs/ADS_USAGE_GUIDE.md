@@ -15,7 +15,7 @@ Tài liệu này tóm tắt **tất cả những gì cần setup để chạy qu
 1. Import **Firebase** + **Ads** qua **JIS SDK → Hub**, bật **Enable AdMob** và/hoặc **Enable MAX**.
 2. **JIS SDK → Ads → Create Settings Asset** → có `JisSDKAdsSettings` + `AndroidSDKSetup` + `IOSSDKSetup`.
 3. Gán **mediation + ad unit IDs** cho từng platform (xem [mục 3](#3-cấu-hình-mediation--ad-unit-id-quan-trọng-nhất)).
-4. Scene có: `FirebaseManager`, prefab `AdsManager`/`Manager`, và GameObject gắn **`JisAds`** (gán `JisSDKAdsSettings`, bật **Use Core For Standard Formats**).
+4. Scene có prefab `JisSDK_Manager`: `FirebaseManager` + `AdsTracker`, và GameObject gắn **`JisAds`** (gán `JisSDKAdsSettings`, bật **Use Core For Standard Formats**).
 5. **JIS SDK → Ads → Apply Settings to Scene**.
 6. Gọi `await JisAds.Instance.InitializeAsync()` từ màn loading.
 7. Dùng API: `ShowInterstitial` / `ShowRewardVideo` / `ShowBannerAds`.
@@ -36,7 +36,7 @@ JisAds (Core, điều phối)
    └→ AppOpenAdService / ResumeAdCoordinator
 ```
 
-- **`JisAds`** là entry point khuyến nghị. `AdsManager.Instance` (legacy) đã obsolete — dùng `JisAds.Instance`.
+- **`JisAds`** là entry point duy nhất. `AdsManager` đã bị gỡ ở 6.0 — xem [MIGRATION_V6.md](MIGRATION_V6.md).
 - **Một mediation cho mỗi platform** (mặc định `singleMediationOnly = true`). Cấu hình hiện tại: Android = **AdMob**, iOS = **MAX**.
 
 ---
@@ -153,7 +153,7 @@ await JisAds.Instance.InitializeAsync();
 
 - `JisSDKAdsSettings.adsInitializationMode`:
   - **Manual** (khuyến nghị): bạn tự gọi `InitializeAsync()`.
-  - **AutoOnStart**: `AdsManager` tự bootstrap lúc `Start` (chỉ cho prototype; **không** dùng chung với JisAds auto-init).
+  - **AutoOnStart**: `JisAds` tự khởi tạo lúc `Start` (chỉ cho prototype).
 - `JisAds` có `autoInitializeOnStart` (serialized): nếu bật, `JisAds` tự gọi `InitializeAsync()` ở `Start`.
 - `preloadAdsOnGameStart` (settings): sau init sẽ tự preload banner/interstitial/rewarded/app-open.
 

@@ -1,58 +1,46 @@
 # JIS SDK scene setup
 
-## Recommended hierarchy
+## Hierarchy
 
 ```
-JisSDK_Manager
+JisSDK_Manager                    → JisSDKPersistentRoot (DontDestroyOnLoad)
 ├── Firebase
 │   ├── FirebaseManager
 │   └── AdsTracker
-├── JisAds
-│   ├── JisAds                    → App Open + ResumeAdCoordinator
-│   └── (Core AdManager child created at runtime when needed)
-└── Ads_Runtime
-    ├── AdsManager
-    ├── UnitAdManagers/
-    │   ├── Banner              → BannerAdManager
-    │   ├── Interstitial        → InterstitialAdManager
-    │   ├── Rewarded            → RewardAdManager
-    │   ├── MRec                  → MRecAdManager
-    │   └── CollapsibleBanner     → CollapsibleBannerAdManager
-    └── Mediation/
-        ├── MaxMediation          → MaxMediationController (optional)
-        └── AdmobMediation        → AdmobMediationController (optional)
+└── JisAds
+    ├── JisAds                    → Core ads entry point, App Open, Resume
+    ├── ResumeAdCoordinator
+    └── (Core AdManager child created at runtime)
 ```
 
 ## Editor menus
 
 | Menu | Action |
 |------|--------|
-| **JIS SDK → Ads → Scene → Add JisSDK Manager Prefab** | Create `JisSDK_Manager` hierarchy + wire `AdsManager` |
-| **JIS SDK → Ads → Scene → Reorganize JisSDK Manager Hierarchy** | Move components from flat root into children |
-| **JIS SDK → IAP → Scene → Add JisSDK InApp Purchaser Prefab** | Create `JisSDK_InAppPurchaser` (separate from ads manager) |
+| **JIS SDK → Ads → Scene → Add JisSDK Manager Prefab** | Create the hierarchy above and wire `JisAds` to `JisSDKAdsSettings` |
+| **JIS SDK → Ads → Scene → Remove legacy Ads_Runtime** | Strip the pre-6.0 `Ads_Runtime` subtree (AdsManager, mediation controllers, unit managers) from a scene object, an open prefab stage or a selected prefab asset |
+| **JIS SDK → Ads → Apply Settings to Scene** | Sync `JisAds` + scripting defines for the active build target |
+| **JIS SDK → IAP → Scene → Add JisSDK InApp Purchaser Prefab** | Create `JisSDK_InAppPurchaser` (separate from the ads manager) |
 
 Prefab templates (if missing):
 
-- Ads: `Assets/JisSDKAds/Prefabs/JisSDK_Manager.prefab` (legacy: `Manager.prefab`)
-- IAP: `Assets/JisSDKAds/Prefabs/JisSDK_InAppPurchaser.prefab` (legacy: `InAppPurchaser.prefab`)
+- Ads: `Assets/JisSDKAds/Prefabs/JisSDK_Manager.prefab`
+- IAP: `Assets/JisSDKAds/Prefabs/JisSDK_InAppPurchaser.prefab`
 
-`JisSDK_Manager` uses **Jis SDK Persistent Root** (`JisSDKPersistentRoot`) → **DontDestroyOnLoad** for the full ads hierarchy.  
 `JisSDK_InAppPurchaser` is a **separate** object with `InAppPurchaser` only (do not mix prefabs).
 
-## Init modes vs Remote Config
+## Init mode vs Remote Config
 
-| Pattern | AdsManager mode | Who starts ads | Remote Config |
-|--------|-----------------|----------------|---------------|
-| **Production (recommended)** | `Manual` | `await JisAds.Instance.InitializeAsync(fetchRemoteConfig: true)` in loading | Fetched before mediation / requests |
-| **Prototype / no JisAds** | `AutoOnStart` | `AdsManager` on `Start` → `CoBootstrapAdsWithRemoteConfig` | Same gate, no loading-screen control |
-| **Avoid** | `AutoOnStart` on AdsManager **and** `JisAds` auto-init on `Start` | Two bootstraps | Duplicate init |
+| Pattern | `adsInitializationMode` | Who starts ads | Remote Config |
+|--------|-------------------------|----------------|---------------|
+| **Production (recommended)** | `Manual` | `await JisAds.Instance.InitializeAsync(fetchRemoteConfig: ...)` from the loading flow | Fetched by the game (`FetchAndApplyRemoteConfigAsync`) or by `InitializeAsync(fetchRemoteConfig: true)` |
+| **Prototype** | `AutoOnStart` | `JisAds` on `Start` | Fetched inside `InitializeAsync` |
 
 `FirebaseManager`: prefer **Manual** when using `JisAds.InitializeAsync`; `AutoOnAwake` is OK — ads bootstrap still waits for Firebase + RC.
 
-Do not call `ShowInterstitial` / rely on autoload until `JisAds.Instance.IsReady` or `AdsManager.Instance.IsReady`.
+Do not call `ShowInterstitial` / rely on preload until `JisAds.Instance.IsReady`.
 
 ## Notes
 
-- `AdsManager` serialized references must point to child objects (auto-wired by scene builder).
 - `JisAds` and `FirebaseManager` each use `DontDestroyOnLoad` on their own GameObject.
-- Game code still uses `JisAds.Instance` / `AdsManager.Instance` — hierarchy is for clarity only.
+- Projects created before 6.0 still carry an `Ads_Runtime` child whose scripts no longer exist. Run **Remove legacy Ads_Runtime** once; see [MIGRATION_V6.md](MIGRATION_V6.md).

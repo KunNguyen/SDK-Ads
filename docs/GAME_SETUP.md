@@ -35,7 +35,7 @@ Assign **MaxAdConfig** / **AdMobConfig** under provider configs if using Core `A
 ## 3. Scene setup
 
 1. `FirebaseManager` in scene
-2. `AdsManager` prefab (required for App Open, MREC, Resume, RC rules, …)
+2. `JisSDK_Manager` prefab (Firebase + JisAds; App Open and Resume live on `JisAds`)
 3. GameObject + **JisAds** component
    - Assign `JisSDKAdsSettings`
    - **Use Core For Standard Formats**: on (Interstitial / Rewarded / Banner via Core)
@@ -43,7 +43,7 @@ Assign **MaxAdConfig** / **AdMobConfig** under provider configs if using Core `A
 
 (`SdkAdsBootstrap` still works: it adds `JisAds` on the same object.)
 
-4. **JIS SDK → Ads → Apply Settings to Scene** (syncs AdsManager + scripting defines for active build target)
+4. **JIS SDK → Ads → Apply Settings to Scene** (syncs JisAds + scripting defines for active build target)
 
 ## 4. API (Phase 4 — use `JisAds`)
 
@@ -53,20 +53,20 @@ using JisSDKAds.Firebase;
 ```
 
 ```csharp
-// Standard formats (Core when ready, else legacy)
+// Standard formats
 JisAds.Instance.ShowInterstitial("level_end", onClosed: () => { });
 JisAds.Instance.ShowRewardVideo("placement", onSuccess: () => { });
 JisAds.Instance.ShowBannerAds();
 JisAds.Instance.HideBannerAds();
 
-// Legacy-only formats
+// App Open, level gate, consent
 JisAds.Instance.ShowAppOpenAd();
-JisAds.Instance.ShowMRecAds();
-JisAds.Instance.Legacy  // full AdsManager access
+JisAds.Instance.IsPassLevelToShowInterstitial(storeLevel);
+JisAds.Instance.ShowPrivacyOptionsForm();
 JisAds.Instance.Core    // Core AdManager when enabled
 ```
 
-`AdsManager.Instance` is obsolete — migrate to `JisAds.Instance`.
+`AdsManager` was removed in 6.0 — see [MIGRATION_V6.md](MIGRATION_V6.md).
 
 See [NAMESPACES.md](NAMESPACES.md).
 
@@ -91,6 +91,4 @@ Assertion `newChildren.size() == childrenArray.size()` thường là lỗi phụ
 
 ## 5. One mediation per platform
 
-`JisSDKAdsSettings.singleMediationOnly` disables MAX↔AdMob fallback in Core `AdManager`.
-
-Legacy `AdsManager` uses the active profile’s `SDKSetup.adsMediationType` and per-format mediation fields.
+`JisSDKAdsSettings.singleMediationOnly` disables MAX↔AdMob fallback in Core `AdManager`. Per-format mediation comes from the active profile’s `SDKSetup` fields.

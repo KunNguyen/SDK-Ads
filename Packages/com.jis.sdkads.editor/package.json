@@ -1,11 +1,11 @@
 {
   "name": "com.jis.sdkads.editor",
-  "version": "5.1.0",
+  "version": "6.0.0",
   "displayName": "JIS SDK - Editor",
   "description": "Editor tools for ads setup, build handlers, and platform configuration. No Odin Inspector dependency.",
   "unity": "2022.3",
   "dependencies": {
-    "com.jis.sdkads.ads": "5.1.2",
+    "com.jis.sdkads.ads": "6.0.0",
     "com.jis.sdkads.iap": "5.0.1"
   },
   "author": {
