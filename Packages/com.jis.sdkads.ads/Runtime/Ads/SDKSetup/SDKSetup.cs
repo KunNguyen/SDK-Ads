@@ -76,6 +76,10 @@ namespace JisSDKAds.Ads
                     return;
                 }
 
+                // Only write when the key differs: Apply runs on Play/switch/build and must not dirty the asset each time.
+                if (sdkKeyProperty.stringValue == sdkKey_MAX)
+                    return;
+
                 sdkKeyProperty.stringValue = sdkKey_MAX;
                 serializedSettings.ApplyModifiedProperties();
                 EditorUtility.SetDirty(applovinSettings);

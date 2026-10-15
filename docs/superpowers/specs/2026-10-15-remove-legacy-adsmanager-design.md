@@ -76,7 +76,8 @@ Every deleted `.cs` takes its `.meta` with it.
   lived on the `AdsManager` prefab component.
 - `JisAds.ShowPrivacyOptionsForm()`: new reflection bridge
   `Runtime/Integration/ConsentFormBridge.cs` following `AdMobSdkEarlyInitBridge`. Routing:
-  when the active profile mediation is MAX and `MaxSdk.CmpService` is available, call
+  when the active profile mediation is MAX, or `JisSDKAdsSettings.ShouldDelegateConsentToMax()`
+  is true (same rule as init-time consent), and `MaxSdk.CmpService` is available, call
   `MaxSdk.CmpService.ShowCmpForExistingUser`; otherwise call
   `AdmobUmpConsent.ShowPrivacyOptionsForm`. Errors are logged, never thrown.
 - `JisAds.SetRemoveAds`: remove the mirror into `AdsManager`; the PlayerPrefs key

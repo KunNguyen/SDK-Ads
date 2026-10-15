@@ -16,7 +16,10 @@ namespace JisSDKAds.Ads.Integration
 
         public static void Show(JisSDKAdsSettings settings, Action<string> onError, Action onDismiss)
         {
-            var useMax = settings?.GetActiveProfile()?.mediation == AdsMediationType.MAX;
+            // Same rule as init-time consent: MAX owns consent on MAX profiles and whenever consent is delegated to MAX.
+            var useMax = settings != null
+                         && (settings.GetActiveProfile()?.mediation == AdsMediationType.MAX
+                             || settings.ShouldDelegateConsentToMax());
             if (useMax && TryInvoke(MaxTypeName, "ShowForExistingUser", onError, onDismiss))
                 return;
 

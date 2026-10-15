@@ -86,23 +86,8 @@ namespace JisSDKAds.Editor
                 && !selectedAsset.scene.IsValid())
             {
                 var path = AssetDatabase.GetAssetPath(selectedAsset);
-                var contents = PrefabUtility.LoadPrefabContents(path);
-                try
-                {
-                    if (RemoveLegacyAdsRuntime(contents))
-                    {
-                        PrefabUtility.SaveAsPrefabAsset(contents, path);
-                        Debug.Log($"[JIS SDK] Removed legacy Ads_Runtime from prefab {path}.");
-                    }
-                    else
-                    {
-                        Debug.Log($"[JIS SDK] No legacy Ads_Runtime found in {path}.");
-                    }
-                }
-                finally
-                {
-                    PrefabUtility.UnloadPrefabContents(contents);
-                }
+                if (!RemoveLegacyAdsRuntimeFromAsset(path))
+                    Debug.Log($"[JIS SDK] No legacy Ads_Runtime found in {path}.");
                 return;
             }
 
@@ -135,14 +120,48 @@ namespace JisSDKAds.Editor
             Debug.Log($"[JIS SDK] Removed legacy Ads_Runtime under {root.name}.");
         }
 
+        /// <summary>
+        /// Removes Ads_Runtime under <paramref name="root"/>. A prefab instance in a scene is fixed through its
+        /// source asset (the instance follows); a prefab-stage object or a plain scene object is edited in place.
+        /// </summary>
         public static bool RemoveLegacyAdsRuntime(GameObject root)
         {
             var legacy = FindLegacyAdsRuntime(root);
             if (legacy == null)
                 return false;
 
+            var inPrefabStage = PrefabStageUtility.GetPrefabStage(legacy) != null;
+            if (!inPrefabStage && PrefabUtility.IsPartOfPrefabInstance(legacy) && !PrefabUtility.IsPartOfPrefabAsset(legacy))
+            {
+                var assetPath = PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(legacy);
+                if (!string.IsNullOrEmpty(assetPath))
+                    return RemoveLegacyAdsRuntimeFromAsset(assetPath);
+            }
+
             Undo.DestroyObjectImmediate(legacy);
             return true;
+        }
+
+        /// <summary>Edits the prefab asset at <paramref name="assetPath"/> directly and saves it.</summary>
+        public static bool RemoveLegacyAdsRuntimeFromAsset(string assetPath)
+        {
+            var contents = PrefabUtility.LoadPrefabContents(assetPath);
+            try
+            {
+                var legacy = FindLegacyAdsRuntime(contents);
+                if (legacy == null)
+                    return false;
+
+                // Preview-scene objects are not undoable: a plain destroy keeps the Undo stack clean.
+                Object.DestroyImmediate(legacy);
+                PrefabUtility.SaveAsPrefabAsset(contents, assetPath);
+                Debug.Log($"[JIS SDK] Removed legacy Ads_Runtime from prefab {assetPath}.");
+                return true;
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(contents);
+            }
         }
 
         static GameObject FindLegacyAdsRuntime(GameObject root)

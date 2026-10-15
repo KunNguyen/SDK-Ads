@@ -20,7 +20,7 @@ rewarded-interstitial partials), `MaxMediationConfigBridge`, `AdmobMediationConf
 | `AdsManager.Instance.RequestBannerAds()` / `ShowBannerAds()` / `HideBannerAds()` | `JisAds.Instance.ShowBannerAds()` / `HideBannerAds()` |
 | `AdsManager.Instance.IsInterstitialAdLoaded()` | `JisAds.Instance.IsInterstitialAdLoaded()` |
 | `AdsManager.Instance.IsPassLevelToShowInterstitial(level)` | `JisAds.Instance.IsPassLevelToShowInterstitial(level)` (RC `level_show_inter`, fallback `JisSDKAdsSettings.interstitialLevelFallback`) |
-| `AdsManager.Instance.ShowConsentForm()` | `JisAds.Instance.ShowPrivacyOptionsForm()` (MAX CMP on MAX profiles, AdMob UMP otherwise) |
+| `AdsManager.Instance.ShowConsentForm()` | `JisAds.Instance.ShowPrivacyOptionsForm()` (MAX CMP on MAX profiles or when consent is delegated to MAX, AdMob UMP otherwise) |
 | `AdsManager.Instance.SetRemoveAds(bool)` / `IsRemoveAds` | `JisAds.Instance.SetRemoveAds(bool)` / `IsRemoveAds` |
 | `AdsManager.Instance.InitializeAllAsync(...)` | `JisAds.Instance.InitializeAsync(fetchRemoteConfig)` + `FetchAndApplyRemoteConfigAsync()` |
 | `AdsManager.Instance.isCheatAds` | removed; keep a game-side debug flag |
