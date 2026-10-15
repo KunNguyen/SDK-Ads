@@ -2,7 +2,7 @@
   "name": "com.jis.sdkads.ads",
   "version": "6.0.0",
   "displayName": "JIS SDK - Ads",
-  "description": "Full ads stack: AdsManager, mediation, formats, remote config driven behavior. No Odin dependency (editor UX via com.jis.sdkads.editor).",
+  "description": "Full ads stack: JisAds entry point, mediation, formats, remote config driven behavior. No Odin dependency (editor UX via com.jis.sdkads.editor).",
   "unity": "2022.3",
   "dependencies": {
     "com.jis.sdkads.core": "5.1.0",

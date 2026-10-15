@@ -16,7 +16,7 @@
   "samples": [
     {
       "displayName": "Minimal integration",
-      "description": "Checklist and scene setup steps for Firebase + JisAds + AdsManager.",
+      "description": "Checklist and scene setup steps for Firebase + JisAds.",
       "path": "Samples~/MinimalIntegration"
     }
   ]

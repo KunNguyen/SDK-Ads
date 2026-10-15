@@ -22,21 +22,19 @@ Hub creates:
 
 ## 3. Scene hierarchy
 
-Use **JIS SDK → Ads → Scene → Add Manager Prefab** (creates structured layout):
+Use **JIS SDK → Ads → Scene → Add JisSDK Manager Prefab**:
 
 ```
 JisSDK_Manager
 ├── Firebase              FirebaseManager, AdsTracker
-├── JisAds                  JisAds (+ JisSDKAdsSettings)
-└── Ads_Runtime             AdsManager
-    ├── UnitAdManagers
-    │   ├── Banner / Interstitial / Rewarded / MRec / AppOpen / CollapsibleBanner / Resume
-    └── Mediation
-        ├── MaxMediation      (if MAX package installed)
-        └── AdmobMediation    (if AdMob package installed)
+└── JisAds                JisAds (+ JisSDKAdsSettings), ResumeAdCoordinator
 ```
 
-Flat single-object layouts from older SDK versions: **JIS SDK → Ads → Scene → Reorganize Manager Hierarchy**.
+`JisAds` drives every format (banner, interstitial, rewarded, app open) through the mediation
+selected in the active `JisSDKAdsSettings` profile.
+
+Managers from SDK < 6.0 still carry an `Ads_Runtime` subtree with missing scripts:
+**JIS SDK → Ads → Scene → Remove legacy Ads_Runtime** (see `docs/MIGRATION_V6.md`).
 
 ## 4. Code
 
@@ -47,12 +45,12 @@ using JisSDKAds.Firebase;
 // After JisAds finished init (IsReady)
 JisAds.Instance.ShowInterstitial(onClosed: () => { });
 JisAds.Instance.ShowRewardVideo("shop", onSuccess: () => { });
-JisAds.Instance.ShowAppOpenAd(); // Core on MAX when app open unit configured
+JisAds.Instance.ShowAppOpenAd(); // when an app open unit is configured
 ```
 
 ## 5. Verify
 
-- Console: `[JisAds] Core AdManager ready.` and legacy `IsReady`
-- No duplicate init: only one `JisAds` + one `AdsManager` in scene
+- Console: `[JisAds] Core AdManager ready` and `JisAds.Instance.IsReady`
+- No duplicate init: only one `JisAds` in scene
 
-See `docs/MIGRATION_V4.md` when upgrading old projects.
+See `docs/MIGRATION_V6.md` when upgrading projects from SDK < 6.0.

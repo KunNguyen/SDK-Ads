@@ -4,7 +4,7 @@ Requires Hub modules: **Firebase**, **Ads**, **IAP** (+ AppsFlyer optional).
 
 ## Scene checklist
 
-1. `JisSDK_Manager` (Firebase + JisAds + AdsManager) — see MinimalIntegration
+1. `JisSDK_Manager` (Firebase + JisAds) — see MinimalIntegration
 2. `JisSDK_InAppPurchaser` with `IAPPackageConfigs` assigned
 3. Product example in config:
 

@@ -1,7 +1,7 @@
-# Thiết kế hệ thống Ads — JIS SDK Ads v4
+# Thiết kế hệ thống Ads — JIS SDK Ads v6
 
 > Tài liệu mô tả kiến trúc và thiết kế hệ thống quảng cáo trong monorepo **SDK-Ads** (Unity UPM).  
-> Cập nhật theo cấu trúc v4 — dual stack: **JisAds** (facade) + **Legacy AdsManager** + **Core AdManager**.  
+> Cập nhật theo v6 — **JisAds** là entry point duy nhất, chạy trên **Core AdManager**. Legacy runtime đã bị gỡ ([MIGRATION_V6.md](MIGRATION_V6.md)).  
 > **Sequential tier (inter/reward):** [TIERED_INTERSTITIAL.md](TIERED_INTERSTITIAL.md)
 
 ---
@@ -10,9 +10,9 @@
 
 ### 1.1 Mục đích
 
-**JIS SDK Ads v4** là bộ SDK Unity dùng cho game mobile (Android/iOS), cung cấp:
+**JIS SDK Ads v6** là bộ SDK Unity dùng cho game mobile (Android/iOS), cung cấp:
 
-- Quản lý đa định dạng quảng cáo (Banner, Interstitial, Rewarded, App Open, MREC, …)
+- Quản lý các định dạng quảng cáo: Banner, Interstitial, Rewarded, App Open (+ Resume ads)
 - Mediation qua **AppLovin MAX** hoặc **Google AdMob**
 - Tích hợp **Firebase Analytics** và **Remote Config** để điều khiển hành vi ads từ xa
 - Tracking doanh thu (impression revenue) và sự kiện ads
@@ -27,12 +27,13 @@
 | iOS | Đầy đủ |
 | Editor | Placeholder / validation (một số format fail có chủ đích) |
 
-### 1.3 Nguyên tắc thiết kế v4
+### 1.3 Nguyên tắc thiết kế v6
 
-1. **Một mediation chính trên mỗi platform** — ví dụ AdMob trên Android, MAX trên iOS (`JisSDKAdsSettings.singleMediationOnly`)
-2. **Dual stack có chủ đích** — Core mới cho format chuẩn; Legacy giữ logic phức tạp (RC, cooldown, resume ads)
-3. **UPM modular** — mỗi module là package độc lập, cài qua Git UPM + Hub
-4. **Firebase là dependency bắt buộc** — AdsManager chờ Firebase sẵn sàng trước khi init ads
+1. **Một entry point** — game chỉ gọi `JisAds.Instance`; không còn lớp Legacy song song
+2. **Một mediation chính trên mỗi platform** — ví dụ AdMob trên Android, MAX trên iOS (`JisSDKAdsSettings.singleMediationOnly`)
+3. **Provider-agnostic** — `JisAds` điều phối qua `AdManager` (Core) và contract `IAdService`; MAX/AdMob là provider
+4. **UPM modular** — mỗi module là package độc lập, cài qua Git UPM + Hub
+5. **Firebase là dependency bắt buộc** — `JisAds` init Firebase (và fetch Remote Config nếu bật) trước khi init ads
 
 ---
 
@@ -46,30 +47,23 @@ flowchart TB
         GC[Game Code]
     end
 
-    subgraph Facade["Lớp Facade"]
+    subgraph Facade["Entry point"]
         JisAds[JisAds.Instance]
+        AppOpen[AppOpenAdService]
+        Resume[ResumeAdCoordinator]
     end
 
-    subgraph Core["Lớp Core (mới)"]
+    subgraph Core["Core"]
         AdManager[AdManager]
         IAdService[IAdService]
         MaxProvider[MaxAdProvider]
         AdMobProvider[AdMobProvider]
     end
 
-    subgraph Legacy["Lớp Legacy"]
-        AdsManager[AdsManager]
-        UnitMgr[UnitAdManagers]
-        MedCtrl[AdsMediationController]
-        MaxMC[MaxMediationController]
-        AdMobMC[AdmobMediationController]
-    end
-
     subgraph Infra["Hạ tầng"]
         Firebase[FirebaseManager]
         RC[Remote Config]
         Tracker[AdsTracker]
-        EventMgr[EventManager]
     end
 
     subgraph Network["Ad Networks"]
@@ -79,42 +73,32 @@ flowchart TB
 
     GC --> JisAds
     JisAds --> AdManager
-    JisAds --> AdsManager
+    JisAds --> AppOpen
+    JisAds --> Resume
     AdManager --> IAdService
     IAdService --> MaxProvider
     IAdService --> AdMobProvider
-    AdsManager --> UnitMgr
-    UnitMgr --> MedCtrl
-    MedCtrl --> MaxMC
-    MedCtrl --> AdMobMC
     MaxProvider --> MAX
     AdMobProvider --> AdMob
-    MaxMC --> MAX
-    AdMobMC --> AdMob
+    MaxProvider --> Tracker
+    AdMobProvider --> Tracker
     JisAds --> Firebase
-    AdsManager --> Firebase
-    AdsManager --> Tracker
-    AdsManager --> EventMgr
     Firebase --> RC
     Tracker --> Firebase
 ```
 
-### 2.2 Dual Stack — Phân chia trách nhiệm
+### 2.2 Phân chia trách nhiệm
 
 | Thành phần | Vai trò | Format xử lý |
 |------------|---------|--------------|
-| **JisAds** | Entry point thống nhất cho game | Route tới Core hoặc Legacy |
-| **Core AdManager** | Orchestrator mới, provider-agnostic | Interstitial, Rewarded, Banner, App Open (khi có unit) |
-| **Legacy AdsManager** | Orchestrator cũ, đầy đủ tính năng | Tất cả format + RC + cooldown + resume |
-| **UnitAdManagers** | Logic theo từng format (Legacy) | Banner, Interstitial, Rewarded, MREC, App Open, Collapsible, Resume |
-| **AdsMediationController** | Abstract adapter tới MAX/AdMob (Legacy) | Callback + request/show/load |
+| **JisAds** | Entry point duy nhất cho game: init, show/load, capping, level gate, remove ads, consent | Tất cả |
+| **Core AdManager** | Orchestrator provider-agnostic: route format → provider, load-on-show, retry | Interstitial, Rewarded, Banner, App Open |
+| **AppOpenAdService** | App Open cold start + RC `show_open_ads` | App Open |
+| **ResumeAdCoordinator** | Show App Open hoặc Interstitial khi quay lại foreground (theo RC) | Resume |
 | **IAdService** | Contract provider (Core) | Init + format interfaces |
+| **MaxAdProvider / AdMobProvider** | Adapter tới SDK network, báo revenue cho `AdsTracker` | Theo provider |
 
-**Routing mặc định** (`useCoreForStandardFormats = true`):
-
-- Interstitial, Rewarded, Banner → **Core AdManager** (fallback Legacy nếu Core init fail)
-- App Open → Core nếu có unit App Open; ngược lại Legacy
-- MREC, Collapsible Banner, Resume Ads, Rewarded Interstitial → **Legacy only**
+Nếu Core không đăng ký được provider nào, hoặc init Core hết lượt retry, `JisAds` tắt routing (`UsesCoreRouting = false`) và không show ads.
 
 ---
 
@@ -126,9 +110,9 @@ Packages/
 ├── com.jis.sdkads.core         # AdManager, IAdService, AdEvents, AdFormat
 ├── com.jis.sdkads.common       # EventManager, Keys (RC), utils
 ├── com.jis.sdkads.firebase     # FirebaseManager, Analytics, Remote Config
-├── com.jis.sdkads.ads          # JisAds, AdsManager, SDKSetup, UnitAdManagers
-├── com.jis.sdkads.providers.max    # MaxAdProvider, MaxMediationController
-├── com.jis.sdkads.providers.admob  # AdMobProvider, AdmobMediationController
+├── com.jis.sdkads.ads          # JisAds, SDKSetup, JisSDKAdsSettings, App Open, Resume, tracking
+├── com.jis.sdkads.providers.max    # MaxAdProvider
+├── com.jis.sdkads.providers.admob  # AdMobProvider
 ├── com.jis.sdkads.editor       # Editor tools, build preprocess
 ├── com.jis.sdkads.iap          # In-app purchasing (remove ads)
 ├── com.jis.sdkads.analytics.*  # AppsFlyer, SolarEngine, Facebook (optional)
@@ -145,69 +129,34 @@ Packages/
 | `UNITY_SOLAR_ENGINE` | Bridge impression tới SolarEngine |
 | `UNITY_IAP_ACTIVE` | Tích hợp IAP / remove ads |
 
-Hub và `SDKSetup.Setup()` tự động quản lý các define này.
+Hub và **JIS SDK → Ads → Apply Settings to Scene** tự động quản lý các define này.
 
 ---
 
 ## 4. Loại quảng cáo (Ad Formats)
 
-### 4.1 Enum `AdsType` (Legacy)
+### 4.1 Bảng format
 
-```csharp
-public enum AdsType
-{
-    BANNER,
-    INTERSTITIAL,
-    REWARDED,
-    MREC,
-    APP_OPEN,
-    COLLAPSIBLE_BANNER,
-    RESUME_ADS,
-    REWARDED_INTERSTITIAL
-}
-```
+| Format | Mô tả | Đường xử lý | Mediation |
+|--------|-------|-------------|-----------|
+| **Banner** | Banner cố định (top/bottom), auto refresh từ RC | Core | MAX / AdMob |
+| **Interstitial** | Full-screen giữa các màn | Core | MAX / AdMob |
+| **Rewarded** | Video có thưởng | Core | MAX / AdMob |
+| **App Open** | Quảng cáo khi mở app | `AppOpenAdService` (Core) | MAX / AdMob |
+| **Resume Ads** | Inter hoặc App Open sau background | `ResumeAdCoordinator` | Theo RC `ads_resume_type` |
 
-### 4.2 Bảng mapping format
+\* App Open chỉ hoạt động khi provider có unit App Open được cấu hình.
 
-| Format | Mô tả | Core | Legacy | Mediation |
-|--------|-------|------|--------|-----------|
-| **Banner** | Banner cố định (top/bottom) | ✅ | ✅ | MAX / AdMob (cấu hình riêng) |
-| **Interstitial** | Full-screen giữa các màn | ✅ | ✅ | MAX / AdMob |
-| **Rewarded** | Video có thưởng | ✅ | ✅ | MAX / AdMob |
-| **App Open** | Quảng cáo khi mở app | ✅* | ✅ | MAX / AdMob |
-| **MREC** | Medium Rectangle (250×250) | ❌ | ✅ | Thường AdMob |
-| **Collapsible Banner** | Banner có thể thu gọn | ❌ | ✅ | AdMob |
-| **Resume Ads** | Meta-format: inter hoặc app open sau background | ❌ | ✅ | Theo RC `ads_resume_type` |
-| **Rewarded Interstitial** | Interstitial có thưởng | ❌ | ✅ (AdMob) | AdMob |
+MREC, Collapsible Banner và AdMob Rewarded Interstitial không còn trong v6.
 
-\* Core App Open chỉ hoạt động khi provider có unit App Open được cấu hình.
+### 4.2 Mediation theo platform
 
-### 4.3 Cấu hình mediation theo format
+Mediation chọn trong `PlatformAdsProfile.mediation` (MAX hoặc ADMOB) của `JisSDKAdsSettings`. Với Interstitial/Rewarded, RC `fullscreen_mediation_mode` / `interstitial_mediation_mode` / `rewarded_mediation_mode` có thể đổi thứ tự provider khi `singleMediationOnly = false`.
 
-Mỗi format có thể chọn mediation riêng trong `SDKSetup`:
-
-```csharp
-public AdsMediationType GetAdsMediationType(AdsType adsType)
-{
-    return adsType switch
-    {
-        AdsType.BANNER => bannerAdsMediationType,
-        AdsType.INTERSTITIAL => interstitialAdsMediationType,
-        AdsType.REWARDED => rewardedAdsMediationType,
-        AdsType.MREC => mrecAdsMediationType,
-        AdsType.APP_OPEN => appOpenAdsMediationType,
-        // ...
-    };
-}
-```
-
-**Khuyến nghị v4:** dùng **một mediation chính** trên mỗi platform qua `JisSDKAdsSettings`, tránh mix phức tạp trừ khi có nhu cầu đặc biệt.
-
-### 4.4 Placement (Rewarded)
+### 4.3 Placement (Rewarded)
 
 - Game truyền chuỗi placement khi gọi `ShowRewardVideo(placement, ...)`
 - Placement được ghi vào analytics Firebase (`placement` parameter)
-- `RewardAdsPlacementConfig` (editor) có thể codegen enum `WatchVideoRewardType` từ danh sách placement
 
 ---
 
@@ -217,9 +166,9 @@ public AdsMediationType GetAdsMediationType(AdsType adsType)
 
 | Asset | Vị trí | Mục đích |
 |-------|--------|----------|
-| `JisSDKAdsSettings` | `Assets/JisSDKAds/Settings/` | Profile Android/iOS: mediation + link SDKSetup |
-| `SDKSetup` | Per-game ScriptableObject | Ad unit IDs, mediation per format, tracking flags |
-| `MaxAdConfig` / `AdMobConfig` | Trong profile hoặc auto-build | Config cho Core AdManager |
+| `JisSDKAdsSettings` | `Assets/JisSDKAds/Settings/` | Profile Android/iOS: mediation + link SDKSetup, init mode, level gate fallback |
+| `SDKSetup` | Per-game ScriptableObject | Ad unit IDs, SDK key, tracking flags |
+| `MaxAdConfig` / `AdMobConfig` | Trong profile hoặc auto-build | Config provider cho Core |
 
 ### 5.2 `JisSDKAdsSettings`
 
@@ -228,7 +177,9 @@ public class JisSDKAdsSettings : ScriptableObject
 {
     public PlatformAdsProfile android;
     public PlatformAdsProfile ios;
-    public bool singleMediationOnly = true;  // Tắt fallback cross-network
+    public AdsInitializationMode adsInitializationMode;  // AutoOnStart / Manual
+    public bool singleMediationOnly = true;              // Tắt fallback cross-network
+    public int interstitialLevelFallback = 3;            // Level gate khi RC chưa sẵn sàng
 }
 ```
 
@@ -243,13 +194,23 @@ Nếu `maxProviderConfig` / `admobProviderConfig` trống, runtime tự copy ad 
 
 ### 5.4 Scene requirements
 
+Tạo bằng **JIS SDK → Ads → Scene → Add JisSDK Manager Prefab**:
+
+```
+JisSDK_Manager
+├── Firebase    FirebaseManager, AdsTracker
+└── JisAds      JisAds (+ JisSDKAdsSettings), ResumeAdCoordinator
+```
+
 | GameObject | Component | Bắt buộc |
 |------------|-----------|----------|
-| Firebase | `FirebaseManager` | ✅ |
-| Ads | `AdsManager` | ✅ (Legacy formats + RC) |
-| Ads | `JisAds` | ✅ (Facade) |
+| Firebase | `FirebaseManager`, `AdsTracker` | ✅ |
+| JisAds | `JisAds` | ✅ |
+| JisAds | `ResumeAdCoordinator` | Khi dùng Resume ads |
 | Optional | `SdkAdsBootstrap` | Tự thêm `JisAds` |
 | Optional | `AdManager` | Core (JisAds tự tạo nếu thiếu) |
+
+Prefab từ SDK < 6.0 còn subtree `Ads_Runtime` với missing script: **JIS SDK → Ads → Scene → Remove legacy Ads_Runtime**.
 
 ---
 
@@ -262,166 +223,123 @@ sequenceDiagram
     participant Game
     participant JisAds
     participant Firebase as FirebaseManager
-    participant Legacy as AdsManager
     participant Core as AdManager
     participant Provider as IAdService
 
     Game->>JisAds: Start / InitializeAsync()
+    JisAds->>JisAds: Warm up MAX / AdMob SDK
     JisAds->>Firebase: InitAsync()
     Firebase-->>JisAds: IsFirebaseReady
     opt fetchRemoteConfig
         JisAds->>Firebase: FetchRemoteConfigAsync()
     end
-    JisAds->>Legacy: InitializeAdsFlow()
-    Legacy->>Legacy: InitConfig()
-    Legacy->>Legacy: SetupUnitAdManager()
-    Legacy->>Legacy: InitAdsMediation()
-    Legacy->>Legacy: InitAds() [queued]
-    Legacy-->>JisAds: IsReady
-    opt useCoreForStandardFormats
-        JisAds->>Core: RegisterProvider + Initialize()
-        Core->>Provider: Initialize()
-        Provider-->>Core: onSuccess / onFailure
-    end
-    JisAds-->>Game: _isReady = true
+    JisAds->>JisAds: Áp dụng ad inventory từ RC
+    JisAds->>Core: RegisterProvider + Initialize()
+    Core->>Provider: Initialize()
+    Provider-->>Core: onSuccess / onFailure (retry có backoff)
+    Core-->>JisAds: IsInitialized
+    JisAds->>JisAds: IsReady = true, bootstrap App Open + Resume, preload
+    JisAds-->>Game: InitializeAsync hoàn tất
 ```
 
-### 6.2 Legacy `AdsManager.InitializeAdsFlow()`
+### 6.2 `JisAds.InitializeAsync(fetchRemoteConfig)`
 
-1. **AdsStateMachine** → `Initializing`
-2. **InitConfig()** — áp dụng `JisSDKAdsSettings`, wire `AdsConfig` → mediation controllers
-3. **SetupUnitAdManager()** — bind từng `*AdManager` với config + mediation
-4. **InitAdsMediation()** — init mediation theo thứ tự ưu tiên
-5. **InitAds()** — queue init theo format: **App Open → Banner → Interstitial → Rewarded → MRec → Collapsible**
-6. **InitResumeAdManager()**
-7. **IsReady = true** khi queue hoàn tất
+1. Áp dụng debug settings, đọc trạng thái remove ads từ PlayerPrefs (`key_local_remove_ads`)
+2. Warm up SDK MAX / AdMob sớm
+3. Init Firebase, fetch Remote Config nếu `fetchRemoteConfig = true`
+4. Áp dụng ad inventory / sequential tier từ RC
+5. Tạo provider theo profile active, đăng ký vào `AdManager`, gọi `Initialize()`
+6. Khi Core sẵn sàng: `IsReady = true`, áp dụng RC banner, bootstrap App Open + Resume, preload format chuẩn
 
-**Throttling:** `PrioritizeAppOpenAndThrottleLoads` + `DelayBetweenAdInits` (mặc định 0.75s) giảm spike tài nguyên lúc init.
+Gọi `InitializeAsync` nhiều lần là an toàn — các lời gọi sau join vào lần init đang chạy. Với `adsInitializationMode = AutoOnStart`, `JisAds` tự init trong `Start`.
 
 ### 6.3 Core `AdManager.Initialize()`
 
 1. `JisAds` gọi `ConfigureSingleMediation(providerId, singleMediationOnly)`
 2. `ProviderConfigFactory.CreateFromSdkSetup(profile)` → tạo provider
 3. `RegisterProvider()` + `Initialize()` tất cả provider đã đăng ký
-4. Nếu fail → fallback Legacy (`useCoreForStandardFormats = false`)
-
-### 6.4 Trạng thái hệ thống (`AdsStateMachine`)
-
-| State | Mô tả |
-|-------|-------|
-| `NotInitialized` | Chưa bắt đầu init |
-| `Initializing` | Đang init mediation + unit managers |
-| `Ready` | Sẵn sàng show ads |
-| `ShowingAds` | Đang hiển thị quảng cáo |
-| `RemoteConfigUpdating` | Đang cập nhật RC |
-
-Sau khi show ads xong, hệ thống quay về `Ready` sau cooldown 2 giây (`showing_ads_done_cooldown`).
+4. Nếu fail → retry có backoff; hết lượt retry thì `JisAds` tắt routing
 
 ---
 
 ## 7. Vòng đời Load / Show / Close
 
-### 7.1 Legacy path (UnitAdManager)
+### 7.1 Điều kiện show Interstitial
 
-```mermaid
-stateDiagram-v2
-    [*] --> NotInited
-    NotInited --> Inited: Init()
-    Inited --> ReadyToLoad: AutoLoadSystem
-    ReadyToLoad --> Loading: RequestAd()
-    Loading --> Loaded: OnAdLoadSuccess
-    Loading --> Failed: OnAdLoadFail
-    Failed --> ReadyToLoad: Backoff (2^n sec, max 6s)
-    Loaded --> Showing: CallToShowAd()
-    Showing --> Loaded: OnAdClose + AutoLoad reload
-```
-
-**Các thành phần hỗ trợ:**
-
-| Component | File | Chức năng |
-|-----------|------|-----------|
-| `AutoLoadSystem` | `UnitAdManager/Service/AutoLoadSystem.cs` | Preload liên tục sau init và sau mỗi lần đóng ad |
-| `CooldownSystem` | `UnitAdManager/Service/CooldownSystem.cs` | Capping interstitial từ RC `ads_interval` |
-| `UnitAdManager` | `UnitAdManager/UnitAdManager.cs` | Base class: setup, show, hide, RC update |
-
-### 7.2 Điều kiện show (Legacy Interstitial)
-
-Trước khi show, `InterstitialAdManager` kiểm tra:
+Trước khi show, `JisAds` kiểm tra:
 
 1. `IsRemoveAds` — user đã mua remove ads
-2. `isCheatAds` — cheat flag (dev)
-3. **Cooldown** — thời gian tối thiểu giữa 2 lần show (`ads_interval` từ RC)
-4. **Level gate** — level tối thiểu (`level_show_inter` từ RC)
-5. **Ad loaded** — inventory sẵn sàng
+2. **Capping** — `inter_capping_from_app_open_seconds`, `inter_capping_between_shows_seconds`, `inter_capping_after_load_fail_seconds` từ RC (bỏ qua với `isSkipCapping`)
+3. **Ad loaded** — inventory sẵn sàng (load-on-show nếu chưa)
 
-### 7.3 Core path (AdManager)
+**Level gate** do game gọi riêng: `JisAds.Instance.IsPassLevelToShowInterstitial(level)` — so với RC `level_show_inter` khi RC sẵn sàng, ngược lại với `JisSDKAdsSettings.interstitialLevelFallback`; không có settings asset thì luôn trả `false`.
+
+### 7.2 Core path (AdManager)
 
 - **Load-on-show:** nếu chưa loaded, tự load trước khi show
-- **Retry:** tối đa `maxRetries` (mặc định 3), delay `retryDelaySeconds` (2s)
+- **Retry:** tối đa `maxLoadAttemptsPerProvider` (mặc định 3), delay `retryDelaySeconds` (2s)
 - **Cross-provider fallback:** nếu `allowCrossProviderFallback = true`, thử provider dự phòng khi primary fail
 - **Events:** static `AdEvents` — loaded, shown, closed, failed, provider init
 
+### 7.3 Watchdog & phục hồi
+
+- Load in-flight hết hạn sau timeout để một SDK không trả lời không chặn reload cả phiên
+- Watchdog fullscreen (`fullscreenInFlightWatchdogSec`, mặc định 60s) trả callback nếu SDK không báo close
+- Poll network reachability: khi mạng trở lại, fetch lại RC và preload lại
+- Banner tự hiện lại sau khi đóng fullscreen ad (`restoreBannerAfterFullscreenAds`)
+
 ### 7.4 App lifecycle
 
-`AdsManager` lắng nghe pause/focus với debounce (`lifecycleDebounceMs = 250ms`):
-
-- Gọi `OnPause` trên tất cả unit managers khi app vào background
-- `ResumeAdManager` xử lý show ads khi quay lại foreground (theo RC)
+`ResumeAdCoordinator` lắng nghe pause/focus và show App Open hoặc Interstitial khi quay lại foreground, theo RC `ads_resume_active`, `ads_resume_type`, `ads_resume_capping_time`, `ads_resume_pause_time`.
 
 ### 7.5 Caching model
 
 - **Không có disk cache** — trạng thái "ready" nằm trong memory của SDK network (MAX/AdMob)
-- **Preload:** `AutoLoadSystem` giữ inventory ấm
-- **Remove ads:** `SetRemoveAds(true)` → dừng autoload, ẩn banner/MREC
+- **Preload:** `JisAds` preload sau khi Core sẵn sàng và reload sau mỗi lần đóng ad
+- **Remove ads:** `SetRemoveAds(true)` → ẩn banner, chặn interstitial / app open
 
 ---
 
 ## 8. Mediation & Fallback
 
-### 8.1 Hai lớp mediation
+### 8.1 Các lớp mediation
 
 | Lớp | Cơ chế | Mô tả |
 |-----|--------|-------|
 | **Core** | Primary / Fallback provider | Swap giữa MAX ↔ AdMob + retry |
-| **Legacy** | Per-format mediation controller | Mỗi format có thể trỏ MAX hoặc AdMob |
+| **Sequential tier** | Tier premium → fill | Nhiều ad unit theo tier cho inter/reward ([TIERED_INTERSTITIAL.md](TIERED_INTERSTITIAL.md)) |
 | **AdMob internal** | `AdScheduleUnitID` rotation | Xoay vòng nhiều ad unit ID khi load fail |
 | **MAX internal** | AppLovin waterfall | MAX SDK tự quản lý network waterfall |
 
 ### 8.2 Core fallback logic
 
 ```csharp
-// AdManager.TryFallbackOrRetryInterstitial()
+// AdManager.TryShowInterstitialWithFallback() (rút gọn)
 if (allowCrossProviderFallback && fallback != primary)
     → thử provider dự phòng
-else if (attempt < maxRetries)
+else if (attempt < maxLoadAttemptsPerProvider)
     → retry cùng provider
 else
     → onFailed
 ```
 
-**Chính sách v4:** `singleMediationOnly = true` → `allowCrossProviderFallback = false` → không swap MAX↔AdMob.
+**Chính sách mặc định:** `singleMediationOnly = true` → `allowCrossProviderFallback = false` → không swap MAX↔AdMob.
 
 ### 8.3 AdMob unit ID rotation
 
 `AdScheduleUnitID` chứa danh sách unit IDs. Khi load fail, `ChangeID()` chuyển sang ID tiếp theo — cơ chế "waterfall" đơn giản ở tầng unit ID.
 
-### 8.4 Thứ tự init (không phải waterfall eCPM)
-
-```
-App Open → Banner → Interstitial → Rewarded → MRec → Collapsible
-```
-
-Ưu tiên App Open và throttle giữa các bước để tránh spike init.
-
 ---
 
 ## 9. Remote Config
 
-### 9.1 Bảng key RC
+### 9.1 Bảng key RC chính
 
 | Key constant | RC key | Mục đích |
 |--------------|--------|----------|
-| `key_remote_interstitial_capping_time` | `ads_interval` | Cooldown interstitial (giây) |
+| `key_remote_interstitial_capping_from_app_open_seconds` | `inter_capping_from_app_open_seconds` | Cooldown interstitial sau App Open (giây) |
+| `key_remote_interstitial_capping_between_shows_seconds` | `inter_capping_between_shows_seconds` | Cooldown giữa 2 lần show interstitial |
+| `key_remote_interstitial_capping_after_load_fail_seconds` | `inter_capping_after_load_fail_seconds` | Cooldown sau khi load fail |
 | `key_remote_interstitial_level` | `level_show_inter` | Level tối thiểu show interstitial |
 | `key_remote_aoa_active` | `show_open_ads` | Bật/tắt App Open |
 | `key_remote_aoa_show_first_time_active` | `show_open_ads_first_open` | App Open lần đầu mở app |
@@ -429,18 +347,18 @@ App Open → Banner → Interstitial → Rewarded → MRec → Collapsible
 | `key_remote_ads_resume_capping_time` | `ads_resume_capping_time` | Cooldown resume ads |
 | `key_remote_ads_resume_pause_time` | `ads_resume_pause_time` | Thời gian pause tối thiểu |
 | `key_remote_ads_resume_ads_type` | `ads_resume_type` | INTERSTITIAL hoặc APP_OPEN |
-| `key_remote_inter_reward_interspersed` | `inter_reward_interspersed` | Pattern xen kẽ inter/reward |
-| `key_remote_mrec_active` | `show_mrec_admob` | Bật/tắt MREC |
 | `key_remote_banner_auto_refresh` | `banner_auto_refresh` | Tự refresh banner |
 | `key_remote_banner_auto_refresh_time` | `banner_auto_refresh_time` | Chu kỳ refresh (giây) |
-| `key_remote_free_ads` | `time_free_ads` | Thời gian miễn ads |
+| `key_remote_fullscreen_mediation_mode` | `fullscreen_mediation_mode` | Thứ tự mediation cho inter/reward |
+| `key_remote_interstitial_inventory_mode` | `interstitial_inventory_mode` | Single unit hay sequential tier |
+
+`ads_interval` không còn được đọc từ v6. Danh sách đầy đủ: `Packages/com.jis.sdkads.common/Runtime/Config/Keys.cs`.
 
 ### 9.2 Luồng cập nhật RC
 
-1. `FirebaseManager.FetchRemoteConfigAsync()` — fetch từ server
-2. `EventManager` phát event `"UpdateRemoteConfigs"`
-3. Mỗi `UnitAdManager.UpdateRemoteConfig()` → `UpdateRemoteConfigValue()` — áp dụng giá trị mới
-4. Ví dụ: `InterstitialAdManager` cập nhật cooldown và level gate
+1. `FirebaseManager.FetchRemoteConfigAsync()` — fetch từ server (trong `InitializeAsync` hoặc `JisAds.FetchAndApplyRemoteConfigAsync()`)
+2. `JisAds` áp dụng lại banner refresh, App Open / Resume policy, ad inventory
+3. Capping interstitial và level gate đọc RC tại thời điểm show
 
 ---
 
@@ -452,9 +370,8 @@ Pipeline chính cho tracking ads:
 
 ```mermaid
 flowchart LR
-    Mediation[Mediation OnAdRevenuePaid] --> ImpressionData
-    ImpressionData --> AdsManager[AdsManager.OnAdRevenuePaidEvent]
-    AdsManager --> Tracker[AdsTracker.TrackAdImpression]
+    Provider[MaxAdProvider / AdMobProvider OnAdRevenuePaid] --> ImpressionData
+    ImpressionData --> Tracker[AdsTracker.TrackAdImpression]
     Tracker --> Firebase[Firebase ad_impression]
     Tracker --> AppsFlyer[AppsFlyer optional]
     Tracker --> SolarEngine[SolarEngine optional]
@@ -499,10 +416,10 @@ Static C# events cho lifecycle interstitial/rewarded/banner + provider init — 
 ```csharp
 using JisSDKAds.Ads;
 
-// Khởi tạo (tự động trên Start nếu autoInitializeOnStart = true)
+// Khởi tạo (tự động trên Start nếu adsInitializationMode = AutoOnStart)
 await JisAds.Instance.InitializeAsync(fetchRemoteConfig: true);
+await JisAds.Instance.FetchAndApplyRemoteConfigAsync();
 
-// Format chuẩn (Core khi sẵn sàng, else Legacy)
 JisAds.Instance.ShowInterstitial(
     closedCallback: () => { },
     showSuccessCallback: () => { },
@@ -518,21 +435,21 @@ JisAds.Instance.ShowRewardVideo(
 
 JisAds.Instance.ShowBannerAds();
 JisAds.Instance.HideBannerAds();
-
-// Legacy-only
 JisAds.Instance.ShowAppOpenAd();
-JisAds.Instance.ShowMRecAds();
-JisAds.Instance.ShowCollapsibleBannerAds();
+
+// Level gate, remove ads, consent
+JisAds.Instance.IsPassLevelToShowInterstitial(level);
 JisAds.Instance.SetRemoveAds(true);
+JisAds.Instance.ShowPrivacyOptionsForm();  // MAX CMP hoặc AdMob UMP
 
 // Trạng thái
 JisAds.Instance.IsReady;
+JisAds.Instance.IsRemoveAds;
 JisAds.Instance.IsInterstitialAdLoaded();
 JisAds.Instance.CanShowRewardedVideo();
 
-// Truy cập trực tiếp layer
-JisAds.Instance.Legacy;  // AdsManager đầy đủ
-JisAds.Instance.Core;    // AdManager (Core)
+// Truy cập Core
+JisAds.Instance.Core;    // AdManager
 ```
 
 ### 11.2 Core provider contract
@@ -551,14 +468,10 @@ public interface IAdService
 }
 ```
 
-### 11.3 Migration từ v3
+### 11.3 Migration
 
-| Cũ (v3) | Mới (v4) |
-|---------|----------|
-| `AdsManager.Instance.ShowInterstitial(...)` | `JisAds.Instance.ShowInterstitial(...)` |
-| `AdsManager.Instance.ShowRewardVideo(...)` | `JisAds.Instance.ShowRewardVideo(...)` |
-| App open (private) | `JisAds.Instance.ShowAppOpenAd()` |
-| Namespace `SDK`, `ABIMaxSDKAds` | `JisSDKAds.Ads`, `JisSDKAds.Core` |
+- Từ v3/v4: [MIGRATION_V4.md](MIGRATION_V4.md)
+- Từ v5 (gỡ legacy runtime): [MIGRATION_V6.md](MIGRATION_V6.md)
 
 ---
 
@@ -568,9 +481,9 @@ public interface IAdService
 
 1. Thêm `com.jis.sdkads.hub` qua Git UPM ([UPM_INSTALL.md](UPM_INSTALL.md))
 2. **JIS SDK → Hub** → Import Firebase, Ads, Enable MAX/AdMob
-3. **JIS SDK → Create Ads Settings Asset** → `JisSDKAdsSettings.asset`
+3. **JIS SDK → Ads → Create/Open Settings Asset** → `JisSDKAdsSettings.asset`
 4. Cấu hình `SDKSetup` per platform (ad unit IDs, mediation)
-5. Scene: `FirebaseManager` + `AdsManager` + `JisAds`
+5. Scene: **JIS SDK → Ads → Scene → Add JisSDK Manager Prefab** (Firebase + JisAds)
 6. Code: `JisAds.Instance.*`
 
 ### 12.2 Integration points
@@ -579,10 +492,10 @@ public interface IAdService
 |---------------|-----------|
 | **UPM install** | Git package + Hub import |
 | **Settings** | ScriptableObject assets |
-| **Scene** | Prefab AdsManager + component JisAds |
-| **IAP / Remove ads** | `SetRemoveAds(bool)` |
-| **Consent (AdMob UMP)** | `AdsManager.ShowConsentForm()` |
-| **Remote Config** | Firebase defaults + fetch; listen `EventManager` |
+| **Scene** | Prefab `JisSDK_Manager` (Firebase + JisAds) |
+| **IAP / Remove ads** | `JisAds.Instance.SetRemoveAds(bool)` |
+| **Consent** | `JisAds.Instance.ShowPrivacyOptionsForm()` |
+| **Remote Config** | Firebase defaults + `FetchAndApplyRemoteConfigAsync()` |
 | **Custom events** | Subscribe `AdEvents` (Core) |
 
 ### 12.3 Sample
@@ -591,81 +504,52 @@ Xem `Packages/com.jis.sdkads.samples/Samples~/MinimalIntegration/README.md`.
 
 ---
 
-## 13. Thành phần Legacy chi tiết
+## 13. Hạn chế & Roadmap
 
-### 13.1 UnitAdManagers
+### 13.1 Hạn chế hiện tại
 
-| Manager | Format | Đặc điểm |
-|---------|--------|----------|
-| `BannerAdManager` | Banner | Show/hide, auto refresh từ RC |
-| `InterstitialAdManager` | Interstitial | AutoLoad + Cooldown + level gate |
-| `RewardAdManager` | Rewarded | Placement tracking |
-| `MRECAdManager` | MREC | Thường AdMob, RC `show_mrec_admob` |
-| `AppOpenAdManager` | App Open | First open flag, RC `show_open_ads` |
-| `CollapsibleBannerAdManager` | Collapsible | AdMob collapsible banner |
-| `ResumeAdManager` | Resume | Inter hoặc App Open sau background |
-
-### 13.2 Mediation Controllers
-
-| Controller | Package | SDK |
-|------------|---------|-----|
-| `MaxMediationController` | `providers.max` | AppLovin MAX |
-| `AdmobMediationController` | `providers.admob` | Google Mobile Ads |
-
-Abstract base `AdsMediationController` định nghĩa: `Init*`, `Request*`, `Show*`, `Is*Loaded`, callback bags (`BannerCallbacks`, `InterstitialCallbacks`, …).
-
----
-
-## 14. Hạn chế & Roadmap
-
-### 14.1 Hạn chế hiện tại
-
-- Firebase **bắt buộc** — AdsManager block init cho đến khi Firebase ready
-- MREC, Collapsible, Resume, Rewarded Interstitial **chỉ Legacy**
-- Per-format mediation trong Legacy vẫn tồn tại nhưng v4 khuyến nghị single mediation
+- Firebase **bắt buộc** — `JisAds` init Firebase trước khi init ads
+- Không có MREC, Collapsible Banner, Rewarded Interstitial
 - Editor: một số format (ví dụ MAX rewarded) fail có chủ đích
 
-### 14.2 Roadmap (Phase tiếp theo)
+### 13.2 Roadmap
 
-1. Mở rộng `IAdService` với MREC, Collapsible
-2. Di chuyển App Open, Resume ads hoàn toàn sang Core
-3. Port RC-driven rules (cooldown, level gate) sang Core
-4. Tách Firebase thành optional abstraction (`IAnalyticsProvider`)
+1. Mở rộng `IAdService` nếu cần MREC / Collapsible
+2. Tách Firebase thành optional abstraction (`IAnalyticsProvider`)
 
 ---
 
-## 15. Tài liệu liên quan
+## 14. Tài liệu liên quan
 
 | Tài liệu | Nội dung |
 |----------|----------|
 | [INDEX.md](../INDEX.md) | Project index |
 | [GAME_SETUP.md](GAME_SETUP.md) | Hướng dẫn setup game |
-| [PHASE4_JISADS.md](PHASE4_JISADS.md) | Chi tiết JisAds facade |
-| [MIGRATION_V4.md](MIGRATION_V4.md) | Migration từ v3 |
+| [ADS_USAGE_GUIDE.md](ADS_USAGE_GUIDE.md) | Cách dùng API JisAds |
+| [MIGRATION_V6.md](MIGRATION_V6.md) | Migration lên 6.0 (gỡ legacy runtime) |
 | [ADS_EDITOR_SETUP.md](ADS_EDITOR_SETUP.md) | Editor setup Ads |
 | [IAP_EDITOR_SETUP.md](IAP_EDITOR_SETUP.md) | Editor setup IAP |
-| [TIERED_INTERSTITIAL.md](TIERED_INTERSTITIAL.md) | Sequential 5-tier inter/reward (AdMob) |
+| [TIERED_INTERSTITIAL.md](TIERED_INTERSTITIAL.md) | Sequential tier inter/reward |
 | [NAMESPACES.md](NAMESPACES.md) | Namespace mapping |
 | [UPM_INSTALL.md](UPM_INSTALL.md) | Cài UPM packages |
 
 ---
 
-## 16. File tham chiếu quan trọng
+## 15. File tham chiếu quan trọng
 
 | Chủ đề | Đường dẫn |
 |--------|-----------|
 | Entry point | `Packages/com.jis.sdkads.ads/Runtime/JisAds.cs` |
-| Legacy orchestrator | `Packages/com.jis.sdkads.ads/Runtime/Ads/AdsManager/AdsManager.cs` |
 | Core orchestrator | `Packages/com.jis.sdkads.core/Runtime/AdManager.cs` |
+| App Open | `Packages/com.jis.sdkads.ads/Runtime/Ads/AppOpen/AppOpenAdService.cs` |
+| Resume ads | `Packages/com.jis.sdkads.ads/Runtime/Ads/Resume/ResumeAdCoordinator.cs` |
 | Format config | `Packages/com.jis.sdkads.ads/Runtime/Ads/SDKSetup/SDKSetup.cs` |
 | Platform settings | `Packages/com.jis.sdkads.ads/Runtime/Settings/JisSDKAdsSettings.cs` |
-| Mediation base | `Packages/com.jis.sdkads.ads/Runtime/Ads/MediationManager/AdsMediationController.cs` |
-| Interstitial lifecycle | `Packages/com.jis.sdkads.ads/Runtime/Ads/UnitAdManager/InterstitialAdManager.cs` |
-| Auto reload | `Packages/com.jis.sdkads.ads/Runtime/Ads/UnitAdManager/Service/AutoLoadSystem.cs` |
+| Consent form | `Packages/com.jis.sdkads.ads/Runtime/Integration/ConsentFormBridge.cs` |
 | Tracking | `Packages/com.jis.sdkads.ads/Runtime/Analystic/AdsTracker.cs` |
 | RC keys | `Packages/com.jis.sdkads.common/Runtime/Config/Keys.cs` |
 | Provider interface | `Packages/com.jis.sdkads.core/Runtime/Interfaces/IAdService.cs` |
 
 ---
 
-*Tài liệu được tạo từ phân tích codebase SDK-Ads v4 — tháng 5/2026.*
+*Tài liệu cập nhật theo codebase SDK-Ads v6 — tháng 10/2026.*
