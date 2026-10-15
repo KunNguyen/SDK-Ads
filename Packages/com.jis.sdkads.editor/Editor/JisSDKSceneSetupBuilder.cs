@@ -1,4 +1,5 @@
 #if UNITY_EDITOR
+using System.Collections.Generic;
 using JisSDKAds.Ads;
 using JisSDKAds.Ads.Resume;
 using JisSDKAds.Ads.Settings;
@@ -13,7 +14,8 @@ namespace JisSDKAds.Editor
 {
     /// <summary>
     /// Builds the JIS SDK scene hierarchy: JisSDK_Manager → Firebase (FirebaseManager, AdsTracker)
-    /// and JisAds (JisAds, ResumeAdCoordinator). Also strips the pre-6.0 legacy Ads_Runtime subtree.
+    /// and JisAds (JisAds, ResumeAdCoordinator). Also strips pre-6.0 legacy leftovers: the Ads_Runtime subtree,
+    /// direct children left with missing scripts only, and missing scripts on the root (old flat layout).
     /// </summary>
     static class JisSDKSceneSetupBuilder
     {
@@ -31,7 +33,7 @@ namespace JisSDKAds.Editor
         {
             if (JisSDKScenePrefabUtility.TryFocusExistingManager(out var existingRoot))
             {
-                if (FindLegacyAdsRuntime(existingRoot) != null
+                if (FindLegacyAdsRuntime(existingRoot, new List<GameObject>(), out _)
                     && EditorUtility.DisplayDialog(
                         "JIS SDK Manager",
                         "This manager still carries the legacy Ads_Runtime subtree (AdsManager, mediation controllers, unit managers). Remove it?",
@@ -121,24 +123,33 @@ namespace JisSDKAds.Editor
         }
 
         /// <summary>
-        /// Removes Ads_Runtime under <paramref name="root"/>. A prefab instance in a scene is fixed through its
+        /// Removes the legacy leftovers under <paramref name="root"/>. A prefab instance in a scene is fixed through its
         /// source asset (the instance follows); a prefab-stage object or a plain scene object is edited in place.
         /// </summary>
         public static bool RemoveLegacyAdsRuntime(GameObject root)
         {
-            var legacy = FindLegacyAdsRuntime(root);
-            if (legacy == null)
+            var legacyChildren = new List<GameObject>();
+            if (!FindLegacyAdsRuntime(root, legacyChildren, out var stripRootMissingScripts))
                 return false;
 
-            var inPrefabStage = PrefabStageUtility.GetPrefabStage(legacy) != null;
-            if (!inPrefabStage && PrefabUtility.IsPartOfPrefabInstance(legacy) && !PrefabUtility.IsPartOfPrefabAsset(legacy))
+            var probe = legacyChildren.Count > 0 ? legacyChildren[0] : root;
+            var inPrefabStage = PrefabStageUtility.GetPrefabStage(probe) != null;
+            if (!inPrefabStage && PrefabUtility.IsPartOfPrefabInstance(probe) && !PrefabUtility.IsPartOfPrefabAsset(probe))
             {
-                var assetPath = PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(legacy);
+                var assetPath = PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(probe);
                 if (!string.IsNullOrEmpty(assetPath))
                     return RemoveLegacyAdsRuntimeFromAsset(assetPath);
             }
 
-            Undo.DestroyObjectImmediate(legacy);
+            foreach (var legacy in legacyChildren)
+                Undo.DestroyObjectImmediate(legacy);
+
+            if (stripRootMissingScripts)
+            {
+                Undo.RegisterCompleteObjectUndo(root, "Remove legacy missing scripts");
+                GameObjectUtility.RemoveMonoBehavioursWithMissingScript(root);
+            }
+
             return true;
         }
 
@@ -148,12 +159,15 @@ namespace JisSDKAds.Editor
             var contents = PrefabUtility.LoadPrefabContents(assetPath);
             try
             {
-                var legacy = FindLegacyAdsRuntime(contents);
-                if (legacy == null)
+                var legacyChildren = new List<GameObject>();
+                if (!FindLegacyAdsRuntime(contents, legacyChildren, out var stripRootMissingScripts))
                     return false;
 
                 // Preview-scene objects are not undoable: a plain destroy keeps the Undo stack clean.
-                Object.DestroyImmediate(legacy);
+                foreach (var legacy in legacyChildren)
+                    Object.DestroyImmediate(legacy);
+                if (stripRootMissingScripts)
+                    GameObjectUtility.RemoveMonoBehavioursWithMissingScript(contents);
                 PrefabUtility.SaveAsPrefabAsset(contents, assetPath);
                 Debug.Log($"[JIS SDK] Removed legacy Ads_Runtime from prefab {assetPath}.");
                 return true;
@@ -164,19 +178,35 @@ namespace JisSDKAds.Editor
             }
         }
 
-        static GameObject FindLegacyAdsRuntime(GameObject root)
+        /// <summary>
+        /// Collects the pre-6.0 leftovers under <paramref name="root"/>: direct children named Ads_Runtime or carrying
+        /// missing scripts and no live SDK component (destroyed whole), and whether the root itself carries missing
+        /// scripts and no live SDK component (old flat layout: only the missing-script components are stripped).
+        /// </summary>
+        static bool FindLegacyAdsRuntime(GameObject root, List<GameObject> legacyChildren, out bool stripRootMissingScripts)
         {
+            legacyChildren.Clear();
+            stripRootMissingScripts = false;
             if (root == null)
-                return null;
+                return false;
 
             foreach (Transform child in root.transform)
             {
-                if (child.name == LegacyAdsRuntimeChildName)
-                    return child.gameObject;
+                var go = child.gameObject;
+                if (go.name == LegacyAdsRuntimeChildName || IsOrphanedLegacyObject(go))
+                    legacyChildren.Add(go);
             }
 
-            return null;
+            stripRootMissingScripts = IsOrphanedLegacyObject(root);
+            return legacyChildren.Count > 0 || stripRootMissingScripts;
         }
+
+        static bool IsOrphanedLegacyObject(GameObject go) =>
+            GameObjectUtility.GetMonoBehavioursWithMissingScriptCount(go) > 0
+            && go.GetComponent<FirebaseManager>() == null
+            && go.GetComponent<AdsTracker>() == null
+            && go.GetComponent<JisAds>() == null
+            && go.GetComponent<ResumeAdCoordinator>() == null;
 
         static GameObject CreateChild(Transform parent, string name)
         {
