@@ -63,6 +63,7 @@ namespace JisSDKAds.Ads
         private bool _interstitialCallbacksInFlight;
         private int _interstitialShowAttemptId;
         private Coroutine _interstitialWatchdogCoroutine;
+        private bool _warnedInterstitialLevelGateWithoutSettings;
 
         private bool _pendingRewardedWasShown;
         private bool _pendingRewardedRewardGranted;
@@ -3213,10 +3214,24 @@ namespace JisSDKAds.Ads
 
         public bool CanShowBannerAd() => IsBannerAdLoaded();
 
-        /// <summary>Gameplay interstitial level gate: RC key level_show_inter when ready, else settings fallback.</summary>
+        /// <summary>
+        /// Gameplay interstitial level gate: RC key level_show_inter when ready, else settings fallback.
+        /// Without a settings asset the gate stays closed.
+        /// </summary>
         public bool IsPassLevelToShowInterstitial(int level)
         {
-            var required = settings != null ? settings.interstitialLevelFallback : 0;
+            if (settings == null)
+            {
+                if (!_warnedInterstitialLevelGateWithoutSettings)
+                {
+                    _warnedInterstitialLevelGateWithoutSettings = true;
+                    DebugAds.LogWarning("[JisAds] IsPassLevelToShowInterstitial: no JisSDKAdsSettings assigned — interstitial level gate stays closed.");
+                }
+
+                return false;
+            }
+
+            var required = settings.interstitialLevelFallback;
             var firebase = FirebaseManager.Instance;
             if (firebase != null && firebase.IsRemoteConfigReady)
                 required = (int)firebase.GetConfigDouble(Keys.key_remote_interstitial_level);
