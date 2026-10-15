@@ -39,4 +39,6 @@ rewarded-interstitial partials), `MaxMediationConfigBridge`, `AdmobMediationConf
 Existing `JisSDK_Manager` prefabs carry an `Ads_Runtime` subtree whose scripts no longer exist.
 Select the prefab (or the scene object) and run **JIS SDK → Ads → Scene → Remove legacy Ads_Runtime**.
 Set `JisSDKAdsSettings.interstitialLevelFallback` to the value previously stored in
-`AdsManager.LevelPassToShowInterstitial`.
+`AdsManager.LevelPassToShowInterstitial`. The old `AdsManager` default was **2**, while
+`interstitialLevelFallback` defaults to **3**: projects that never edited the prefab value
+should set `interstitialLevelFallback` to 2 to keep the same gate when Remote Config is not ready.
