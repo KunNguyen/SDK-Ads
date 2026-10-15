@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Firebase.Analytics;
 using JisSDKAds.Ads.Tracking;
 using JisSDKAds.Common;
@@ -289,6 +290,27 @@ namespace JisSDKAds.Ads
         public void TrackAdsInterstitial_ShowFailByLoad(string placement = "")
         {
             LogInterstitialEvent(ad_inter_show_fail_by_load, placement, EnsureInterstitialShowAttempt());
+            ClearInterstitialShowAttempt();
+        }
+
+        /// <summary>
+        /// Same event with a "reason" parameter (core_not_ready, not_loaded_in_flight, not_loaded_backoff,
+        /// not_loaded_idle, no_provider, ...) so a fail streak can be attributed without device logs.
+        /// </summary>
+        public void TrackAdsInterstitial_ShowFailByLoad(string placement, string reason)
+        {
+            if (string.IsNullOrEmpty(reason))
+            {
+                TrackAdsInterstitial_ShowFailByLoad(placement);
+                return;
+            }
+
+            var parameters = new List<Parameter>(
+                CreatePlacementSessionAdIndexParameters(placement, EnsureInterstitialShowAttempt()))
+            {
+                new Parameter("reason", reason),
+            };
+            FirebaseManager.Instance.LogEvent(ad_inter_show_fail_by_load, parameters.ToArray());
             ClearInterstitialShowAttempt();
         }
 

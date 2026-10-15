@@ -31,6 +31,15 @@ namespace JisSDKAds.Providers.Max.SequentialTier
             _isReady = false;
             _adUnitId = adUnitId;
 
+            // MAX may not raise OnAdLoaded again for a unit that already holds an ad (e.g. a load that
+            // finished after this tier timed out): report it ready instead of waiting for a timeout.
+            if (MaxSdk.IsInterstitialReady(adUnitId))
+            {
+                _isReady = true;
+                onSuccess?.Invoke();
+                return;
+            }
+
             Action<string, MaxSdkBase.AdInfo> onLoaded = null;
             Action<string, MaxSdkBase.ErrorInfo> onFailed = null;
 

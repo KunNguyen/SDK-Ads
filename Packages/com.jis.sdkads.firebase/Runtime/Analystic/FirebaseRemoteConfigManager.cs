@@ -29,6 +29,7 @@ namespace JisSDKAds.Firebase
                         { Keys.key_remote_interstitial_capping_time, 30 },
                         { Keys.key_remote_interstitial_capping_from_app_open_seconds, 90 },
                         { Keys.key_remote_interstitial_capping_between_shows_seconds, 90 },
+                        { Keys.key_remote_interstitial_capping_after_load_fail_seconds, 30 },
                         { Keys.key_remote_inter_reward_interspersed, false },
                         { Keys.key_remote_inter_reward_interspersed_time, 10 },
                         { Keys.key_remote_free_ads, 1 },

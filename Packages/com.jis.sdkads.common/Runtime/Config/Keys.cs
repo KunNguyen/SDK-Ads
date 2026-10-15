@@ -22,6 +22,8 @@ namespace JisSDKAds.Common {
           // - type2: minimum seconds between successful interstitial shows (also reset when rewarded watched)
           public static readonly string key_remote_interstitial_capping_from_app_open_seconds = "inter_capping_from_app_open_seconds";
           public static readonly string key_remote_interstitial_capping_between_shows_seconds = "inter_capping_between_shows_seconds";
+          // - type3: after a show request finds no loaded ad, hold further requests for X seconds (cleared when an ad loads)
+          public static readonly string key_remote_interstitial_capping_after_load_fail_seconds = "inter_capping_after_load_fail_seconds";
 
           public static readonly string key_remote_inter_reward_interspersed = "inter_reward_interspersed";
           public static readonly string key_remote_inter_reward_interspersed_time = "inter_reward_interspersed_time";

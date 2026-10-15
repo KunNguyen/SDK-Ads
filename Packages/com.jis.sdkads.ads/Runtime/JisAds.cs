@@ -52,6 +52,7 @@ namespace JisSDKAds.Ads
         private bool _isRemoveAds;
         private float _appOpenUnscaledTime;
         private float _interstitialNextAllowedUnscaledTime;
+        private float _interstitialNextAllowedAfterLoadFailUnscaledTime;
         private bool _pendingInterstitialWasShown;
         private bool _pendingInterstitialHadLoadedAdAtShowRequest;
         private bool _pendingInterstitialIsTracking;
@@ -1802,6 +1803,8 @@ namespace JisSDKAds.Ads
             if (providerId == AdProviderId.None)
                 return;
             _interstitialLoadedAtUnscaled[providerId] = Time.unscaledTime;
+            // An ad is ready again: the post-fail hold must not delay the next show request.
+            _interstitialNextAllowedAfterLoadFailUnscaledTime = 0f;
         }
 
         void RecordRewardedLoaded(AdProviderId providerId)
@@ -2264,17 +2267,21 @@ namespace JisSDKAds.Ads
                 if (!CanOperateFullscreen())
                 {
                     DebugAds.LogWarning("[JisAds] Interstitial show skipped — Core not ready. Warm-loading.");
+                    ArmInterstitialAfterLoadFailHold();
                     RequestInterstitialLoadIfNeeded();
-                    TrackPendingInterstitialShowFailure(isTracking);
+                    TrackPendingInterstitialShowFailure(isTracking, "core_not_ready");
                     ConsumePendingInterstitialCallbacksOnFail();
                     return;
                 }
 
                 if (!_pendingInterstitialHadLoadedAdAtShowRequest)
                 {
+                    // Reason is read before the warm-load below flips the in-flight state.
+                    var notLoadedReason = GetInterstitialNotLoadedReason();
                     DebugAds.LogWarning("[JisAds] Interstitial show skipped: no mediation has a loaded ad. Warm-loading for next request.");
+                    ArmInterstitialAfterLoadFailHold();
                     RequestInterstitialLoadIfNeeded();
-                    TrackPendingInterstitialShowFailure(isTracking);
+                    TrackPendingInterstitialShowFailure(isTracking, notLoadedReason);
                     ConsumePendingInterstitialCallbacksOnFail();
                     return;
                 }
@@ -2286,7 +2293,7 @@ namespace JisSDKAds.Ads
                 if (provider == AdProviderId.None)
                 {
                     Debug.LogWarning("[JisAds] Core interstitial failed: no mediation provider registered.");
-                    TrackPendingInterstitialShowFailure(isTracking);
+                    TrackPendingInterstitialShowFailure(isTracking, "no_provider");
                     ConsumePendingInterstitialCallbacksOnFail();
                     return;
                 }
@@ -2302,7 +2309,7 @@ namespace JisSDKAds.Ads
                     onFailed: err =>
                     {
                         Debug.LogWarning($"[JisAds] Core interstitial failed: {err}");
-                        TrackPendingInterstitialShowFailure(isTracking);
+                        TrackPendingInterstitialShowFailure(isTracking, "core_show_failed");
                         ConsumePendingInterstitialCallbacksOnFail();
                         ScheduleInterstitialReloadAfterShow();
                     },
@@ -2310,7 +2317,7 @@ namespace JisSDKAds.Ads
                 return;
             }
             Debug.LogWarning("[JisAds] Legacy interstitial is removed. Enable Core AdManager.");
-            TrackPendingInterstitialShowFailure(isTracking);
+            TrackPendingInterstitialShowFailure(isTracking, "core_disabled");
             ConsumePendingInterstitialCallbacksOnFail();
         }
 
@@ -2346,7 +2353,7 @@ namespace JisSDKAds.Ads
             tracker.TrackAdsInterstitial_LoadedFail(error ?? string.Empty, GetLoadRequestTimeSeconds(loadStartedAtUnscaled));
         }
 
-        void TrackPendingInterstitialShowFailure(bool isTracking)
+        void TrackPendingInterstitialShowFailure(bool isTracking, string failByLoadReason = null)
         {
             if (!isTracking)
                 return;
@@ -2359,9 +2366,19 @@ namespace JisSDKAds.Ads
             }
 
             if (!_pendingInterstitialHadLoadedAdAtShowRequest)
-                tracker.TrackAdsInterstitial_ShowFailByLoad(_pendingInterstitialPlacement);
+                tracker.TrackAdsInterstitial_ShowFailByLoad(_pendingInterstitialPlacement, failByLoadReason);
             else
                 tracker.TrackAdsInterstitial_ShowFail(_pendingInterstitialPlacement);
+        }
+
+        /// <summary>Why no interstitial was available at show time: a load is running, backoff is waiting, or nothing is pending.</summary>
+        string GetInterstitialNotLoadedReason()
+        {
+            if (_interstitialLoadGate.IsLoadInFlight())
+                return "not_loaded_in_flight";
+            if (_preloadRetryInFlight[PreloadFormatIndex(StandardAdPreloadFormat.Interstitial)])
+                return "not_loaded_backoff";
+            return "not_loaded_idle";
         }
 
         void TrackPendingInterstitialClick()
@@ -2462,7 +2479,33 @@ namespace JisSDKAds.Ads
                 return true;
             }
 
+            // Type 3: a show request found no loaded ad. Hold further requests (and their click/fail events)
+            // until an ad loads or the hold expires, so one "no ad" stretch is not counted once per trigger.
+            // A loaded ad always wins: the hold only applies while nothing is ready.
+            var afterLoadFailRemaining = _interstitialNextAllowedAfterLoadFailUnscaledTime - Time.unscaledTime;
+            if (afterLoadFailRemaining > 0f && !IsInterstitialAdLoaded())
+            {
+                remainingSeconds = afterLoadFailRemaining;
+                reason = "after_load_fail";
+                return true;
+            }
+
             return false;
+        }
+
+        float GetCappingAfterLoadFailSeconds()
+        {
+            if (FirebaseManager.Instance == null)
+                return 0f;
+            return (float)FirebaseManager.Instance.GetConfigDouble(Keys.key_remote_interstitial_capping_after_load_fail_seconds);
+        }
+
+        void ArmInterstitialAfterLoadFailHold()
+        {
+            var seconds = GetCappingAfterLoadFailSeconds();
+            if (seconds <= 0f)
+                return;
+            _interstitialNextAllowedAfterLoadFailUnscaledTime = Time.unscaledTime + seconds;
         }
 
         float GetCappingFromAppOpenSeconds()

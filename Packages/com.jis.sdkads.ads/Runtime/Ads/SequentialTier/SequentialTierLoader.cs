@@ -194,6 +194,11 @@ namespace JisSDKAds.Ads.SequentialTier
                     return;
                 }
 
+                // No Remote Config tier id at all (RC missing or not fetched yet): use the local fallback
+                // unit right away instead of failing the ladder until RC arrives.
+                if (TryLoadLocalFallbackUnit("no Remote Config tier ad unit id"))
+                    return;
+
                 FinishLadderFailed("no_remote_tier_ad_unit_configured");
                 return;
             }
@@ -203,16 +208,22 @@ namespace JisSDKAds.Ads.SequentialTier
 
         void TryLoadFallbackAfterFillFailures()
         {
+            if (TryLoadLocalFallbackUnit($"Fill failed {_fillFailureCount} time(s)"))
+                return;
+
+            FinishLadderFailed("fallback_ad_unit_not_configured");
+        }
+
+        /// <summary>Loads the settings fallback unit as the Fill tier. False when none is configured.</summary>
+        bool TryLoadLocalFallbackUnit(string why)
+        {
             var fallbackAdUnitId = _config.ResolveDefaultAdUnitId();
             if (string.IsNullOrWhiteSpace(fallbackAdUnitId))
-            {
-                FinishLadderFailed("fallback_ad_unit_not_configured");
-                return;
-            }
+                return false;
 
-            DebugAds.Log(
-                $"[SequentialTier] {_format} Fill failed {_fillFailureCount} time(s) - loading local fallback unit.");
+            DebugAds.Log($"[SequentialTier] {_format} {why} - loading local fallback unit.");
             TryLoadAdUnit(fallbackAdUnitId.Trim(), AdTier.Fill, isFallback: true);
+            return true;
         }
 
         void TryLoadAdUnit(string adUnitId, AdTier tier, bool isFallback)
