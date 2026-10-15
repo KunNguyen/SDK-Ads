@@ -20,6 +20,8 @@ namespace JisSDKAds.Ads.Resume
         AppOpenAdService _appOpen;
         DateTime _pauseTime = DateTime.Now;
         DateTime _lastShowTime = DateTime.Now;
+        DateTime _skipNextResumeUntil = DateTime.MinValue;
+        bool _skipThisResume;
         bool _remoteConfigReady;
 
         public ResumeAdPolicy Policy => _policy;
@@ -41,11 +43,29 @@ namespace JisSDKAds.Ads.Resume
             if (paused)
             {
                 _pauseTime = DateTime.Now;
+                _skipThisResume = _pauseTime <= _skipNextResumeUntil;
+                _skipNextResumeUntil = DateTime.MinValue;
+                return;
+            }
+
+            if (_skipThisResume)
+            {
+                _skipThisResume = false;
+                DebugAds.Log("[ResumeAd] skipped: requested by game");
                 return;
             }
 
             if (_remoteConfigReady)
                 TryShowOnForeground();
+        }
+
+        /// <summary>
+        /// Skip the resume ad for the next background -> foreground cycle, e.g. before the game opens an external
+        /// browser / store page. The request expires if the app is not backgrounded within <paramref name="windowSeconds"/>.
+        /// </summary>
+        public void SkipNextResume(float windowSeconds = 60f)
+        {
+            _skipNextResumeUntil = DateTime.Now.AddSeconds(windowSeconds);
         }
 
         public void TryShowOnForeground()

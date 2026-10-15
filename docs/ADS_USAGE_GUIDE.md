@@ -211,6 +211,11 @@ bool ready = JisAds.Instance.IsAppOpenAdLoaded();
 ```
 App Open lúc cold-start và Resume ad khi quay lại app được điều khiển bằng Remote Config (mục 4) + cấu hình trên component `JisAds`.
 
+Game sắp mở trình duyệt / trang ngoài (vd. click quảng cáo in-game) và không muốn bị Resume ad khi người chơi quay lại:
+```csharp
+JisAds.Instance.Resume?.SkipNextResume();   // bỏ qua Resume ad của lần background -> foreground kế tiếp (hết hạn sau 60s nếu app không vào background)
+```
+
 ### Remove Ads
 ```csharp
 JisAds.Instance.SetRemoveAds(true);   // tắt banner/interstitial/app-open
