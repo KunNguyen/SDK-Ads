@@ -1,3 +1,5 @@
+> **Historical (pre-6.0):** describes the SDK before the legacy `AdsManager` removal — for 6.0 see [MIGRATION_V6.md](MIGRATION_V6.md).
+
 # Migration guide — SDK v3 → v4
 
 Breaking changes. No backward compatibility with `SDK` / `ABIMaxSDKAds` namespaces.

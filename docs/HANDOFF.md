@@ -1,6 +1,7 @@
 # JIS SDK v4 — Handoff / Tiếp tục công việc
 
 > **Cập nhật:** sau Phase 4 + namespace migration. Dùng file này khi mở chat mới hoặc context đầy.
+> **6.0:** legacy ads runtime đã bị gỡ — `JisAds` là entry point duy nhất ([MIGRATION_V6.md](MIGRATION_V6.md), kiến trúc hiện tại: [ADS_DESIGN.md](ADS_DESIGN.md)).
 
 ---
 
@@ -41,6 +42,7 @@
 | **4** | `JisAds` facade + Core bridge | ✅ Done |
 | **5** | Namespace `JisSDKAds.*` | ✅ Done |
 | **6** | Samples, Hub auto-settings, Core App Open, migration doc | ✅ Done (MREC Core = backlog) |
+| **6.0** | Gỡ legacy ads runtime, scene chỉ còn Firebase + JisAds | ✅ Done |
 
 ---
 
@@ -53,7 +55,7 @@ SDK-Ads/
 │   ├── com.jis.sdkads.core/         # AdManager, interfaces, Odin
 │   ├── com.jis.sdkads.common/       # EventManager, Keys, Utils, ScriptOrder
 │   ├── com.jis.sdkads.firebase/     # FirebaseManager, RC, Analytics
-│   ├── com.jis.sdkads.ads/          # AdsManager (legacy), JisAds, SDKSetup, settings
+│   ├── com.jis.sdkads.ads/          # JisAds, SDKSetup, settings, App Open, Resume, tracking
 │   ├── com.jis.sdkads.providers.max/
 │   ├── com.jis.sdkads.providers.admob/
 │   ├── com.jis.sdkads.iap/
@@ -78,9 +80,9 @@ SDK-Ads/
 
 | Thành phần | File / class | Ghi chú |
 |------------|--------------|---------|
-| **Game API ưu tiên** | `JisSDKAds.Ads.JisAds` | `Packages/.../ads/Runtime/JisAds.cs` |
-| Legacy full ads | `JisSDKAds.Ads.AdsManager` | App Open, MREC, Resume, RC, cooldown… |
-| Core ads | `JisSDKAds.Core.AdManager` | Inter / Reward / Banner |
+| **Game API (duy nhất)** | `JisSDKAds.Ads.JisAds` | `Packages/.../ads/Runtime/JisAds.cs` — capping, level gate, remove ads, consent |
+| Core ads | `JisSDKAds.Core.AdManager` | Inter / Reward / Banner / App Open |
+| App Open / Resume | `AppOpenAdService`, `ResumeAdCoordinator` | `Packages/.../ads/Runtime/Ads/{AppOpen,Resume}/` |
 | Settings | `JisSDKAds.Ads.Settings.JisSDKAdsSettings` | Android/iOS profiles |
 | Provider từ SDKSetup | `ProviderConfigFactory` | `Packages/.../ads/Runtime/ProviderConfigFactory.cs` |
 | Firebase | `JisSDKAds.Firebase.FirebaseManager` | |
@@ -89,9 +91,9 @@ SDK-Ads/
 
 ### Init flow (`JisAds`)
 
-1. `Awake`: `Instance`, `AdsManager` Manual mode, `settings.ApplyToAdsManager`
-2. `Start` → `InitializeAsync()`: Firebase → `InitializeAdsFlow()` legacy → Core (nếu `useCoreForStandardFormats`)
-3. Chờ `_legacy.IsReady`
+1. `Awake`: `Instance`
+2. `Start` → `InitializeAsync()` (khi `autoInitializeOnStart`): warm up SDK → Firebase RC → ad inventory từ RC → tạo provider + `AdManager.Initialize()`
+3. Core sẵn sàng → `IsReady = true`, bootstrap App Open + Resume, preload
 
 ### Bug đã sửa gần đây
 
@@ -99,7 +101,7 @@ SDK-Ads/
 - `JisSDKAds.IAP.asmdef` + `Unity.Services.Core`
 - `ProviderConfigFactory`: `using JisSDKAds.Core.Interfaces` **ngoài** `#if UNITY_AD_MAX`
 - AppsFlyer: facade `JisSDKAds.Ads.Tracking.AppsflyerManager` + package `analytics.appsflyer` registration
-- Một số file bị hỏng khi migrate namespace (PowerShell) — đã sửa `AdsManager`, unit managers, `AdsTracker`, `SolarEngineManager`
+- Một số file bị hỏng khi migrate namespace (PowerShell) — đã sửa (các file legacy liên quan đã bị gỡ ở 6.0), `AdsTracker`, `SolarEngineManager`
 
 ---
 
@@ -122,7 +124,7 @@ using JisSDKAds.Ads;
 using JisSDKAds.Firebase;
 
 JisAds.Instance.ShowInterstitial(...);
-JisAds.Instance.ShowAppOpenAd();  // legacy
+JisAds.Instance.ShowAppOpenAd();
 ```
 
 ---
@@ -145,13 +147,13 @@ Game project: Git URL + `?path=Packages/...#4.0.0`
 
 ## 8. Scene setup game (tóm tắt)
 
-Xem [GAME_SETUP.md](GAME_SETUP.md), [PHASE4_JISADS.md](PHASE4_JISADS.md)
+Xem [GAME_SETUP.md](GAME_SETUP.md), [ADS_EDITOR_SETUP.md](ADS_EDITOR_SETUP.md)
 
 1. User cài Firebase (Google)
 2. Hub → Import Firebase, Ads, …
-3. **JIS SDK → Create Ads Settings Asset**
-4. Scene: `FirebaseManager` + `AdsManager` prefab + **`JisAds`** (+ `JisSDKAdsSettings`)
-5. Bật **Use Core For Standard Formats** trên `JisAds`
+3. **JIS SDK → Ads → Create/Open Settings Asset**
+4. Scene: **JIS SDK → Ads → Scene → Add JisSDK Manager Prefab** → `JisSDK_Manager` (Firebase + JisAds)
+5. **JIS SDK → Ads → Apply Settings to Scene**
 
 ---
 
@@ -169,16 +171,16 @@ Xem [GAME_SETUP.md](GAME_SETUP.md), [PHASE4_JISADS.md](PHASE4_JISADS.md)
 **Backlog:**
 
 - Core **MREC** (`IMrecAd`)
-- AdMob **App Open** on Core
 - Unity **.unity** sample scene + prefabs in samples package
-- Thin/remove legacy when Core parity complete
+
+**Done sau Phase 6:** AdMob App Open trên Core; gỡ legacy runtime (6.0).
 
 ---
 
 ## 10. Lệnh / path hữu ích
 
 - Hub menu: `JIS SDK/Hub`
-- Tạo settings: `JIS SDK/Create Ads Settings Asset` → `Assets/JisSDKAds/Settings/`
+- Tạo settings: `JIS SDK/Ads/Create/Open Settings Asset` → `Assets/JisSDKAds/Settings/`
 - Manifest: `Packages/manifest.json`
 - Version package: **4.0.0** (tất cả `package.json` con)
 
@@ -196,7 +198,7 @@ Hub: `JisSDKAds.Hub.GitBaseUrl`, `JisSDKAds.Hub.GitRevision` (mặc định `mai
 
 ## 11. Rủi ro / lưu ý kỹ thuật
 
-- **Hai stack song song:** Legacy `AdsManager` vẫn init mediation đầy đủ; Core chỉ 3 format → tránh double init cùng ad unit nếu bật cả hai cho cùng format (hiện `JisAds` route Core cho standard, legacy vẫn setup unit managers).
+- **Prefab cũ:** `JisSDK_Manager` từ SDK < 6.0 còn subtree `Ads_Runtime` (missing script) → **JIS SDK → Ads → Scene → Remove legacy Ads_Runtime**.
 - **AdMob `appId`** trong `ProviderConfigFactory` đang để `""` — có thể cần lấy từ `SDKSetup` hoặc GMA settings asset.
 - **Firebase DLLs** trong asmdef firebase — user phải có Firebase trong project.
 - **Không commit** secrets / `google-services.json` nhầm vào SDK repo nếu sensitive.
@@ -223,5 +225,7 @@ Hoặc:
 | [REFACTOR_PLAN.md](REFACTOR_PLAN.md) | Bảng phase ngắn |
 | [GAME_SETUP.md](GAME_SETUP.md) | Hướng dẫn game project |
 | [NAMESPACES.md](NAMESPACES.md) | Map namespace |
-| [PHASE4_JISADS.md](PHASE4_JISADS.md) | Kiến trúc JisAds |
+| [ADS_DESIGN.md](ADS_DESIGN.md) | Kiến trúc ads v6 |
+| [MIGRATION_V6.md](MIGRATION_V6.md) | Gỡ legacy runtime (6.0) |
+| [PHASE4_JISADS.md](PHASE4_JISADS.md) | Kiến trúc JisAds (lịch sử, trước 6.0) |
 | [README.md](../README.md) | Overview repo |

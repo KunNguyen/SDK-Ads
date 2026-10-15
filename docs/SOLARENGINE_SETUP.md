@@ -32,7 +32,7 @@ Phải trả về `True`.
 
 1. Tạo GameObject với `SolarEngineManager` (hoặc prefab từ team).
 2. Gán **App Key** SolarEngine.
-3. Ads impression / IAP được bridge tự động khi `AdsManager` + IAP active.
+3. Ads impression (qua `AdsAnalyticsBridge` → `SolarEngineAdsIntegration`) và IAP được bridge tự động khi define `UNITY_SOLAR_ENGINE` bật và scene có `JisSDK_Manager` (Firebase + JisAds).
 
 ## Namespace JIS
 

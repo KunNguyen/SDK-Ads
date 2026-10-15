@@ -1,3 +1,5 @@
+> **Historical (pre-6.0):** describes the SDK before the legacy `AdsManager` removal — for 6.0 see [MIGRATION_V6.md](MIGRATION_V6.md).
+
 # Phase 4 — JisAds facade
 
 ## Architecture

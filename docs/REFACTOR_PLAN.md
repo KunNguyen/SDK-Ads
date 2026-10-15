@@ -1,3 +1,5 @@
+> **Tài liệu lịch sử (trước 6.0):** mô tả SDK khi còn legacy `AdsManager` — bản 6.0 xem [MIGRATION_V6.md](MIGRATION_V6.md).
+
 # JIS SDK v4 Refactor Plan
 
 > **Tiếp tục công việc:** đọc [HANDOFF.md](HANDOFF.md) (đầy đủ context, quyết định, file paths, Phase 6).

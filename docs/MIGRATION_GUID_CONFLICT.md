@@ -69,9 +69,11 @@ Không còn dòng `GUID ... conflicts with ... ABIMaxSDKAds`.
 
 Sau khi xóa `ABIMaxSDKAds`, prefab/scene có thể mất reference script cũ.
 
-1. Mở prefab `AdsManager` / `JisSDK_Manager`
-2. **JIS SDK → Ads → Scene → Add Manager Prefab** (tạo lại)
+1. Chọn prefab / scene object `JisSDK_Manager`
+2. **JIS SDK → Ads → Scene → Remove legacy Ads_Runtime** — gỡ subtree `Ads_Runtime` và các object chỉ còn missing script (layout trước 6.0), hoặc xóa đi rồi **JIS SDK → Ads → Scene → Add JisSDK Manager Prefab** (tạo lại Firebase + JisAds)
 3. Gán lại `JisSDKAdsSettings`, `IAPPackageConfigs`, …
+
+Chi tiết gỡ runtime cũ: [MIGRATION_V6.md](MIGRATION_V6.md).
 
 ---
 

@@ -20,15 +20,17 @@ Per platform (Android / iOS), for **Interstitial** and **Rewarded**:
 
 At runtime, RC **overrides** the editor toolbar. Editor settings are the fallback before fetch.
 
-### Bootstrap order (AdsManager / JisAds)
+### Bootstrap order (JisAds)
 
-1. Firebase init  
-2. **Fetch & activate Remote Config** (when `fetchRemoteConfigBeforeAds` is enabled on AdsManager)  
-3. Apply inventory mode + tier unit IDs to AdMob controller  
-4. Init mediation → init unit managers → `ApplyRemoteConfigNow` per format (capping, AOA flags, autoload)  
-5. Ad requests / autoload start only after step 4  
+`JisAds.InitializeAsync(fetchRemoteConfig: true)` (called from `Start` when `adsInitializationMode = AutoOnStart`):
 
-`JisAds.InitializeAsync(fetchRemoteConfig: true)` and `AdsManager.InitializeAllAsync()` follow this order by default.
+1. Warm up the MAX / AdMob SDKs
+2. **Fetch & activate Remote Config** (`FirebaseManager.FetchRemoteConfigAsync()`)
+3. Apply mediation modes, inventory mode and resolved tier unit IDs to the active profile's `SDKSetup`
+4. Create the providers for the active profile, register them with Core `AdManager`, `Initialize()`
+5. Preloads start only after Core is ready (`JisAds.Instance.IsReady`)
+
+`JisAds.Instance.FetchAndApplyRemoteConfigAsync()` re-applies the inventory mode after a later fetch.
 
 When RC (or editor) is **Tiered**:
 
@@ -43,11 +45,13 @@ When RC (or editor) is **Tiered**:
 
 Up to 5 IDs in the single-unit list can auto-fill empty tier slots when you **Apply to Scene**.
 
-## Runtime (legacy AdsManager / AdmobMediationController)
+## Runtime (Core providers)
 
-- `RequestInterstitialAd` / `RequestRewardVideoAd` → ladder preload
-- `IsInterstitialLoaded` / `IsRewardVideoLoaded` → cached ready ad
-- `ShowInterstitialAd` / `ShowRewardVideoAd` → show cache, then preload again
+- AdMob: `AdMobSequentialTierBridge` wraps `AdMobProvider` in `SequentialTierAdServiceDecorator` when the tier config is enabled
+- MAX: `MaxAdProvider` drives the same `SequentialTierLoader` for its tier config
+- `JisAds.Instance.RequestInterstitialLoadIfNeeded()` / `RequestRewardedLoadIfNeeded()` → ladder preload (also run automatically after Core is ready and after each close)
+- `JisAds.Instance.IsInterstitialAdLoaded()` / `IsRewardedVideoLoaded()` → cached ready ad
+- `JisAds.Instance.ShowInterstitial(...)` / `ShowRewardVideo(...)` → show cache, then preload again
 
 Logs: `interstitial_*` / `rewarded_*` (`load_start`, `load_success`, `load_fail`, `load_timeout`, `show_*`, `paid_event`).
 

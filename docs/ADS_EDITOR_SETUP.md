@@ -1,25 +1,14 @@
-# Ads Editor Setup — JIS SDK v4
+# Ads Editor Setup — JIS SDK v6
 
-> Thiết kế lại luồng cấu hình ads trong Editor: **một nguồn sự thật**, platform rõ ràng, format bật/tắt qua mediation.
-
----
-
-## Vấn đề trước đây
-
-| Vấn đề | Mô tả |
-|--------|--------|
-| **Trùng cấu hình** | `AdsManagerSDKSetupContainer` (android/ios) **và** `JisSDKAdsSettings` (profiles) cùng tồn tại |
-| **Đường dẫn rải rác** | `Assets/JisSDKConfigs/` vs `Assets/JisSDKAds/Settings/` |
-| **Menu cũ** | `SDK Setup/...` vs `JIS SDK/...` |
-| **Bug apply** | Interstitial `AdsConfig` dùng nhầm mediation của **Banner** |
-| **isActive sai** | Mọi format luôn `isActive = true` dù mediation = NONE |
-| **Auto apply** | Chỉ tìm Container, bỏ qua `JisSDKAdsSettings` |
+> Luồng cấu hình ads trong Editor: **một nguồn sự thật** (`JisSDKAdsSettings`), platform rõ ràng, format bật/tắt qua mediation.  
+> Từ 6.0 runtime legacy đã bị gỡ — scene chỉ còn **Firebase + JisAds** ([MIGRATION_V6.md](MIGRATION_V6.md)).
 
 ---
 
-## Thiết kế mới (v4)
+## Single source of truth: `JisSDKAdsSettings`
 
-### Single source of truth: `JisSDKAdsSettings`
+Tạo bằng **JIS SDK → Ads → Create/Open Settings Asset** → `Assets/JisSDKAds/Settings/JisSDKAdsSettings.asset`
+(kèm `AndroidSDKSetup.asset` / `IOSSDKSetup.asset` cùng thư mục).
 
 ```
 JisSDKAdsSettings.asset
@@ -30,8 +19,9 @@ JisSDKAdsSettings.asset
 │   └── SequentialTierConfig (trong SDKSetup / AdMob)
 ├── ios: PlatformAdsProfile
 │   └── (tương tự)
-├── adsInitializationMode
-└── singleMediationOnly
+├── adsInitializationMode (Manual | AutoOnStart)
+├── singleMediationOnly
+└── interstitialLevelFallback (level gate khi RC chưa sẵn sàng)
 ```
 
 ### Bật/tắt ad format
@@ -58,11 +48,11 @@ Inspector `JisSDKAdsSettings` hiển thị **overview** từng platform (✓ / �
 
 ```mermaid
 flowchart LR
-    A[JIS SDK → Create Ads Settings] --> B[JisSDKAdsSettings]
+    A[JIS SDK → Ads → Create/Open Settings Asset] --> B[JisSDKAdsSettings]
     B --> C[Assign SDKSetup per platform]
     C --> D[Fill IDs + mediation per format]
-    D --> E[Apply to Scene]
-    E --> F[AdsManager + symbols + JisAds sync]
+    D --> E[Apply Settings to Scene]
+    E --> F[Scripting defines + MAX SDK key + JisAds sync]
 ```
 
 ### Menu chính (`JIS SDK`)
@@ -71,75 +61,81 @@ flowchart LR
 JIS SDK/
 ├── Hub
 ├── Ads/
-│   ├── Create Settings Asset
+│   ├── Create/Open Settings Asset
 │   ├── Apply Settings to Scene
-│   ├── Create Reward Placements Config
-│   ├── Create Tiered Ads Config
 │   ├── Scene/
-│   │   └── Add Manager Prefab
-│   ├── Auto Apply/ ...
-│   └── Legacy/ ...
+│   │   ├── Add JisSDK Manager Prefab
+│   │   └── Remove legacy Ads_Runtime      ← dọn prefab từ SDK < 6.0
+│   └── Auto Apply/
+│       ├── Toggle On Platform Switch
+│       ├── Toggle On Play
+│       ├── Toggle On Build
+│       └── Apply Now (Active Build Target)
 ├── IAP/                              ← tách riêng khỏi Ads
-│   ├── Create Packages Config
+│   ├── Enable IAP
+│   ├── Create/Open Packages Config
+│   ├── Validate Packages Config
 │   └── Scene/
-│       └── Add InApp Purchaser Prefab
+│       └── Add JisSDK InApp Purchaser Prefab
 └── (Hub import IAP module trước — menu IAP cần UNITY_IAP_ACTIVE)
 
 GameObject/JIS SDK/
 ├── Ads/
-│   └── Add Manager
+│   └── Add JisSDK Manager
 └── IAP/
-    └── Add InApp Purchaser
+    ├── Enable IAP
+    └── Add JisSDK InApp Purchaser
 ```
 
-> Menu cũ `SDK Setup/...` đã gỡ — dùng cây menu trên.
+Đường dẫn menu nằm trong `Editor/JisSDKMenuPaths.cs`.
 
 ### Inspector `JisSDKAdsSettings`
 
-- **Apply to Scene** — gán cả 2 platform SDKSetup vào AdsManager, apply active target, `SetupSymbol()`
-- **Validate** — thiếu SDKSetup, không format nào active, tiered thiếu ID
+- **Apply to Scene (active platform)** — chạy `JisSDKAdsSettingsApplier.Apply` (xem bên dưới)
+- **Validate** — thiếu SDKSetup, mediation NONE, không format nào active, tiered thiếu fallback ID, scripting define thiếu / thừa
 - **Platform toolbar** — xem overview + inline SDKSetup (Single / Sequential tier)
 
 ---
 
-## Legacy: `AdsManagerSDKSetupContainer`
+## Apply pipeline (`JisSDKAdsSettingsApplier.Apply`)
 
-Vẫn hỗ trợ backward compatibility:
+1. `ApplyRuntimeDebugSettings()` — debug logging
+2. `SyncAllProfileMediationToSdkSetups()` — `profile.mediation` → `SDKSetup.adsMediationType`
+3. `ApplyScriptingDefinesForAllPlatforms()` — `UNITY_AD_MAX` / `UNITY_AD_ADMOB` cho Android và iOS
+4. Khởi tạo default inventory (single / sequential tier) cho các SDKSetup
+5. `SDKSetup.SyncMaxSdkKeyToAppLovinSettings()` — copy MAX SDK key sang AppLovin settings (idempotent)
+6. `SyncJisAdsInScene()` — gán `JisAds.settings` và đồng bộ `autoInitializeOnStart` theo `adsInitializationMode`
 
-- Menu: `JIS SDK/Legacy/Ads Setup Container`
-- Field **`unifiedSettings`**: khi gán → Apply dùng `JisSDKAdsSettings`
-- Field `android` / `ios` trực tiếp: chỉ khi **không** có unified settings
-
-Khuyến nghị: gán `unifiedSettings` hoặc migrate sang chỉ dùng `JisSDKAdsSettings`.
-
----
-
-## Apply pipeline (`JisSDKAdsSettingsApplier`)
-
-1. `settings.ApplyToAdsManager(adsManager)` — gán android/ios setup + `UpdateAdsMediationConfig`
-2. Sync `JisAds.settings` trong scene
-3. `SDKSetup.SetupSymbol()` — scripting defines MAX/ADMOB
+**Auto Apply** (mặc định bật cả 3) gọi cùng pipeline khi switch platform, khi Play (chỉ khi scene có `JisAds`) và khi build.
 
 ---
 
-## Bug fixes (runtime)
+## Scene
 
-1. **Interstitial AdsConfig** — dùng `GetAdsMediationType(INTERSTITIAL)` (trước đó nhầm BANNER)
-2. **isActive** — `IsActiveAdsType(type)` → mediation != NONE
+**JIS SDK → Ads → Scene → Add JisSDK Manager Prefab** dựng hierarchy và lưu prefab vào `Assets/JisSDKAds/Prefabs/` lần đầu:
+
+```
+JisSDK_Manager
+├── Firebase    FirebaseManager, AdsTracker
+└── JisAds      JisAds (+ JisSDKAdsSettings), ResumeAdCoordinator
+```
+
+Nếu scene đã có manager cũ còn subtree `Ads_Runtime`, menu này hỏi có gỡ không; hoặc chạy
+**JIS SDK → Ads → Scene → Remove legacy Ads_Runtime** trên prefab / scene object.
 
 ---
 
 ## Checklist setup game mới
 
-1. `JIS SDK → Create Ads Settings Asset`
+1. **JIS SDK → Ads → Create/Open Settings Asset**
 2. Chọn `JisSDKAdsSettings` → tab Android / iOS
 3. Mỗi platform: chọn **primary mediation**
 4. Trong SDKSetup: set mediation từng format + ad unit IDs
-5. Cấu hình inter/reward: **Single unit** hoặc **Tiered** (Sequential ladder) + Firebase RC
-6. Scene: **JIS SDK → Ads → Scene → Add Manager Prefab** (tự build `JisSDK_Manager` + lưu prefab vào `Assets/JisSDKAds/Prefabs/` lần đầu)
-7. Gán `JisSDKAdsSettings` trên `JisAds` nếu chưa auto-link
-8. **Apply to Scene**
-8. Play / Build — auto apply nếu bật
+5. Cấu hình inter/reward: **Single unit** hoặc **Tiered** (Sequential ladder) + Firebase RC ([TIERED_INTERSTITIAL.md](TIERED_INTERSTITIAL.md))
+6. Scene: **JIS SDK → Ads → Scene → Add JisSDK Manager Prefab**
+7. **Apply Settings to Scene** (hoặc nút trên inspector)
+8. Code: `JisAds.Instance.*` ([ADS_USAGE_GUIDE.md](ADS_USAGE_GUIDE.md))
+9. Play / Build — auto apply nếu bật
 
 ---
 
@@ -152,4 +148,7 @@ Khuyến nghị: gán `unifiedSettings` hoặc migrate sang chỉ dùng `JisSDKA
 | `Settings/AdsSetupUtility.cs` | Format active status |
 | `Editor/Settings/JisSDKAdsSettingsEditor.cs` | Unified inspector |
 | `Editor/Settings/JisSDKAdsSettingsApplier.cs` | Apply + validate |
-| `Configs/AdsManagerSDKSetupContainer.cs` | Legacy wrapper |
+| `Editor/Settings/JisSDKAdsSettingsMenu.cs` | Create / Apply menu |
+| `Editor/BuildHandler/JisAdsAutoPlatformSetup.cs` | Auto Apply |
+| `Editor/JisSDKSceneSetupBuilder.cs` | Dựng `JisSDK_Manager`, gỡ legacy `Ads_Runtime` |
+| `Editor/JisSDKMenuPaths.cs` | Đường dẫn menu |

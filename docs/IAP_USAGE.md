@@ -179,7 +179,7 @@ bool owned = InAppPurchaser.Instance.HasPurchased("remove_ads");
 
 | Tích hợp | Điều kiện | Hành vi |
 |----------|-----------|---------|
-| **Remove ads** | `ProductKind == RemoveAds` | `JisAds.SetRemoveAds(true)` hoặc `AdsManager` |
+| **Remove ads** | `ProductKind == RemoveAds` | `JisAds.Instance.SetRemoveAds(true)` (qua `IapPurchaseIntegration`) |
 | **Firebase** | `FirebaseManager` ready | Event `iap_purchase` |
 | **AppsFlyer** | `UNITY_APPSFLYER` + package analytics | `TrackAppflyerPurchase` (bỏ qua restore; revenue × 0.65) |
 | **SolarEngine** | `UNITY_SOLAR_ENGINE` | `trackPurchase` (bỏ qua restore; revenue × 0.65) |
@@ -206,7 +206,7 @@ Giá store cập nhật sau `IsStoreReady` (callback `OnInitialProductsFetched`)
 | Menu IAP thiếu mục | **Enable IAP**, chờ recompile, kiểm tra `UNITY_IAP_ACTIVE` |
 | `IAP store not ready` | Gọi `await InitializeAsync()`, đợi `IsStoreReady` |
 | Product not found | Validate config, đúng Product ID store, đã fetch catalog |
-| Mua không remove ads | `ProductKind = RemoveAds`, scene có `JisAds`/`AdsManager` |
+| Mua không remove ads | `ProductKind = RemoveAds`, scene có `JisAds` (log `RemoveAds IAP purchased but no JisAds in scene.` nếu thiếu) |
 | AppsFlyer không track | Define `UNITY_APPSFLYER` trên **cả iOS và Android** |
 | `GooglePlayTangle` compile error (cũ) | Package ≥ bản có `IapTangleLoader` — không cần reference trực tiếp; vẫn nên generate Tangle cho production |
 | Receipt invalid | Kiểm tra Tangle / bundle id / sandbox account |

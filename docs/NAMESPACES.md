@@ -7,13 +7,9 @@ Breaking change: legacy `SDK` and `ABIMaxSDKAds` namespaces are removed.
 | Old | New |
 |-----|-----|
 | `SDK` | `JisSDKAds.Ads` |
-| `SDK.AdsManagers` | `JisSDKAds.Ads.UnitAdManagers` |
-| `SDK.AdsManagers.Interface` | `JisSDKAds.Ads.UnitAdManagers.Interface` |
-| `SDK.Struct` | `JisSDKAds.Ads.Mediation.Callbacks` |
 | `SDK.IAP` | `JisSDKAds.IAP` |
 | `ABIMaxSDKAds.Scripts` | `JisSDKAds.Common` |
 | `ABIMaxSDKAds.Scripts.Utils` | `JisSDKAds.Common` |
-| `ABIMaxSDKAds.Scripts.Ads.AdsManagers.Service` | `JisSDKAds.Ads.UnitAdManagers.Service` |
 | `ABIMaxSDKAds.Scripts.IAPServices` | `JisSDKAds.IAP` |
 | `ABIMaxSDKAds.Editor` | `JisSDKAds.Editor` |
 | Firebase types (was `SDK`) | `JisSDKAds.Firebase` |
@@ -29,12 +25,13 @@ Breaking change: legacy `SDK` and `ABIMaxSDKAds` namespaces are removed.
 ```csharp
 // Before
 using SDK;
-AdsManager.Instance.ShowInterstitial(...);
 
 // After
 using JisSDKAds.Ads;
-AdsManager.Instance.ShowInterstitial(...);
+JisAds.Instance.ShowInterstitial(...);
 ```
+
+The legacy unit-manager / mediation-callback namespaces (`JisSDKAds.Ads.UnitAdManagers*`, `JisSDKAds.Ads.Mediation.Callbacks`) and the legacy ads singleton were removed in 6.0 — API mapping: [MIGRATION_V6.md](MIGRATION_V6.md).
 
 ```csharp
 // Before
@@ -59,8 +56,7 @@ FirebaseManager.Instance...
 
 | Type | Namespace |
 |------|-----------|
-| **`JisAds`** (preferred) | `JisSDKAds.Ads` |
-| `AdsManager` (legacy, obsolete) | `JisSDKAds.Ads` |
+| **`JisAds`** (only ads entry point) | `JisSDKAds.Ads` |
 | `SDKSetup` | `JisSDKAds.Ads` |
 | `JisSDKAdsSettings` | `JisSDKAds.Ads.Settings` |
 | `SdkAdsBootstrap` | `JisSDKAds.Ads` |

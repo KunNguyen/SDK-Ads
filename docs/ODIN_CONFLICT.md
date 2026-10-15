@@ -4,7 +4,7 @@ Từ **SDK 5.1**, JIS SDK **không dùng và không ship Odin Inspector** nữa:
 
 - Package `com.jis.sdkads.odin` đã bị **xóa hẳn** khỏi SDK.
 - `com.jis.sdkads.core` / `com.jis.sdkads.editor` không còn dependency tới Odin.
-- Editor của SDK (`AdsManagerEditor`, `JisSDKAdsSettingsEditor`) dùng `UnityEditor.Editor` thuần.
+- Editor của SDK (`JisSDKAdsSettingsEditor`, …) dùng `UnityEditor.Editor` thuần.
 - Runtime chưa bao giờ dùng Odin — không đổi gì về serialize, prefab, build.
 
 Nhờ vậy SDK **không còn xung đột** với bản Odin Inspector riêng của từng project (Asset Store), và không còn vấn đề license khi phân phối DLL Sirenix.
@@ -32,7 +32,7 @@ Trước đây các code này compile được nhờ bản Odin mà SDK bundle. 
 - [ ] `Library/PackageCache` không còn `com.jis.sdkads.odin@*`
 - [ ] Nếu project dùng Odin: chỉ một bản duy nhất tại `Assets/Plugins/Sirenix` (Asset Store)
 - [ ] Hub không hiện cảnh báo Odin
-- [ ] Compile sạch, inspector `AdsManager` / `JisSDKAdsSettings` hiển thị bình thường
+- [ ] Compile sạch, inspector `JisSDKAdsSettings` hiển thị bình thường
 
 ## Liên quan
 

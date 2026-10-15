@@ -1,4 +1,4 @@
-# Hướng dẫn sử dụng Ads + Firebase (JIS SDK v4)
+# Hướng dẫn sử dụng Ads + Firebase (JIS SDK v6)
 
 Tài liệu này mô tả cách tích hợp **quảng cáo** và **Firebase** (Analytics, Remote Config, Auth tùy chọn) trong game Unity dùng JIS SDK.
 
@@ -9,7 +9,8 @@ Tài liệu này mô tả cách tích hợp **quảng cáo** và **Firebase** (A
 | Cài UPM / Hub | [UPM_INSTALL.md](UPM_INSTALL.md) |
 | Cấu hình Ads trong Editor | [ADS_EDITOR_SETUP.md](ADS_EDITOR_SETUP.md) |
 | Setup game tổng quát | [GAME_SETUP.md](GAME_SETUP.md) |
-| API `JisAds` (kiến trúc) | [PHASE4_JISADS.md](PHASE4_JISADS.md) |
+| Kiến trúc ads (`JisAds`) | [ADS_DESIGN.md](ADS_DESIGN.md) |
+| Migration lên 6.0 | [MIGRATION_V6.md](MIGRATION_V6.md) |
 | Namespace | [NAMESPACES.md](NAMESPACES.md) |
 
 ---
@@ -17,23 +18,26 @@ Tài liệu này mô tả cách tích hợp **quảng cáo** và **Firebase** (A
 ## 1. Kiến trúc tổng quan
 
 ```
-Scene
-├── FirebaseManager          ← Firebase App, Analytics, Remote Config, Auth (tùy chọn)
-├── AdsTracker               ← Gửi event ads lên Firebase Analytics
-├── AdsManager (legacy)      ← App Open, MREC, Resume, RC-driven rules, cooldown
-└── JisAds                   ← Entry point game code (ưu tiên dùng)
-        ├── Legacy AdsManager
-        └── Core AdManager (Interstitial / Rewarded / Banner, nếu bật)
+JisSDK_Manager
+├── Firebase
+│   ├── FirebaseManager      ← Firebase App, Analytics, Remote Config, Auth (tùy chọn)
+│   └── AdsTracker           ← Gửi event ads lên Firebase Analytics
+└── JisAds
+    ├── JisAds               ← Entry point duy nhất cho game code
+    │     ├── Core AdManager (Interstitial / Rewarded / Banner / App Open)
+    │     └── AppOpenAdService
+    └── ResumeAdCoordinator  ← Resume ads (App Open / Interstitial khi quay lại app)
 ```
 
-**Luồng khởi tạo mặc định** (`JisAds.autoInitializeOnStart = true`):
+**Luồng khởi tạo** (`JisAds.InitializeAsync(fetchRemoteConfig)`, tự gọi trong `Start` khi `adsInitializationMode = AutoOnStart`):
 
-1. `FirebaseManager.InitAsync()` — kiểm tra dependency, tạo `FirebaseApp`
-2. (Tùy chọn) `FetchRemoteConfigAsync()` — nếu gọi `InitializeAsync(fetchRemoteConfig: true)`
-3. `AdsManager.InitializeAdsFlow()` — init mediation theo `SDKSetup`
-4. `AdManager` (Core) — nếu `useCoreForStandardFormats = true`
+1. Đọc trạng thái remove ads, warm up SDK MAX / AdMob
+2. `FirebaseManager.FetchRemoteConfigAsync()` — nếu `fetchRemoteConfig: true` (tự tạo `FirebaseManager` nếu scene thiếu)
+3. Áp dụng ad inventory / sequential tier từ RC
+4. Tạo provider theo profile active, đăng ký vào Core `AdManager`, `Initialize()`
+5. Core sẵn sàng → `IsReady = true`, áp dụng RC banner, bootstrap App Open + Resume, preload
 
-Remote Config được unit manager đọc khi init (banner refresh, interstitial capping, app open, resume ads, …).
+Capping interstitial và level gate đọc RC tại thời điểm show; banner / App Open / Resume / inventory được áp dụng lại sau mỗi lần fetch RC.
 
 ---
 
@@ -61,7 +65,7 @@ Remote Config được unit manager đọc khi init (banner refresh, interstitia
 | `UNITY_CRASHLYTICS` | Dùng Crashlytics (nếu cài package) |
 | `Firebase_Database` | Dùng `FirebaseDataManager` (Realtime DB) |
 
-Hub và **Apply Settings to Scene** (`SDKSetup.SetupSymbol()`) tự thêm/bớt define theo mediation và cờ trong `SDKSetup`.
+Hub và **Apply Settings to Scene** tự thêm/bớt define theo mediation và cờ trong `SDKSetup`.
 
 > **Lưu ý iOS:** Nếu dùng AppsFlyer, thêm `UNITY_APPSFLYER` vào define của **iOS** (không chỉ Android), rồi Apply lại.
 
@@ -109,9 +113,9 @@ Các tuỳ chọn khác trên `SDKSetup` / inspector:
 
 **JIS SDK → Ads → Apply Settings to Scene**
 
-- Gán `SDKSetup` Android/iOS vào `AdsManager`
-- Cập nhật scripting defines theo build target đang chọn
-- Đồng bộ `JisAds.settings` trong scene
+- Đồng bộ mediation profile → `SDKSetup`, scripting defines cho Android và iOS
+- Copy MAX SDK key sang AppLovin settings
+- Đồng bộ `JisAds.settings` và `autoInitializeOnStart` trong scene
 
 Chi tiết inspector / validate: [ADS_EDITOR_SETUP.md](ADS_EDITOR_SETUP.md).
 
@@ -121,34 +125,23 @@ Chi tiết inspector / validate: [ADS_EDITOR_SETUP.md](ADS_EDITOR_SETUP.md).
 
 ### Cách nhanh (khuyến nghị)
 
-**JIS SDK → Ads → Scene → Add Manager Prefab**  
-hoặc **GameObject → JIS SDK → Ads → Add Manager**
+**JIS SDK → Ads → Scene → Add JisSDK Manager Prefab**
+hoặc **GameObject → JIS SDK → Ads → Add JisSDK Manager**
 
-Editor tạo object `JisSDK_Manager` gồm:
+Editor tạo `JisSDK_Manager` (và lưu prefab vào `Assets/JisSDKAds/Prefabs/` lần đầu):
 
-- `FirebaseManager`
-- `AdsTracker`
-- `JisAds`
-- `AdsManager` + các `*AdManager` (Banner, Interstitial, Rewarded, MREC, App Open, …)
-- Mediation controller (MAX/AdMob nếu package đã cài)
+- `Firebase` — `FirebaseManager` (init `Manual`) + `AdsTracker`
+- `JisAds` — `JisAds` (đã gán `JisSDKAdsSettings`) + `ResumeAdCoordinator`
 
-Sau đó gán **`JisSDKAdsSettings`** vào component `JisAds` (và `SdkAdsBootstrap` nếu dùng).
+Prefab từ SDK < 6.0 còn subtree `Ads_Runtime` (missing script): chạy **JIS SDK → Ads → Scene → Remove legacy Ads_Runtime**.
 
 ### Thủ công
 
-1. GameObject với `FirebaseManager` (singleton, `DontDestroyOnLoad`)
-2. Cùng object hoặc con: `AdsManager` + unit managers đã wire
-3. `JisAds` + assign `JisSDKAdsSettings`
-4. `AdsTracker` (thường cùng hierarchy với ads)
+1. GameObject với `FirebaseManager` (singleton, `DontDestroyOnLoad`) + `AdsTracker`
+2. GameObject với `JisAds` + assign `JisSDKAdsSettings` (+ `ResumeAdCoordinator` nếu dùng resume ads)
 
-**Chế độ init khuyến nghị khi dùng `JisAds`:**
-
-| Component | `InitializationMode` |
-|-----------|----------------------|
-| `FirebaseManager` | `Manual` (để `JisAds` gọi `InitAsync`) |
-| `AdsManager` | `Manual` (SDK tự set trong `JisAds.Awake`) |
-
-Nếu để `AutoOnAwake` / `AutoOnStart`, có thể init trùng — nên dùng Manual + `JisAds`.
+**Chế độ init khuyến nghị:** `FirebaseManager` để `Manual` — `JisAds` gọi Firebase trong `InitializeAsync`.
+Nếu để `AutoOnAwake` / `AutoOnStart`, Firebase có thể init trùng.
 
 ### `SdkAdsBootstrap` (tuỳ chọn)
 
@@ -166,20 +159,20 @@ using JisSDKAds.Common;
 
 ### 5.1 Tự động (mặc định)
 
-`JisAds` với `autoInitializeOnStart = true` gọi `InitializeAsync()` trong `Start()`:
+`JisAds` với `autoInitializeOnStart = true` (Apply đồng bộ từ `adsInitializationMode = AutoOnStart`) gọi `InitializeAsync()` trong `Start()`:
 
-- Init Firebase
-- Init ads legacy (+ Core nếu bật)
-- Chờ `AdsManager.IsReady`
+- Fetch Remote Config (Firebase)
+- Init Core `AdManager` + provider MAX / AdMob
+- Chờ Core sẵn sàng → `JisAds.Instance.IsReady`
 
 ### 5.2 Thủ công + Remote Config
 
 ```csharp
-// Chỉ Firebase
-await JisAds.Instance.InitializeFirebaseAsync(fetchRemoteConfig: true);
-
-// Hoặc toàn bộ pipeline ads
+// Toàn bộ pipeline ads
 await JisAds.Instance.InitializeAsync(fetchRemoteConfig: true);
+
+// Fetch lại RC sau này (áp dụng lại banner / App Open / Resume / inventory)
+await JisAds.Instance.FetchAndApplyRemoteConfigAsync();
 ```
 
 `fetchRemoteConfig: true` → `FirebaseManager.FetchRemoteConfigAsync()`:
@@ -200,7 +193,7 @@ FirebaseManager.Instance.SetUserProperty("player_tier", "gold");
 
 // Đọc RC
 bool showAoa = FirebaseManager.Instance.GetConfigBool(Keys.key_remote_aoa_active);
-double capping = FirebaseManager.Instance.GetConfigDouble(Keys.key_remote_interstitial_capping_time);
+double capping = FirebaseManager.Instance.GetConfigDouble(Keys.key_remote_interstitial_capping_between_shows_seconds);
 ```
 
 Callback sau init Firebase:
@@ -213,7 +206,7 @@ FirebaseManager.Instance.OnInitedSuccessCallback = () => { /* ... */ };
 
 ## 6. API quảng cáo (`JisAds`)
 
-Game code **ưu tiên** `JisAds.Instance` thay cho `AdsManager.Instance` (obsolete).
+`JisAds.Instance` là entry point duy nhất (từ 6.0 không còn API legacy — bảng đổi tên: [MIGRATION_V6.md](MIGRATION_V6.md)).
 
 ### 6.1 Format chuẩn (Interstitial / Rewarded / Banner)
 
@@ -245,29 +238,33 @@ bool rewardReady = JisAds.Instance.IsRewardedVideoLoaded();
 
 Routing:
 
-- `useCoreForStandardFormats = true` → **Core `AdManager`** (MAX/AdMob provider)
-- `false` → **legacy `AdsManager`**
+- Mọi format đi qua **Core `AdManager`** (MAX/AdMob provider). Nếu Core không đăng ký được provider nào, `JisAds` không show ads.
+- `ShowInterstitialAuto(...)` / `ShowRewardVideoAuto(...)` — dùng thứ tự auto (`autoShowFirstMediation` / `autoShowSecondMediation`) khi bật nhiều mediation
 - Sequential tier (RC `*_inventory_mode = tiered`) → Premium→Fill ladder — xem [TIERED_INTERSTITIAL.md](TIERED_INTERSTITIAL.md)
 
-### 6.2 Format chỉ legacy
+### 6.2 App Open, level gate, remove ads, consent
 
 ```csharp
 JisAds.Instance.ShowAppOpenAd();
-JisAds.Instance.ShowMRecAds();
-JisAds.Instance.HideMRecAds();
-JisAds.Instance.ShowCollapsibleBannerAds(closeCallback: null);
-JisAds.Instance.HideCollapsibleBannerAds();
-// Resume ads: automatic after InitializeAsync (ResumeAdCoordinator on JisAds)
+// Resume ads: tự động sau InitializeAsync (ResumeAdCoordinator trên JisAds)
+
+// Level gate interstitial: RC level_show_inter, fallback JisSDKAdsSettings.interstitialLevelFallback
+if (JisAds.Instance.IsPassLevelToShowInterstitial(level))
+    JisAds.Instance.ShowInterstitial();
 
 // Remove ads (thường gắn IAP)
 JisAds.Instance.SetRemoveAds(true);
 bool noAds = JisAds.Instance.IsRemoveAds;
+
+// Privacy options: MAX CMP hoặc AdMob UMP
+JisAds.Instance.ShowPrivacyOptionsForm();
 ```
+
+MREC, Collapsible Banner và Rewarded Interstitial không còn trong v6.
 
 ### 6.3 Truy cập tầng thấp hơn
 
 ```csharp
-JisAds.Instance.Legacy;   // AdsManager đầy đủ
 JisAds.Instance.Core;     // AdManager (Core), null nếu không init
 JisAds.Instance.Settings; // JisSDKAdsSettings
 bool ready = JisAds.Instance.IsReady;
@@ -300,11 +297,9 @@ Default khi fetch: `FirebaseRemoteConfigManager` (package firebase).
 | `key_remote_ads_resume_pause_time` | `ads_resume_pause_time` | double | `5` | Thời gian pause |
 | `key_remote_ads_resume_capping_time` | `ads_resume_capping_time` | double | `10` | Capping resume |
 | `key_remote_interstitial_level` | `level_show_inter` | double | `3` | Level bắt đầu show inter |
-| `key_remote_interstitial_capping_time` | `ads_interval` | double | `30` | Giãn cách inter (giây) |
-| `key_remote_inter_reward_interspersed` | `inter_reward_interspersed` | bool | `false` | Xen kẽ reward/inter |
-| `key_remote_inter_reward_interspersed_time` | `inter_reward_interspersed_time` | double | `10` | Thời gian xen kẽ |
-| `key_remote_free_ads` | `time_free_ads` | double | `1` | Thời gian “free ads” |
-| `key_remote_mrec_active` | `show_mrec_admob` | bool | `false` | MREC AdMob |
+| `key_remote_interstitial_capping_from_app_open_seconds` | `inter_capping_from_app_open_seconds` | double | `90` | Cooldown inter sau App Open (giây) |
+| `key_remote_interstitial_capping_between_shows_seconds` | `inter_capping_between_shows_seconds` | double | `90` | Cooldown giữa 2 lần show inter |
+| `key_remote_interstitial_capping_after_load_fail_seconds` | `inter_capping_after_load_fail_seconds` | double | `30` | Cooldown sau load fail |
 | `key_remote_banner_auto_refresh` | `banner_auto_refresh` | bool | `false` | Tự refresh banner |
 | `key_remote_banner_auto_refresh_time` | `banner_auto_refresh_time` | double | `15` | Chu kỳ refresh (giây) |
 
@@ -314,10 +309,12 @@ Default khi fetch: `FirebaseRemoteConfigManager` (package firebase).
 using JisSDKAds.Common;
 using JisSDKAds.Firebase;
 
-float interval = (float)FirebaseManager.Instance.GetConfigDouble(Keys.key_remote_interstitial_capping_time);
+int levelShowInter = (int)FirebaseManager.Instance.GetConfigDouble(Keys.key_remote_interstitial_level);
 ```
 
-Các `*AdManager` đọc RC trong `Init`/`Setup` — đổi RC trên Firebase Console, fetch lại khi cần (ví dụ sau `FetchRemoteConfigAsync()`).
+`ads_interval`, `inter_reward_interspersed*`, `time_free_ads`, `show_mrec_admob` không còn được đọc từ v6.
+
+`JisAds` đọc capping / level gate lúc show và áp dụng lại banner, App Open, Resume, inventory sau mỗi lần fetch — đổi RC trên Firebase Console rồi gọi `JisAds.Instance.FetchAndApplyRemoteConfigAsync()` khi cần.
 
 ---
 
@@ -418,7 +415,7 @@ Game project mở rộng listener trong `HandleValueChanged`, v.v.
 
 `JisSDKAdsSettings.singleMediationOnly = true` → Core không fallback MAX ↔ AdMob.
 
-Legacy `AdsManager` dùng `SDKSetup.adsMediationType` và mediation từng format.
+Mediation chính lấy từ `PlatformAdsProfile.mediation` (Apply đồng bộ sang `SDKSetup.adsMediationType`); từng format bật/tắt qua `xxxAdsMediationType`.
 
 Ví dụ thường gặp:
 
@@ -439,7 +436,7 @@ Cấu hình trong `JisSDKAdsSettings` → tab Android / iOS.
 - [ ] `google-services.json` / `GoogleService-Info.plist` đã import
 - [ ] EDM resolve xong (Android / iOS)
 - [ ] `JisSDKAdsSettings` + `SDKSetup` mỗi platform có ít nhất một format active
-- [ ] Scene có `FirebaseManager`, `AdsManager`, `JisAds` (+ `AdsTracker`)
+- [ ] Scene có `JisSDK_Manager` (Firebase: `FirebaseManager` + `AdsTracker`; JisAds: `JisAds`), không còn `Ads_Runtime`
 - [ ] **Apply Settings to Scene** cho build target hiện tại
 - [ ] Define: `UNITY_AD_MAX` / `UNITY_AD_ADMOB` khớp mediation
 - [ ] Nếu dùng AppsFlyer: `UNITY_APPSFLYER` trên **cả Android và iOS**
@@ -448,8 +445,9 @@ Cấu hình trong `JisSDKAdsSettings` → tab Android / iOS.
 
 | Triệu chứng | Hướng xử lý |
 |-------------|-------------|
-| `[JisAds] FirebaseManager not found` | Thêm `FirebaseManager` vào scene |
-| `[JisAds] AdsManager not found` | Add Manager / prefab ads |
+| `[JisAds] JisSDKAdsSettings is not assigned.` | Gán settings trên `JisAds` hoặc **Apply Settings to Scene** |
+| `Core interstitial failed: no mediation provider registered` | Kiểm tra mediation profile + define `UNITY_AD_MAX` / `UNITY_AD_ADMOB` |
+| Missing script trên `Ads_Runtime` | **JIS SDK → Ads → Scene → Remove legacy Ads_Runtime** |
 | Ads không load | Kiểm tra define mediation, ad unit ID trong `SDKSetup`, internet |
 | RC không đổi hành vi | Gọi `FetchRemoteConfigAsync()`; kiểm tra key trên Firebase Console |
 | `Tracking` / AppsFlyer CS0234 trên iOS | Thêm `UNITY_APPSFLYER` cho iOS; cập nhật package ads + analytics.appsflyer |
@@ -479,7 +477,7 @@ public class GameAdsBootstrap : MonoBehaviour
 
     public void OnLevelComplete(int level)
     {
-        if (JisAds.Instance.CanShowInterstitialAd())
+        if (JisAds.Instance.IsPassLevelToShowInterstitial(level))
             JisAds.Instance.ShowInterstitial(closedCallback: () => GrantLevelReward());
     }
 
@@ -498,10 +496,10 @@ public class GameAdsBootstrap : MonoBehaviour
 |----------|-----|
 | Entry ads | `JisAds.Instance` |
 | Init đầy đủ | `await JisAds.Instance.InitializeAsync(fetchRemoteConfig)` |
-| Init Firebase | `await JisAds.Instance.InitializeFirebaseAsync(fetchRemoteConfig)` |
+| Fetch lại RC | `await JisAds.Instance.FetchAndApplyRemoteConfigAsync()` |
 | Firebase trực tiếp | `FirebaseManager.Instance` |
 | RC keys | `JisSDKAds.Common.Keys` |
 | Track impression | `AdsTracker.TrackAdImpression(...)` |
 | Settings Editor | `JisSDKAdsSettings` — menu **JIS SDK → Ads** |
 
-Phiên bản tài liệu: **SDK 4.0.0** (`com.jis.sdkads.*`).
+Phiên bản tài liệu: **SDK 6.0.0** (`com.jis.sdkads.*`).
