@@ -39,6 +39,9 @@ namespace JisSDKAds.Ads.Settings
         [Tooltip("When the player owns Remove Ads, skip all startup ad loads (no banner/interstitial/rewarded/app-open preload).")]
         public bool skipStartupAdLoadWhenRemoveAds = true;
 
+        [Tooltip("Store level required before gameplay interstitials, used until Remote Config key level_show_inter is available.")]
+        [Min(0)] public int interstitialLevelFallback = 3;
+
         [Tooltip("Auto fullscreen show priority for interstitial/rewarded. Default: AdMob first, then MAX.")]
         public AdsMediationType autoShowFirstMediation = AdsMediationType.ADMOB;
 

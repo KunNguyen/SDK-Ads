@@ -3212,6 +3212,20 @@ namespace JisSDKAds.Ads
         }
 
         public bool CanShowBannerAd() => IsBannerAdLoaded();
+
+        /// <summary>Gameplay interstitial level gate: RC key level_show_inter when ready, else settings fallback.</summary>
+        public bool IsPassLevelToShowInterstitial(int level)
+        {
+            var required = settings != null ? settings.interstitialLevelFallback : 0;
+            var firebase = FirebaseManager.Instance;
+            if (firebase != null && firebase.IsRemoteConfigReady)
+                required = (int)firebase.GetConfigDouble(Keys.key_remote_interstitial_level);
+            return level >= required;
+        }
+
+        /// <summary>Re-opens the consent / privacy options form of the active mediation (MAX CMP or AdMob UMP).</summary>
+        public void ShowPrivacyOptionsForm(Action<string> onError = null, Action onDismiss = null) =>
+            ConsentFormBridge.Show(settings, onError, onDismiss);
         #endregion
         #region App Open
         public void ShowAppOpenAd() => _appOpen?.Show();
