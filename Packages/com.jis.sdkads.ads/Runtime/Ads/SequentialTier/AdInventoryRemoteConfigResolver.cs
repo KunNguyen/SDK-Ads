@@ -86,7 +86,7 @@ namespace JisSDKAds.Ads.SequentialTier
         }
 
         /// <summary>
-        /// Applies RC inventory mode to <see cref="SDKSetup"/> before Core / mediation init (JisAds + AdsManager).
+        /// Applies RC inventory mode to <see cref="SDKSetup"/> before Core init (JisAds).
         /// </summary>
         public static void ApplyInventoryModesToSdkSetup(
             SDKSetup setup,

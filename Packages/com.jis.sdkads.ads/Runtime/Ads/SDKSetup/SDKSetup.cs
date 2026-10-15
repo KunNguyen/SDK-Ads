@@ -54,23 +54,9 @@ namespace JisSDKAds.Ads
           }
 
 #if UNITY_EDITOR
-          public void Setup()
+          /// <summary>Copies the MAX SDK key of this setup into Assets/MaxSdk/Resources/AppLovinSettings.asset.</summary>
+          public void SyncMaxSdkKeyToAppLovinSettings()
           {
-               AdsManager adsManager = FindFirstObjectByType<AdsManager>();
-               if (adsManager != null)
-               {
-                    adsManager.UpdateAdsMediationConfig(this);
-                    EditorUtility.SetDirty(adsManager);
-                    EditorSceneManager.MarkSceneDirty(adsManager.gameObject.scene);
-               }
-               else
-               {
-                    Debug.LogError("Please add Manager Prefab to scene (Assets/ABIMaxSDKAds/Prefabs/Manager.prefab)");
-               }
-
-               ApplyScriptingDefines(EditorUserBuildSettings.selectedBuildTargetGroup);
-               if (adsManager != null)
-               {
 #if UNITY_AD_MAX
             if (adsMediationType == AdsMediationType.MAX)
             {
@@ -96,7 +82,6 @@ namespace JisSDKAds.Ads
                 AssetDatabase.SaveAssets();
             }
 #endif
-               }
           }
 
           /// <summary>Legacy name — applies defines for the currently selected build target group only.</summary>

@@ -81,7 +81,6 @@ namespace JisSDKAds.Ads
         private bool _pendingRecoverFullscreenPreloadsAfterCoreReady;
         private bool _bannerStartupPreloadStarted;
         private bool _appOpenStartupPreloadStarted;
-        private bool _legacyBridgeNotified;
         private bool _appOpenResumeInitStarted;
         private bool _isApplyingRemoteConfig;
         private TaskCompletionSource<bool> _initializeAsyncGate;
@@ -326,12 +325,6 @@ namespace JisSDKAds.Ads
                 _isReady = true;
                 ApplyBannerRemoteConfig();
                 DebugAds.LogSdkInit("JisAds", "Core AdManager ready", true);
-            }
-
-            if (!_legacyBridgeNotified)
-            {
-                _legacyBridgeNotified = true;
-                AdsManager.Instance?.NotifyJisAdsCoreReady();
             }
 
             if (!_appOpenResumeInitStarted)
@@ -1310,7 +1303,6 @@ namespace JisSDKAds.Ads
             {
                 _forceFullscreenPreloadWithoutRemoteConfig = false;
                 StopFullscreenPreloadRemoteConfigWait();
-                AdsManager.Instance?.RefreshRemoteConfigDrivenSettings(notifyLegacySubscribers: false);
                 RefreshAppOpenAndResumeRemoteConfig();
                 DebugAds.Log("[JisAds] Remote Config applied to ads — preloads armed.");
             }
@@ -1370,7 +1362,7 @@ namespace JisSDKAds.Ads
             if (!fetchRemoteConfig)
                 return;
 
-            // Core-only: rely on FirebaseManager directly instead of AdsManager legacy bootstrap.
+            // Core-only: rely on FirebaseManager directly.
             if (FirebaseManager.Instance == null)
             {
                 var go = new GameObject("JisSDKAds_FirebaseManager");
@@ -2130,10 +2122,6 @@ namespace JisSDKAds.Ads
                 ApplyRemoveAdsSideEffects();
             else
                 RestoreAdsAfterRemoveAdsRevoked();
-
-            var legacy = AdsManager.Instance;
-            if (legacy != null && legacy.IsRemoveAds != isRemove)
-                legacy.SetRemoveAds(isRemove);
         }
 
         public bool IsRemoveAds => _isRemoveAds;

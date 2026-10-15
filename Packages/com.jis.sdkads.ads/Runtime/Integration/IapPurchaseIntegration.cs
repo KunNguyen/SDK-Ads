@@ -34,17 +34,13 @@ namespace JisSDKAds.Ads.Integration
 
         static void ApplyRemoveAds()
         {
-            if (JisAds.Instance != null)
+            if (JisAds.Instance == null)
             {
-                JisAds.Instance.SetRemoveAds(true);
+                Debug.LogWarning("[JIS SDK] RemoveAds IAP purchased but no JisAds in scene.");
                 return;
             }
 
-            var legacy = Object.FindFirstObjectByType<AdsManager>();
-            if (legacy != null)
-                legacy.SetRemoveAds(true);
-            else
-                Debug.LogWarning("[JIS SDK] RemoveAds IAP purchased but no JisAds/AdsManager in scene.");
+            JisAds.Instance.SetRemoveAds(true);
         }
 
         static void TrackFirebasePurchase(IapPurchaseNotification notification)

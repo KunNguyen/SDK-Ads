@@ -15,8 +15,8 @@ namespace JisSDKAds.Ads.Settings
 
         [HideInInspector] public PlatformAdsProfile ios = new PlatformAdsProfile();
 
-        [Tooltip("Manual (recommended): call JisAds.InitializeAsync() from loading — fetches Remote Config then inits ads. AutoOnStart: AdsManager bootstraps on Start (prototypes only; do not use with JisAds auto-init).")]
-        public AdsManager.AdsInitializationMode adsInitializationMode = AdsManager.AdsInitializationMode.Manual;
+        [Tooltip("Manual (recommended): call JisAds.InitializeAsync() from loading — fetches Remote Config then inits ads. AutoOnStart: JisAds initializes itself on Start (prototypes only).")]
+        public AdsInitializationMode adsInitializationMode = AdsInitializationMode.Manual;
 
         [Tooltip("Legacy global mode. Use the per-format mediation mode fields below.")]
         [HideInInspector]
@@ -188,34 +188,6 @@ namespace JisSDKAds.Ads.Settings
                 ios.sdkSetup.ApplyScriptingDefines(BuildTargetGroup.iOS, fullscreenMediations);
         }
 #endif
-
-        /// <summary>Assign both platform SDKSetups and sync active build target config to AdsManager.</summary>
-        public void ApplyToAdsManager(AdsManager adsManager)
-        {
-            if (adsManager == null) return;
-
-            ApplyRuntimeDebugSettings();
-            SyncAllProfileMediationToSdkSetups();
-
-            adsManager.SdkSettings = this;
-            adsManager.AndroidSdkSetup = android?.sdkSetup;
-            adsManager.IOSSdkSetup = ios?.sdkSetup;
-            adsManager.InitializationMode = adsInitializationMode;
-
-            var profile = GetActiveProfile();
-            if (profile?.sdkSetup == null)
-            {
-                Debug.LogError("[JisSDKAds] Active platform profile has no SDKSetup assigned.");
-                return;
-            }
-
-            profile.sdkSetup.EnsureMediationSetups();
-            adsManager.UpdateAdsMediationConfig(profile.sdkSetup);
-#if UNITY_EDITOR
-            if (!Application.isPlaying)
-                adsManager.RebindUnitManagersToMediation();
-#endif
-        }
 
         /// <summary>
         /// Keeps legacy <see cref="SDKSetup.adsMediationType"/> aligned with profile primary mediation

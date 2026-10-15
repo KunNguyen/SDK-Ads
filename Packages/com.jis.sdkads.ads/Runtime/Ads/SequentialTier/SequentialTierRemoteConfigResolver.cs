@@ -68,7 +68,7 @@ namespace JisSDKAds.Ads.SequentialTier
             return anyRc && tierIds.Count > 0;
         }
 
-        /// <summary>Applies RC + settings fallback to AdMob sequential tier configs (Core / JisAds path without AdsManager).</summary>
+        /// <summary>Applies RC + settings fallback to AdMob sequential tier configs (JisAds Core path).</summary>
         public static void ApplyResolvedIdsToAdmobSetup(PlatformAdsProfile profile)
         {
             ApplyResolvedIdsToMediationSetup(profile, AdsMediationType.ADMOB);
