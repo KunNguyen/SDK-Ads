@@ -8,6 +8,7 @@ namespace JisSDKAds.Providers.AdMob.SequentialTier
     /// <summary>
     /// Entry point for JisAds Core to use sequential tier interstitial without a compile-time Ads→AdMob reference cycle.
     /// </summary>
+    [UnityEngine.Scripting.Preserve] // loaded by reflection from AdMobSequentialTierReflection
     public static class AdMobSequentialTierBridge
     {
         public static IAdService TryDecorate(

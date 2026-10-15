@@ -13,6 +13,7 @@ namespace JisSDKAds.Providers.AdMob
     /// Single entry point for <see cref="MobileAds.Initialize"/> shared by legacy mediation and Core <see cref="AdMobProvider"/>.
     /// Can be started before Firebase Remote Config; ad unit loads should wait until RC is applied.
     /// </summary>
+    [UnityEngine.Scripting.Preserve] // loaded by reflection from AdMobSdkEarlyInitBridge
     public static class AdMobMobileAdsInitializer
     {
         const float InitTimeoutSeconds = 90f;

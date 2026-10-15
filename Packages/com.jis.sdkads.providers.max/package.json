@@ -1,6 +1,6 @@
 {
   "name": "com.jis.sdkads.providers.max",
-  "version": "6.0.0",
+  "version": "6.0.1",
   "displayName": "JIS SDK - MAX Provider",
   "description": "AppLovin MAX mediation provider for JIS SDK.",
   "unity": "2022.3",

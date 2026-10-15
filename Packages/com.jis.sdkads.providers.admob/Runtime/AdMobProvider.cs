@@ -11,6 +11,7 @@ using UnityEngine;
 namespace JisSDKAds.Providers.AdMob
 {
     [CreateAssetMenu(fileName = "AdMobConfig", menuName = "JisSDKAds/Providers/AdMob Config", order = 2)]
+    [UnityEngine.Scripting.Preserve] // loaded by reflection from ProviderConfigFactory
     public class AdMobConfig : ScriptableObject, IAdProviderConfig
     {
         public string appId;

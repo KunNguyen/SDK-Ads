@@ -1,0 +1,4 @@
+<linker>
+  <!-- JisAds reaches this provider only through reflection (Type.GetType); keep it out of managed code stripping. -->
+  <assembly fullname="JisSDKAds.Providers.Max" preserve="all" />
+</linker>

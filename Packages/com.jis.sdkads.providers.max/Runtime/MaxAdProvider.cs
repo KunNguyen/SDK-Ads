@@ -15,6 +15,7 @@ using JisSDKAds.Ads.Tracking;
 namespace JisSDKAds.Providers.Max
 {
     [CreateAssetMenu(fileName = "MaxAdConfig", menuName = "JisSDKAds/Providers/Max Config", order = 1)]
+    [UnityEngine.Scripting.Preserve] // loaded by reflection from ProviderConfigFactory
     public class MaxAdConfig : ScriptableObject, IAdProviderConfig
     {
         public string sdkKey;
@@ -675,6 +676,7 @@ namespace JisSDKAds.Providers.Max
 
 namespace JisSDKAds.Providers.Max.SequentialTier
 {
+    [UnityEngine.Scripting.Preserve] // loaded by reflection from MaxSequentialTierReflection
     public static class MaxSequentialTierBridge
     {
         public static IAdService TryDecorate(

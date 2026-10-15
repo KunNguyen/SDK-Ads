@@ -34,6 +34,16 @@ rewarded-interstitial partials), `MaxMediationConfigBridge`, `AdmobMediationConf
 `inter_capping_from_app_open_seconds`, `inter_capping_between_shows_seconds` and
 `inter_capping_after_load_fail_seconds`.
 
+## Player builds (6.0.1)
+
+`JisAds` reaches the MAX / AdMob provider assemblies only through reflection. Before 6.0 the
+legacy `MaxMediationController` / `AdmobMediationController` components on the prefab were the
+only static references keeping `JisSDKAds.Providers.Max` and `JisSDKAds.Providers.AdMob` alive
+under IL2CPP managed code stripping; once the legacy subtree is removed, nothing references them
+and the linker drops both assemblies (`[JisAds] No Core provider for MAX` on device, no ads).
+6.0.1 ships a `link.xml` plus `[assembly: AlwaysLinkAssembly]` / `[Preserve]` in both provider
+packages, so no consumer action is needed beyond bumping to 6.0.1 or later.
+
 ## Prefab
 
 Existing `JisSDK_Manager` prefabs carry an `Ads_Runtime` subtree whose scripts no longer exist.

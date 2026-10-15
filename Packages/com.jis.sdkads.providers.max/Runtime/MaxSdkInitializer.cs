@@ -5,6 +5,7 @@ using JisSDKAds.Common;
 
 namespace JisSDKAds.Providers.Max
 {
+    [UnityEngine.Scripting.Preserve] // loaded by reflection from MaxSdkEarlyInitBridge
     public static class MaxSdkInitializer
     {
         enum InitState

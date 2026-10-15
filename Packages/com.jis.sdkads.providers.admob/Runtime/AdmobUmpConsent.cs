@@ -11,6 +11,7 @@ namespace JisSDKAds.Ads
     /// <summary>
     /// Optional Google UMP (User Messaging Platform) via reflection — no compile-time dependency on GoogleMobileAds.Ump.
     /// </summary>
+    [UnityEngine.Scripting.Preserve] // loaded by reflection from ConsentFormBridge
     internal static class AdmobUmpConsent
     {
         public const string PluginHint =
