@@ -113,8 +113,9 @@ namespace JisSDKAds.Ads.Resume
             if (!_host.CanShowAds() || _host.IsShowingAnyAd())
                 return;
 
+            // Both show paths set the showing state themselves; setting it here made AppOpenAdService.Show
+            // reject every resume app-open ad as "not ready" (its readiness check requires !IsShowingAnyAd).
             _host.HideBannerForFullscreenAd("resume_ad");
-            _host.SetAdsShowingState(true);
 
             switch (_policy.Format)
             {

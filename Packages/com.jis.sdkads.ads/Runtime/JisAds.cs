@@ -43,7 +43,7 @@ namespace JisSDKAds.Ads
         [SerializeField] private bool enableFullscreenInFlightWatchdog = true;
         [SerializeField] private float fullscreenInFlightWatchdogSec = 60f;
         // Longer than RewardedShowCompletionTracker's late-reward grace, so a close that is still being delivered wins.
-        const float RewardedWatchdogFocusGraceSec = 5f;
+        const float FullscreenWatchdogFocusGraceSec = 5f;
         [Header("Network recovery")]
         [SerializeField] private bool enableNetworkReachabilityPolling = true;
         [SerializeField] private float networkReachabilityPollIntervalSec = 5f;
@@ -121,6 +121,8 @@ namespace JisSDKAds.Ads
         private int _coreInitFailCount;
         private Coroutine _coreInitRetryCoroutine;
         private Coroutine _networkReachabilityPollCoroutine;
+        private Coroutine _interstitialKeepAliveCoroutine;
+        const float InterstitialKeepAliveIntervalSec = 15f;
         private bool _networkRecoveryRemoteConfigFetchInFlight;
         enum StandardAdPreloadFormat
         {
@@ -210,6 +212,7 @@ namespace JisSDKAds.Ads
             StopCoreInitRetry();
             StopFullscreenPreloadRemoteConfigWait();
             StopNetworkReachabilityPolling();
+            StopInterstitialKeepAlive();
             StopBannerAutoRefresh();
             CancelPendingBannerRestore();
             CancelPendingBannerPauseRestore();
@@ -220,6 +223,7 @@ namespace JisSDKAds.Ads
         private void Start()
         {
             StartNetworkReachabilityPolling();
+            StartInterstitialKeepAlive();
             if (autoInitializeOnStart)
                 _ = InitializeAsync();
         }
@@ -933,18 +937,21 @@ namespace JisSDKAds.Ads
                         if (!_interstitialLoadGate.IsCurrent(loadGeneration))
                             return;
                         OnPreloadSucceeded(StandardAdPreloadFormat.Interstitial);
-                        TrackCoreInterstitialLoadSuccess(loadStartedAt);
                         DebugAds.Log($"[JisAds][Interstitial][preload_success] mediation={providerId}");
                         _interstitialLoadGate.EndSlot(loadGeneration);
+                        // Tracking last and guarded: a throw here must not leave the gate held or skip the retry.
+                        try { TrackCoreInterstitialLoadSuccess(loadStartedAt); }
+                        catch (Exception e) { DebugAds.LogWarning($"[JisAds][Interstitial] load-success tracking failed: {e.Message}"); }
                     },
                     onFailed: err =>
                     {
                         if (!_interstitialLoadGate.IsCurrent(loadGeneration))
                             return;
-                        TrackCoreInterstitialLoadFail(err, loadStartedAt);
                         DebugAds.LogWarning($"[JisAds][Interstitial][preload_fail] mediation={providerId} error={err}");
                         HandlePreloadFailedIfNoFormatReady(StandardAdPreloadFormat.Interstitial);
                         _interstitialLoadGate.EndSlot(loadGeneration);
+                        try { TrackCoreInterstitialLoadFail(err, loadStartedAt); }
+                        catch (Exception e) { DebugAds.LogWarning($"[JisAds][Interstitial] load-fail tracking failed: {e.Message}"); }
                     });
             }
 
@@ -1920,6 +1927,46 @@ namespace JisSDKAds.Ads
             }
         }
 
+        void StartInterstitialKeepAlive()
+        {
+            StopInterstitialKeepAlive();
+            _interstitialKeepAliveCoroutine = StartCoroutine(CoInterstitialKeepAlive());
+        }
+
+        void StopInterstitialKeepAlive()
+        {
+            if (_interstitialKeepAliveCoroutine == null)
+                return;
+
+            StopCoroutine(_interstitialKeepAliveCoroutine);
+            _interstitialKeepAliveCoroutine = null;
+        }
+
+        /// <summary>
+        /// Retries are only chained from load-fail callbacks, so a load that never answers (or a reload skipped
+        /// because the gate was still held) leaves the interstitial empty until the next show request.
+        /// Periodically re-requests a load while nothing is loaded, in flight, showing or waiting on backoff.
+        /// </summary>
+        IEnumerator CoInterstitialKeepAlive()
+        {
+            var wait = new WaitForSecondsRealtime(InterstitialKeepAliveIntervalSec);
+            while (true)
+            {
+                yield return wait;
+
+                if (!_fullscreenFormatsPreloadedAfterRemoteConfig || !ShouldPreloadAdsOnGameStart() || !IsInterstitialEnabledInSetup())
+                    continue;
+                // MAX drops a load sent to a unit that is still on screen, without any callback.
+                if (_interstitialCallbacksInFlight || IsShowingAnyAd())
+                    continue;
+                if (_preloadRetryInFlight[PreloadFormatIndex(StandardAdPreloadFormat.Interstitial)])
+                    continue;
+
+                // No-op when already loaded or a load is in flight (the gate itself expires stuck loads).
+                RequestInterstitialLoadIfNeeded();
+            }
+        }
+
         void TriggerRemoteConfigFetchAfterNetworkRecovery()
         {
             if (_isRemoveAds || _networkRecoveryRemoteConfigFetchInFlight || _isApplyingRemoteConfig)
@@ -2233,6 +2280,9 @@ namespace JisSDKAds.Ads
             if (!isSkipCapping && ShouldBlockInterstitialByCapping(out var remainingSeconds, out var reason))
             {
                 DebugAds.Log($"[JisAds] Interstitial skipped due to capping ({reason}). Remaining={remainingSeconds:0.##}s");
+                // Capped requests still warm-load, so the ad is ready once the hold ends.
+                if (useCoreForStandardFormats)
+                    RequestInterstitialLoadIfNeeded();
                 closedCallback?.Invoke();
                 return;
             }
@@ -2484,12 +2534,24 @@ namespace JisSDKAds.Ads
             return false;
         }
 
-        float GetCappingAfterLoadFailSeconds()
+        // Fallbacks mirror the defaults FirebaseRemoteConfigManager registers. Reading RC before it is ready can
+        // throw (remote config not created / Firebase unavailable) and the show path would then fire no callback.
+        const float DefaultCappingFromAppOpenSec = 90f;
+        const float DefaultCappingBetweenShowsSec = 90f;
+        const float DefaultCappingAfterLoadFailSec = 30f;
+
+        static float GetInterstitialCappingSeconds(string key, float fallbackWhenRemoteConfigNotReady)
         {
-            if (FirebaseManager.Instance == null)
+            var firebase = FirebaseManager.Instance;
+            if (firebase == null)
                 return 0f;
-            return (float)FirebaseManager.Instance.GetConfigDouble(Keys.key_remote_interstitial_capping_after_load_fail_seconds);
+            if (!firebase.IsRemoteConfigReady)
+                return fallbackWhenRemoteConfigNotReady;
+            return (float)firebase.GetConfigDouble(key);
         }
+
+        float GetCappingAfterLoadFailSeconds() =>
+            GetInterstitialCappingSeconds(Keys.key_remote_interstitial_capping_after_load_fail_seconds, DefaultCappingAfterLoadFailSec);
 
         void ArmInterstitialAfterLoadFailHold()
         {
@@ -2499,19 +2561,11 @@ namespace JisSDKAds.Ads
             _interstitialNextAllowedAfterLoadFailUnscaledTime = Time.unscaledTime + seconds;
         }
 
-        float GetCappingFromAppOpenSeconds()
-        {
-            if (FirebaseManager.Instance == null)
-                return 0f;
-            return (float)FirebaseManager.Instance.GetConfigDouble(Keys.key_remote_interstitial_capping_from_app_open_seconds);
-        }
+        float GetCappingFromAppOpenSeconds() =>
+            GetInterstitialCappingSeconds(Keys.key_remote_interstitial_capping_from_app_open_seconds, DefaultCappingFromAppOpenSec);
 
-        float GetCappingBetweenShowsSeconds()
-        {
-            if (FirebaseManager.Instance == null)
-                return 0f;
-            return (float)FirebaseManager.Instance.GetConfigDouble(Keys.key_remote_interstitial_capping_between_shows_seconds);
-        }
+        float GetCappingBetweenShowsSeconds() =>
+            GetInterstitialCappingSeconds(Keys.key_remote_interstitial_capping_between_shows_seconds, DefaultCappingBetweenShowsSec);
 
         bool IsCoreInterstitialCooldownFinished() =>
             Time.unscaledTime >= _interstitialNextAllowedUnscaledTime;
@@ -2848,6 +2902,15 @@ namespace JisSDKAds.Ads
         IEnumerator CoInterstitialInFlightWatchdog(int attemptId)
         {
             yield return new WaitForSecondsRealtime(fullscreenInFlightWatchdogSec);
+
+            // Same as rewarded: a store click-out or long playable keeps the ad up past the timeout, and firing
+            // then reports a failure and drops the real close (and the game's post-ad reward).
+            var focusedSec = 0f;
+            while (focusedSec < FullscreenWatchdogFocusGraceSec)
+            {
+                focusedSec = Application.isFocused ? focusedSec + Time.unscaledDeltaTime : 0f;
+                yield return null;
+            }
             _interstitialWatchdogCoroutine = null;
 
             if (!_interstitialCallbacksInFlight || attemptId != _interstitialShowAttemptId)
@@ -2858,7 +2921,7 @@ namespace JisSDKAds.Ads
             ConsumePendingInterstitialCallbacksOnFail();
             // No load here: the ad may still be on screen (iOS keeps running during playables / App Store
             // overlay) and MAX drops a load sent to a showing unit without any callback. The late close
-            // schedules the reload; if it never comes, the next show request warm-loads.
+            // schedules the reload; if it never comes, the interstitial keep-alive does.
         }
 
         void StartRewardedInFlightWatchdog(int attemptId)
@@ -2885,7 +2948,7 @@ namespace JisSDKAds.Ads
             // click-outs easily pass the timeout. Firing then clears the callbacks and drops the reward
             // granted later, so only recover once the player has been back in the game for a while.
             var focusedSec = 0f;
-            while (focusedSec < RewardedWatchdogFocusGraceSec)
+            while (focusedSec < FullscreenWatchdogFocusGraceSec)
             {
                 focusedSec = Application.isFocused ? focusedSec + Time.unscaledDeltaTime : 0f;
                 yield return null;
