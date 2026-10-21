@@ -1,14 +1,13 @@
 namespace JisSDKAds.Ads
 {
-    /// <summary>Per-platform ad unit id (MAX setups). Serialized field name depends on the active build target.</summary>
+    /// <summary>Per-platform ad unit id (MAX setups). Both fields are always serialized so switching the
+    /// build target never strips the other platform's id when Unity re-saves the asset.</summary>
     [System.Serializable]
     public class AdUnitID
     {
-#if UNITY_ANDROID
         public string AndroidID;
-#elif UNITY_IOS
         public string IOSID;
-#endif
+
         public string ID
         {
             get
