@@ -67,9 +67,25 @@ namespace JisSDKAds.IAP
         readonly Dictionary<string, (UnityAction onSuccess, UnityAction onFail)> _pendingPurchaseCallbacks =
             new Dictionary<string, (UnityAction onSuccess, UnityAction onFail)>();
 
+        /// <summary>How long a buy tap waits for a not-ready / disconnected store to recover before failing.</summary>
+        const float k_BuyWaitForStoreSeconds = 10f;
+        /// <summary>Minimum gap between store recovery attempts triggered by the app regaining focus.</summary>
+        const float k_FocusRecoveryCooldownSeconds = 30f;
+
         bool isInitializing;
+        bool _initRequested;
+        bool _catalogInitialized;
         bool _awaitingEntitlementsReplay;
+        bool _storeDisconnected;
+        int _disconnectCount;
+        bool _hasDeferredOrders;
+        // Granted but not confirmed/consumed (confirm failed or grant threw): Google keeps the SKU owned until we
+        // re-fetch and confirm, so the next purchase of that pack would fail with ITEM_ALREADY_OWNED.
+        bool _hasUnconfirmedOrders;
+        readonly HashSet<string> _awaitingStore = new HashSet<string>();
+        float _lastFocusRecoveryTime = float.NegativeInfinity;
         TaskCompletionSource<bool> _readyTcs;
+        Task _reconnectTask;
         string _lastInitError;
 
         #endregion
@@ -110,6 +126,13 @@ namespace JisSDKAds.IAP
             StoreService = UnityIAPServices.DefaultStore();
             ProductService = UnityIAPServices.DefaultProduct();
             PurchaseService = UnityIAPServices.DefaultPurchase();
+            // Pending orders found by FetchPurchases are processed once, by IapCallbacks.OnExistingPurchasesFetched.
+            // Letting Unity IAP process them too confirms each order twice; the second confirm comes back as a
+            // FailedOrder and used to be reported to the game as a failed purchase.
+            PurchaseService.ProcessPendingOrdersOnPurchasesFetched(false);
+            // Keep Unity IAP's bounded default reconnection policy: the same policy drives the initial Connect(),
+            // so an unbounded one would hang init forever on devices without working Play Billing.
+            // Recovery after it gives up is ours (buy tap / app focus), see TryRecoverStoreAsync.
             ConfigureServiceCallbacks();
         }
 
@@ -124,12 +147,19 @@ namespace JisSDKAds.IAP
             PurchaseService.OnPurchaseConfirmed += IapCallbacks.OnPurchaseConfirmed;
             PurchaseService.OnPurchaseFailed += IapCallbacks.OnPurchaseFailed;
             PurchaseService.OnPurchaseDeferred += IapCallbacks.OnOrderDeferred;
+            StoreService.OnStoreDisconnected += OnStoreDisconnected;
         }
 
+        /// <summary>
+        /// Safe to call again after a failure: a failed init leaves <see cref="IsStoreReady"/> false and is retried
+        /// on the next buy tap and when the app regains focus.
+        /// </summary>
         public async Task InitializeAsync()
         {
             if (IsStoreReady)
                 return;
+
+            _initRequested = true;
 
             if (isInitializing && _readyTcs != null)
             {
@@ -158,16 +188,18 @@ namespace JisSDKAds.IAP
             }
 
             IAPLogger.LogConsole("Initializing In-App Purchaser...");
-            InitCatalog();
-
-            if (!await IAPService.TryInitializeAsync())
+            if (!_catalogInitialized)
             {
-                FailReady("Unity Gaming Services initialization failed.");
-                await _readyTcs.Task;
-                return;
+                InitCatalog();
+                _catalogInitialized = true;
             }
 
-            CreateCrossPlatformValidator();
+            // Unity IAP 5 talks to the store without UGS; a UGS hiccup (offline boot) must not disable the shop.
+            if (!await IAPService.TryInitializeAsync())
+                Debug.LogWarning("[IAP] Unity Gaming Services init failed; continuing with the store connection.");
+
+            if (CrossPlatformValidator == null)
+                CreateCrossPlatformValidator();
             await ConnectToStoreAsync();
             await _readyTcs.Task;
         }
@@ -253,6 +285,13 @@ namespace JisSDKAds.IAP
 
         internal void CompleteStoreReady(bool success, string errorMessage = null)
         {
+            // A late failure (e.g. a product subset fetch) must not flip a working store back to not-ready.
+            if (!success && isStoreReady)
+            {
+                Debug.LogWarning($"[IAP] Ignoring store failure while already ready: {errorMessage ?? "unknown"}");
+                return;
+            }
+
             isStoreReady = success;
             isInitializing = false;
             _lastInitError = errorMessage;
@@ -318,16 +357,148 @@ namespace JisSDKAds.IAP
             if (!string.IsNullOrEmpty(productId))
                 _pendingPurchaseCallbacks[productId] = (buySuccessCallback, buyFailCallback);
 
-            if (!IsStoreReady)
+            if (!IsStoreReady || _storeDisconnected || IsReconnecting)
             {
-                var msg = string.IsNullOrEmpty(_lastInitError)
-                    ? "IAP store is not ready. Call InitializeAsync() and wait for success."
-                    : _lastInitError;
-                IAPLogger.LogConsole(msg);
-                NotifyPurchaseFailed(productId, msg);
+                // A second tap while this product already waits for the store only refreshes its callbacks
+                // (done above); starting another wait would purchase twice once the store is back.
+                if (string.IsNullOrEmpty(productId) || _awaitingStore.Add(productId))
+                    _ = BuyWhenStoreAvailableAsync(productId);
                 return;
             }
 
+            PurchaseNow(productId);
+        }
+
+        bool IsReconnecting => _reconnectTask != null && !_reconnectTask.IsCompleted;
+
+        async Task BuyWhenStoreAvailableAsync(string productId)
+        {
+            try
+            {
+                await BuyWhenStoreAvailableCoreAsync(productId);
+            }
+            finally
+            {
+                if (!string.IsNullOrEmpty(productId))
+                    _awaitingStore.Remove(productId);
+            }
+        }
+
+        async Task BuyWhenStoreAvailableCoreAsync(string productId)
+        {
+            try
+            {
+                if (await TryRecoverStoreAsync())
+                {
+                    PurchaseNow(productId);
+                    return;
+                }
+
+                var msg = !IsStoreReady
+                    ? (string.IsNullOrEmpty(_lastInitError) ? "IAP store is not ready (init timed out)." : _lastInitError)
+                    : "Store is not connected (reconnect timed out).";
+                IAPLogger.LogConsole(msg);
+                NotifyPurchaseFailed(productId, msg);
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+                NotifyPurchaseFailed(productId, $"Store recovery failed: {e.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Re-runs init when the store never became ready, or reconnects when it dropped after init.
+        /// Waits at most <see cref="k_BuyWaitForStoreSeconds"/>; recovery keeps running in the background after that.
+        /// </summary>
+        async Task<bool> TryRecoverStoreAsync()
+        {
+            var recovery = IsStoreReady ? ReconnectAsync() : InitializeAsync();
+            var finished = await Task.WhenAny(recovery, Task.Delay(TimeSpan.FromSeconds(k_BuyWaitForStoreSeconds)));
+            if (finished != recovery)
+                return false;
+            await recovery;
+            return IsStoreReady && !_storeDisconnected;
+        }
+
+        /// <summary>Single shared reconnect. <c>Connect()</c> does not throw when it gives up (it raises
+        /// OnStoreDisconnected instead), and the next <c>StoreNotConnected</c> purchase failure also re-marks the store.</summary>
+        Task ReconnectAsync()
+        {
+            if (IsReconnecting)
+                return _reconnectTask;
+
+            IAPLogger.LogConsole("Reconnecting to store...");
+            _reconnectTask = ReconnectCoreAsync();
+            return _reconnectTask;
+        }
+
+        async Task ReconnectCoreAsync()
+        {
+            var disconnectsBefore = _disconnectCount;
+            await StoreService.Connect();
+            // Connect() also completes when it gives up, right after raising OnStoreDisconnected.
+            if (_disconnectCount != disconnectsBefore)
+                return;
+            // Cleared only once Connect() succeeded: a buy tap in between still waits instead of hitting
+            // PurchaseService while the store is Connecting (instant StoreNotConnected).
+            _storeDisconnected = false;
+            if (_hasUnconfirmedOrders)
+                FetchUnconfirmedOrders();
+        }
+
+        void OnStoreDisconnected(StoreConnectionFailureDescription failure)
+        {
+            _storeDisconnected = true;
+            _disconnectCount++;
+            Debug.LogWarning($"[IAP] Store disconnected: {failure?.message ?? "unknown"}");
+        }
+
+        void OnApplicationFocus(bool hasFocus)
+        {
+            if (!hasFocus || !areServicesCreated || !_initRequested)
+                return;
+            if (Time.realtimeSinceStartup - _lastFocusRecoveryTime < k_FocusRecoveryCooldownSeconds)
+                return;
+
+            if (!IsStoreReady)
+            {
+                if (isInitializing)
+                    return;
+                _lastFocusRecoveryTime = Time.realtimeSinceStartup;
+                IAPLogger.LogConsole("App focused with store not ready; retrying init.");
+                _ = InitializeAsync();
+            }
+            else if (_storeDisconnected)
+            {
+                _lastFocusRecoveryTime = Time.realtimeSinceStartup;
+                _ = ReconnectAsync();
+            }
+            else if (_hasUnconfirmedOrders)
+            {
+                _lastFocusRecoveryTime = Time.realtimeSinceStartup;
+                FetchUnconfirmedOrders();
+            }
+            else if (_hasDeferredOrders)
+            {
+                // Cash / parental-approval payments complete outside the app; pick them up without a restart.
+                _lastFocusRecoveryTime = Time.realtimeSinceStartup;
+                IAPLogger.LogConsole("App focused with deferred orders; fetching purchases.");
+                FetchExistingPurchases();
+            }
+        }
+
+        /// <summary>Re-fetch so unconfirmed orders come back as pending and get confirmed (already processed → no re-grant).
+        /// The flag is raised again if confirmation fails once more.</summary>
+        void FetchUnconfirmedOrders()
+        {
+            _hasUnconfirmedOrders = false;
+            IAPLogger.LogConsole("Fetching purchases to confirm unconfirmed orders.");
+            FetchExistingPurchases();
+        }
+
+        void PurchaseNow(string productId)
+        {
             var product = FindProduct(productId);
             if (product != null)
             {
@@ -361,14 +532,26 @@ namespace JisSDKAds.IAP
             {
                 var product = cartItem.Product;
                 IAPLogger.LogCompletedPurchase(product, pendingOrder.Info);
-                if (!TryFulfillOrder(product.definition.id, pendingOrder.Info, product, isRestore: false))
+                try
+                {
+                    if (!TryFulfillOrder(product.definition.id, pendingOrder.Info, product, isRestore: false))
+                        allSucceeded = false;
+                }
+                catch (Exception e)
+                {
+                    // Unconfirmed + not marked processed: Google re-delivers the order on the next fetch.
+                    Debug.LogException(e);
                     allSucceeded = false;
+                }
             }
 
             if (allSucceeded)
                 ConfirmOrder(pendingOrder);
             else
+            {
+                _hasUnconfirmedOrders = true;
                 IAPLogger.LogConsole("Pending order not confirmed — fulfillment or receipt validation failed.");
+            }
         }
 
         public void FetchExistingPurchases()
@@ -455,13 +638,30 @@ namespace JisSDKAds.IAP
                 orderInfo != null)
                 return TryValidateAndFulfill(orderInfo, product, isRestore);
 
-            FulfillPurchase(productId, orderInfo, product, productReceipt, isRestore, transactionId);
-            return true;
+            return FulfillPurchase(productId, orderInfo, product, productReceipt, isRestore, transactionId);
         }
 
-        void FulfillPurchase(string productId, IOrderInfo orderInfo, Product product, IPurchaseReceipt productReceipt,
+        /// <returns>False when the game's grant callback threw: the transaction is left unprocessed and unconfirmed
+        /// so the store re-delivers it, instead of being confirmed with nothing granted.</returns>
+        bool FulfillPurchase(string productId, IOrderInfo orderInfo, Product product, IPurchaseReceipt productReceipt,
             bool isRestore, string transactionId)
         {
+            try
+            {
+                OnExecutePurchaseCallback?.Invoke(productId);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[IAP] Grant callback threw for '{productId}' ({transactionId}); order left unconfirmed: {e}");
+                // Only a purchase the player is waiting on is reported as failed; a replay at boot / on focus fetch
+                // has nobody waiting and must not pop a failure in the UI.
+                if (!isRestore && !string.IsNullOrEmpty(productId) && _pendingPurchaseCallbacks.ContainsKey(productId))
+                    NotifyPurchaseFailed(productId, "Grant failed.");
+                return false;
+            }
+
+            // Marked only after the grant ran, so a crash before this point re-grants on the next launch
+            // rather than confirming a purchase the player never received.
             IapPurchasePersistence.MarkTransactionProcessed(transactionId);
 
             var pack = IapProductConfigs?.FindPackage(productId);
@@ -481,6 +681,7 @@ namespace JisSDKAds.IAP
             var notification = BuildNotification(productId, pack, orderInfo, productReceipt, purchaseToken, receipt,
                 isRestore);
             DispatchPurchaseSuccess(notification);
+            return true;
         }
 
         IapPurchaseNotification BuildNotification(string productId, IAPPackage pack, IOrderInfo orderInfo,
@@ -541,13 +742,27 @@ namespace JisSDKAds.IAP
 
         void DispatchPurchaseSuccess(IapPurchaseNotification notification)
         {
+            // The grant (OnExecutePurchaseCallback) already ran in FulfillPurchase. These are UI / analytics
+            // listeners: one throwing must not stop the others or the order confirmation.
             DebugAds.Log($"IAP purchase success: {notification.ProductId} (restore={notification.IsRestore})");
-            OnExecutePurchaseCallback?.Invoke(notification.ProductId);
-            TakePendingCallback(notification.ProductId).onSuccess?.Invoke();
-            IapIntegration.NotifyPurchaseCompleted(notification);
-            EventManager.Trigger(IapEvents.BuySuccess, notification);
-            EventManager.Trigger(IapEvents.BuySuccess);
-            EventManager.Trigger(IapEvents.TurnOffLoading);
+            var onSuccess = TakePendingCallback(notification.ProductId).onSuccess;
+            SafeInvoke("buy onSuccess", () => onSuccess?.Invoke());
+            SafeInvoke("PurchaseCompleted", () => IapIntegration.NotifyPurchaseCompleted(notification));
+            SafeInvoke("BuySuccess", () => EventManager.Trigger(IapEvents.BuySuccess, notification));
+            SafeInvoke("BuySuccess", () => EventManager.Trigger(IapEvents.BuySuccess));
+            SafeInvoke("TurnOffLoading", () => EventManager.Trigger(IapEvents.TurnOffLoading));
+        }
+
+        static void SafeInvoke(string label, Action action)
+        {
+            try
+            {
+                action();
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[IAP] '{label}' listener threw: {e}");
+            }
         }
 
         static bool ShouldPersistEntitlement(IAPPackage pack)
@@ -559,12 +774,13 @@ namespace JisSDKAds.IAP
 
         void NotifyPurchaseFailed(string productId, string reason)
         {
-            TakePendingCallback(productId).onFail?.Invoke();
+            var onFail = TakePendingCallback(productId).onFail;
             var failure = new IapPurchaseFailure { ProductId = productId, Reason = reason };
-            IapIntegration.NotifyPurchaseFailed(productId, reason);
-            EventManager.Trigger(IapEvents.BuyFail, failure);
-            EventManager.Trigger(IapEvents.BuyFail);
-            EventManager.Trigger(IapEvents.TurnOffLoading);
+            SafeInvoke("buy onFail", () => onFail?.Invoke());
+            SafeInvoke("PurchaseFailed", () => IapIntegration.NotifyPurchaseFailed(productId, reason));
+            SafeInvoke("BuyFail", () => EventManager.Trigger(IapEvents.BuyFail, failure));
+            SafeInvoke("BuyFail", () => EventManager.Trigger(IapEvents.BuyFail));
+            SafeInvoke("TurnOffLoading", () => EventManager.Trigger(IapEvents.TurnOffLoading));
             if (!string.IsNullOrEmpty(productId))
                 Debug.LogWarning($"[IAP] Purchase failed ({productId}): {reason}");
             else
@@ -612,6 +828,7 @@ namespace JisSDKAds.IAP
         public void NotifyPurchaseDeferred(string productId)
         {
             IAPLogger.LogConsole($"Purchase deferred: {productId}");
+            _hasDeferredOrders = true;
             IapIntegration.NotifyPurchaseDeferred(productId);
             EventManager.Trigger(IapEvents.PurchaseDeferred, productId);
         }
@@ -636,7 +853,26 @@ namespace JisSDKAds.IAP
         public void OnPurchaseFailed(Product product, PurchaseFailureReason reason)
         {
             IAPLogger.LogFailedPurchase(product, reason);
+            if (reason == PurchaseFailureReason.StoreNotConnected)
+                _storeDisconnected = true;
             NotifyPurchaseFailed(product?.definition?.id, reason.ToString());
+        }
+
+        /// <summary>
+        /// Confirm/consume failed for an order that was already granted. Not a purchase failure for the player:
+        /// the order is re-fetched as pending on the next fetch and confirmed again (already processed → no re-grant).
+        /// </summary>
+        public void OnConfirmationFailed(Product product, PurchaseFailureReason reason)
+        {
+            Debug.LogWarning($"[IAP] Confirm failed for '{product?.definition?.id}' ({reason}); will retry on next fetch.");
+            _hasUnconfirmedOrders = true;
+            if (reason == PurchaseFailureReason.StoreNotConnected)
+                _storeDisconnected = true;
+        }
+
+        internal void SetHasDeferredOrders(bool hasDeferredOrders)
+        {
+            _hasDeferredOrders = hasDeferredOrders;
         }
 
         #endregion
@@ -710,6 +946,9 @@ namespace JisSDKAds.IAP
                 PurchaseService.OnPurchaseFailed -= IapCallbacks.OnPurchaseFailed;
                 PurchaseService.OnPurchaseDeferred -= IapCallbacks.OnOrderDeferred;
             }
+
+            if (StoreService != null)
+                StoreService.OnStoreDisconnected -= OnStoreDisconnected;
 
             if (instance == this)
                 instance = null;

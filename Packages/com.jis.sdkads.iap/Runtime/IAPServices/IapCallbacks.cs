@@ -50,6 +50,7 @@ namespace JisSDKAds.IAP
             {
                 ProcessConfirmedOrders(existingOrders.ConfirmedOrders);
                 ProcessPendingOrders(existingOrders.PendingOrders);
+                inAppPurchaser.SetHasDeferredOrders((existingOrders.DeferredOrders?.Count ?? 0) > 0);
             }
 
             inAppPurchaser.FinishEntitlementsReplay();
@@ -118,7 +119,7 @@ namespace JisSDKAds.IAP
             foreach (var cartItem in failedOrder.CartOrdered.Items())
             {
                 inAppPurchaser.IAPLogger.LogFailedConfirmation(cartItem.Product, reason);
-                inAppPurchaser.OnPurchaseFailed(cartItem.Product, reason);
+                inAppPurchaser.OnConfirmationFailed(cartItem.Product, reason);
             }
         }
 
