@@ -29,6 +29,20 @@ namespace JisSDKAds.Ads
 
         #region Ads Tracking
 
+        /// <summary>
+        /// JisSDKAdsSettings.logAdDiagnosticEvents (default true). When false, the high-volume diagnostic events
+        /// (ad_inter_load, ad_inter_load_fail, ad_inter_click, ad_inter_show_fail_by_load, ads_reward_click,
+        /// ads_reward_show_fail_by_load) are not sent; session indexes, AppsFlyer and every other event are unchanged.
+        /// </summary>
+        static bool LogDiagnosticEvents
+        {
+            get
+            {
+                var settings = JisAds.Instance != null ? JisAds.Instance.Settings : null;
+                return settings == null || settings.logAdDiagnosticEvents;
+            }
+        }
+
         #region Revenue
 
         private const string key_ad_rewarded_count = "ad_rewarded_count";
@@ -139,7 +153,9 @@ namespace JisSDKAds.Ads
 
         public void TrackAdsReward_ClickOnButton()
         {
-            FirebaseManager.Instance.LogEvent(ads_reward_click, CreateSessionAdIndexParameters(BeginRewardedShowAttempt()));
+            var attempt = BeginRewardedShowAttempt();
+            if (LogDiagnosticEvents)
+                FirebaseManager.Instance.LogEvent(ads_reward_click, CreateSessionAdIndexParameters(attempt));
 #if UNITY_APPSFLYER
             AppsflyerManager.TrackRewarded_ClickShowButton();
 #endif
@@ -158,7 +174,9 @@ namespace JisSDKAds.Ads
 
         public void TrackAdsReward_ShowFailByLoad()
         {
-            FirebaseManager.Instance.LogEvent(ads_reward_show_fail_by_load, CreateSessionAdIndexParameters(EnsureRewardedShowAttempt()));
+            var attempt = EnsureRewardedShowAttempt();
+            if (LogDiagnosticEvents)
+                FirebaseManager.Instance.LogEvent(ads_reward_show_fail_by_load, CreateSessionAdIndexParameters(attempt));
             ClearRewardedShowAttempt();
         }
 
@@ -209,7 +227,8 @@ namespace JisSDKAds.Ads
                 new Parameter("request_time", timeFromStartRequest.ToString("F1")),
                 new Parameter(session_ad_index_parameter, interstitialAdsLoadSuccess.ToString()),
             };
-            FirebaseManager.Instance.LogEvent(ad_inter_load, parameters);
+            if (LogDiagnosticEvents)
+                FirebaseManager.Instance.LogEvent(ad_inter_load, parameters);
 #if UNITY_APPSFLYER
             AppsflyerManager.TrackInterstitial_LoadedSuccess();
 #endif
@@ -227,7 +246,8 @@ namespace JisSDKAds.Ads
                     new Parameter("request_time", timeFromStartRequest.ToString("F1")),
                     new Parameter(session_ad_index_parameter, interstitialAdsLoadSuccess.ToString()),
                 };
-                FirebaseManager.Instance.LogEvent(ad_inter_load, parameters);
+                if (LogDiagnosticEvents)
+                    FirebaseManager.Instance.LogEvent(ad_inter_load, parameters);
             }
             else
             {
@@ -238,7 +258,8 @@ namespace JisSDKAds.Ads
                     new Parameter("placement", placement),
                     new Parameter(session_ad_index_parameter, interstitialAdsLoadSuccess.ToString()),
                 };
-                FirebaseManager.Instance.LogEvent(ad_inter_load, parameters);
+                if (LogDiagnosticEvents)
+                    FirebaseManager.Instance.LogEvent(ad_inter_load, parameters);
             }
 
 #if UNITY_APPSFLYER
@@ -267,7 +288,8 @@ namespace JisSDKAds.Ads
                     new Parameter("count", interstitialAdsLoadFail.ToString()),
                     new Parameter(session_ad_index_parameter, interstitialAdsLoadFail.ToString()),
                 };
-            FirebaseManager.Instance.LogEvent(ad_inter_load_fail, parameters);
+            if (LogDiagnosticEvents)
+                FirebaseManager.Instance.LogEvent(ad_inter_load_fail, parameters);
         }
 
         public void TrackAdsInterstitial_ShowSuccess(string placement = "")
@@ -289,7 +311,9 @@ namespace JisSDKAds.Ads
 
         public void TrackAdsInterstitial_ShowFailByLoad(string placement = "")
         {
-            LogInterstitialEvent(ad_inter_show_fail_by_load, placement, EnsureInterstitialShowAttempt());
+            var attempt = EnsureInterstitialShowAttempt();
+            if (LogDiagnosticEvents)
+                LogInterstitialEvent(ad_inter_show_fail_by_load, placement, attempt);
             ClearInterstitialShowAttempt();
         }
 
@@ -305,18 +329,23 @@ namespace JisSDKAds.Ads
                 return;
             }
 
-            var parameters = new List<Parameter>(
-                CreatePlacementSessionAdIndexParameters(placement, EnsureInterstitialShowAttempt()))
+            var attempt = EnsureInterstitialShowAttempt();
+            if (LogDiagnosticEvents)
             {
-                new Parameter("reason", reason),
-            };
-            FirebaseManager.Instance.LogEvent(ad_inter_show_fail_by_load, parameters.ToArray());
+                var parameters = new List<Parameter>(CreatePlacementSessionAdIndexParameters(placement, attempt))
+                {
+                    new Parameter("reason", reason),
+                };
+                FirebaseManager.Instance.LogEvent(ad_inter_show_fail_by_load, parameters.ToArray());
+            }
             ClearInterstitialShowAttempt();
         }
 
         public void TrackAdsInterstitial_ClickOnButton(string placement = "")
         {
-            LogInterstitialEvent(ad_inter_click, placement, BeginInterstitialShowAttempt());
+            var attempt = BeginInterstitialShowAttempt();
+            if (LogDiagnosticEvents)
+                LogInterstitialEvent(ad_inter_click, placement, attempt);
 #if UNITY_APPSFLYER
             AppsflyerManager.TrackInterstitial_ClickShowButton();
 #endif

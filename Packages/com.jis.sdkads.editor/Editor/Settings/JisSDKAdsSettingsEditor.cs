@@ -66,6 +66,11 @@ namespace JisSDKAds.Editor
                 EditorGUILayout.PropertyField(serializedObject.FindProperty("enableAdsDebugLogging"),
                     new GUIContent("Ads debug logging",
                         "Logs init steps, ad load/show with unit IDs, and errors. Applied on Play and Apply to Scene."));
+                EditorGUILayout.PropertyField(serializedObject.FindProperty("logAdDiagnosticEvents"),
+                    new GUIContent("Firebase diagnostic ad events",
+                        "ad_inter_load, ad_inter_load_fail, ad_inter_click, ad_inter_show_fail_by_load, ads_reward_click, " +
+                        "ads_reward_show_fail_by_load. High volume; turn off to save Analytics/BigQuery quota. " +
+                        "Revenue, show/complete, first-show and show-count events are always sent."));
                 EditorGUILayout.PropertyField(serializedObject.FindProperty("preloadAdsOnGameStart"),
                     new GUIContent("Preload ads on game start",
                         "Load standard formats after init when Remote Config is ready."));

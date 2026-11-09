@@ -33,6 +33,9 @@ namespace JisSDKAds.Ads.Settings
         [Tooltip("When enabled, ads SDK logs init steps, load success/fail with ad unit IDs, and mediation errors to the Unity Console.")]
         public bool enableAdsDebugLogging = false;
 
+        [Tooltip("Send diagnostic ad events to Firebase: ad_inter_load, ad_inter_load_fail, ad_inter_click (every interstitial show call), ad_inter_show_fail_by_load, ads_reward_click, ads_reward_show_fail_by_load. They are high-volume; turn off to save Analytics/BigQuery quota. Revenue, show/complete, first-show and show-count events are always sent.")]
+        public bool logAdDiagnosticEvents = true;
+
         [Tooltip("After SDK init + Remote Config, preload banner, interstitial, rewarded, and app open.")]
         public bool preloadAdsOnGameStart = true;
 
