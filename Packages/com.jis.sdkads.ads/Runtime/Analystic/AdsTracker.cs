@@ -147,7 +147,14 @@ namespace JisSDKAds.Ads
         private const string ads_reward_show_fail_by_load = "ads_reward_show_fail_by_load";
         private const string ads_reward_load_success = "ads_reward_load_success";
         private const string ads_reward_first_show = "ads_reward_first_show";
+        private const string ads_reward_load_fail = "ads_reward_load_fail";
+        private const int RewardedLoadErrorMaxLength = 100;
+        private const int RewardedLoadFailInitialEventLimit = 5;
+        private const int RewardedLoadFailSessionEventLimit = 10;
         private int rewardedAdsLoadSuccess = 0;
+        private int rewardedAdsLoadFail = 0;
+        private int rewardedAdsLoadFailEvents = 0;
+        private string lastRewardedLoadFailError;
         private int rewardedAdsShowAttempt = 0;
         private int currentRewardedAdsShowAttempt = 0;
 
@@ -193,11 +200,53 @@ namespace JisSDKAds.Ads
 
         public void TrackAdsReward_LoadSuccess()
         {
+            TrackAdsReward_LoadSuccess(0f);
+        }
+
+        internal void TrackAdsReward_LoadSuccess(float timeFromStartRequest)
+        {
             rewardedAdsLoadSuccess++;
-            FirebaseManager.Instance.LogEvent(ads_reward_load_success, CreateSessionAdIndexParameters(rewardedAdsLoadSuccess));
+            timeFromStartRequest = Mathf.Round(timeFromStartRequest * 2) / 2;
+            var parameters = new[]
+            {
+                new Parameter("count", rewardedAdsLoadSuccess.ToString()),
+                new Parameter("request_time", timeFromStartRequest.ToString("F1")),
+                new Parameter(session_ad_index_parameter, rewardedAdsLoadSuccess.ToString()),
+            };
+            FirebaseManager.Instance?.LogEvent(ads_reward_load_success, parameters);
 #if UNITY_APPSFLYER
             AppsflyerManager.TrackRewarded_LoadedSuccess();
 #endif
+        }
+
+        internal void TrackAdsReward_LoadFail(string error, float timeFromStartRequest)
+        {
+            rewardedAdsLoadFail++;
+            var firebase = FirebaseManager.Instance;
+            if (firebase == null || !firebase.IsFirebaseReady)
+                return;
+
+            error = error ?? string.Empty;
+            if (error.Length > RewardedLoadErrorMaxLength)
+                error = error.Substring(0, RewardedLoadErrorMaxLength);
+
+            // Session budget: first five, then changed transmitted errors, at most ten total.
+            // Do not reset on load success: persistent or alternating failures must stay bounded.
+            if (rewardedAdsLoadFailEvents >= RewardedLoadFailSessionEventLimit ||
+                (rewardedAdsLoadFailEvents >= RewardedLoadFailInitialEventLimit && error == lastRewardedLoadFailError))
+                return;
+
+            rewardedAdsLoadFailEvents++;
+            lastRewardedLoadFailError = error;
+            timeFromStartRequest = Mathf.Round(timeFromStartRequest * 2) / 2;
+            var parameters = new[]
+            {
+                new Parameter("error", error),
+                new Parameter("request_time", timeFromStartRequest.ToString("F1")),
+                new Parameter("count", rewardedAdsLoadFail.ToString()),
+                new Parameter(session_ad_index_parameter, rewardedAdsLoadFail.ToString()),
+            };
+            firebase.LogEvent(ads_reward_load_fail, parameters);
         }
 
         #endregion

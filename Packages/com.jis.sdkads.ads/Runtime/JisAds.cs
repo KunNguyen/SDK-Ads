@@ -703,6 +703,7 @@ namespace JisSDKAds.Ads
 
             var loadGeneration = _rewardedLoadGate.Begin();
             DebugAds.Log($"[JisAds][Rewarded][preload_start] mediation={providerId}");
+            var loadStartedAt = Time.unscaledTime;
             provider.Rewarded.Load(
                 onLoaded: () =>
                 {
@@ -711,6 +712,7 @@ namespace JisSDKAds.Ads
                         return;
                     OnPreloadSucceeded(StandardAdPreloadFormat.Rewarded);
                     DebugAds.Log($"[JisAds][Rewarded][preload_success] mediation={providerId}");
+                    TrackCoreRewardedLoadSuccess(loadStartedAt);
                 },
                 onFailed: err =>
                 {
@@ -718,6 +720,7 @@ namespace JisSDKAds.Ads
                         return;
                     DebugAds.LogWarning($"[JisAds][Rewarded][preload_fail] mediation={providerId} error={err}");
                     HandlePreloadFailedIfNoFormatReady(StandardAdPreloadFormat.Rewarded);
+                    TrackCoreRewardedLoadFail(err, loadStartedAt);
                 });
         }
 
@@ -1004,6 +1007,7 @@ namespace JisSDKAds.Ads
                 startedAny = true;
                 _rewardedLoadGate.BeginSlot();
                 DebugAds.Log($"[JisAds][Rewarded][preload_start] mediation={providerId}");
+                var loadStartedAt = Time.unscaledTime;
                 provider.Rewarded.Load(
                     onLoaded: () =>
                     {
@@ -1013,6 +1017,7 @@ namespace JisSDKAds.Ads
                         OnPreloadSucceeded(StandardAdPreloadFormat.Rewarded);
                         DebugAds.Log($"[JisAds][Rewarded][preload_success] mediation={providerId}");
                         _rewardedLoadGate.EndSlot(loadGeneration);
+                        TrackCoreRewardedLoadSuccess(loadStartedAt);
                     },
                     onFailed: err =>
                     {
@@ -1021,6 +1026,7 @@ namespace JisSDKAds.Ads
                         DebugAds.LogWarning($"[JisAds][Rewarded][preload_fail] mediation={providerId} error={err}");
                         HandlePreloadFailedIfNoFormatReady(StandardAdPreloadFormat.Rewarded);
                         _rewardedLoadGate.EndSlot(loadGeneration);
+                        TrackCoreRewardedLoadFail(err, loadStartedAt);
                     });
             }
 
@@ -1107,6 +1113,7 @@ namespace JisSDKAds.Ads
 
             var loadGeneration = _rewardedLoadGate.Begin();
             DebugAds.Log($"[JisAds][Rewarded][preload_start] mediation={providerId}");
+            var loadStartedAt = Time.unscaledTime;
             provider.Rewarded.Load(
                 onLoaded: () =>
                 {
@@ -1115,6 +1122,7 @@ namespace JisSDKAds.Ads
                         return;
                     OnPreloadSucceeded(StandardAdPreloadFormat.Rewarded);
                     DebugAds.Log($"[JisAds][Rewarded][preload_success] mediation={providerId}");
+                    TrackCoreRewardedLoadSuccess(loadStartedAt);
                 },
                 onFailed: err =>
                 {
@@ -1122,6 +1130,7 @@ namespace JisSDKAds.Ads
                         return;
                     DebugAds.LogWarning($"[JisAds][Rewarded][preload_fail] mediation={providerId} error={err}");
                     HandlePreloadFailed(StandardAdPreloadFormat.Rewarded);
+                    TrackCoreRewardedLoadFail(err, loadStartedAt);
                 });
         }
 
@@ -2394,6 +2403,33 @@ namespace JisSDKAds.Ads
             tracker.TrackAdsInterstitial_LoadedFail(error ?? string.Empty, GetLoadRequestTimeSeconds(loadStartedAtUnscaled));
         }
 
+        void TrackCoreRewardedLoadSuccess(float loadStartedAtUnscaled)
+        {
+            var tracker = AdsTracker.Instance;
+            if (tracker == null)
+            {
+                DebugAds.LogWarning("[JisAds] AdsTracker.Instance is null. Skipping rewarded load-success tracking.");
+                return;
+            }
+
+            // Analytics must not interrupt load completion, retry scheduling, or a Core show-time load.
+            try { tracker.TrackAdsReward_LoadSuccess(GetLoadRequestTimeSeconds(loadStartedAtUnscaled)); }
+            catch (Exception e) { DebugAds.LogWarning($"[JisAds][Rewarded] load-success tracking failed: {e.Message}"); }
+        }
+
+        void TrackCoreRewardedLoadFail(string error, float loadStartedAtUnscaled)
+        {
+            var tracker = AdsTracker.Instance;
+            if (tracker == null)
+            {
+                DebugAds.LogWarning("[JisAds] AdsTracker.Instance is null. Skipping rewarded load-fail tracking.");
+                return;
+            }
+
+            try { tracker.TrackAdsReward_LoadFail(error ?? string.Empty, GetLoadRequestTimeSeconds(loadStartedAtUnscaled)); }
+            catch (Exception e) { DebugAds.LogWarning($"[JisAds][Rewarded] load-fail tracking failed: {e.Message}"); }
+        }
+
         void TrackPendingInterstitialShowFailure(bool isTracking, string failByLoadReason = null)
         {
             if (!isTracking)
@@ -2617,6 +2653,8 @@ namespace JisSDKAds.Ads
                 var id = ParseProviderId(providerId);
                 RecordRewardedLoaded(id);
                 OnPreloadSucceeded(StandardAdPreloadFormat.Rewarded);
+                // AdManager raises this only for its own show-time load, not JisAds preloads.
+                TrackCoreRewardedLoadSuccess(0f);
             }
 
             DebugAds.Log($"[JisAds][{format}][load_success] mediation={providerId}");
