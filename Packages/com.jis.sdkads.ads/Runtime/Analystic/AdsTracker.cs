@@ -32,7 +32,7 @@ namespace JisSDKAds.Ads
         /// <summary>
         /// JisSDKAdsSettings.logAdDiagnosticEvents (default true). When false, the high-volume diagnostic events
         /// (ad_inter_load, ad_inter_load_fail, ad_inter_click, ad_inter_show_fail_by_load, ads_reward_click,
-        /// ads_reward_show_fail_by_load) are not sent; session indexes, AppsFlyer and every other event are unchanged.
+        /// ads_reward_show_fail_by_load, ads_reward_load_success, ads_reward_load_fail) are not sent; session indexes, AppsFlyer and every other event are unchanged.
         /// </summary>
         static bool LogDiagnosticEvents
         {
@@ -213,7 +213,8 @@ namespace JisSDKAds.Ads
                 new Parameter("request_time", timeFromStartRequest.ToString("F1")),
                 new Parameter(session_ad_index_parameter, rewardedAdsLoadSuccess.ToString()),
             };
-            FirebaseManager.Instance?.LogEvent(ads_reward_load_success, parameters);
+            if (LogDiagnosticEvents)
+                FirebaseManager.Instance?.LogEvent(ads_reward_load_success, parameters);
 #if UNITY_APPSFLYER
             AppsflyerManager.TrackRewarded_LoadedSuccess();
 #endif
@@ -222,6 +223,8 @@ namespace JisSDKAds.Ads
         internal void TrackAdsReward_LoadFail(string error, float timeFromStartRequest)
         {
             rewardedAdsLoadFail++;
+            if (!LogDiagnosticEvents)
+                return;
             var firebase = FirebaseManager.Instance;
             if (firebase == null || !firebase.IsFirebaseReady)
                 return;
