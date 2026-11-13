@@ -53,6 +53,7 @@ namespace JisSDKAds.IAP
                 inAppPurchaser.SetHasDeferredOrders((existingOrders.DeferredOrders?.Count ?? 0) > 0);
             }
 
+            inAppPurchaser.EndRestore();
             inAppPurchaser.FinishEntitlementsReplay();
         }
 
@@ -61,6 +62,7 @@ namespace JisSDKAds.IAP
             LogSectionHeader();
             var message = failure?.Message ?? "unknown";
             inAppPurchaser.IAPLogger.LogConsole($"OnExistingPurchasesFetchFailed: {message}");
+            inAppPurchaser.EndRestore();
             inAppPurchaser.FinishEntitlementsReplay(
                 $"Existing purchases could not be fetched ({message}). Shop is available; entitlements may need Restore.");
         }

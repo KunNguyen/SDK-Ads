@@ -82,6 +82,9 @@ namespace JisSDKAds.IAP
         // Granted but not confirmed/consumed (confirm failed or grant threw): Google keeps the SKU owned until we
         // re-fetch and confirm, so the next purchase of that pack would fail with ITEM_ALREADY_OWNED.
         bool _hasUnconfirmedOrders;
+        // Set by RestorePurchases until the purchases fetch it triggers completes: already-processed
+        // entitlements found by that fetch are reported to the game again (see NotifyOwnedEntitlementIfRequested).
+        bool _restoreInProgress;
         readonly HashSet<string> _awaitingStore = new HashSet<string>();
         float _lastFocusRecoveryTime = float.NegativeInfinity;
         TaskCompletionSource<bool> _readyTcs;
@@ -573,7 +576,14 @@ namespace JisSDKAds.IAP
                 return;
             }
 
+            _restoreInProgress = true;
             PurchaseService.RestoreTransactions(OnTransactionRestored);
+        }
+
+        /// <summary>Called when a purchases fetch completes (success or failure).</summary>
+        internal void EndRestore()
+        {
+            _restoreInProgress = false;
         }
 
         public bool ValidatePurchaseIfPossible(IOrderInfo orderInfo, bool isRestore = false)
@@ -629,6 +639,7 @@ namespace JisSDKAds.IAP
             if (IapPurchasePersistence.WasTransactionProcessed(transactionId))
             {
                 IAPLogger.LogConsole($"Skipping already processed transaction: {transactionId}");
+                NotifyOwnedEntitlementIfRequested(productId, orderInfo, productReceipt);
                 return true;
             }
 
@@ -682,6 +693,28 @@ namespace JisSDKAds.IAP
                 isRestore);
             DispatchPurchaseSuccess(notification);
             return true;
+        }
+
+        /// <summary>
+        /// The store re-delivers the same transaction for an owned non-consumable / subscription when the player
+        /// buys it again or taps Restore. It was granted once already, but the game may have lost it (save reset,
+        /// cloud overwrite) and a waiting buy UI needs an answer, so report it again as a restore
+        /// (<c>IsRestore = true</c>: no analytics). Boot / focus replays stay silent.
+        /// </summary>
+        void NotifyOwnedEntitlementIfRequested(string productId, IOrderInfo orderInfo, IPurchaseReceipt productReceipt)
+        {
+            if (string.IsNullOrEmpty(productId))
+                return;
+            var pack = IapProductConfigs?.FindPackage(productId);
+            if (pack == null || pack.ProductKind == IapProductKind.Consumable)
+                return;
+            if (!_restoreInProgress && !_pendingPurchaseCallbacks.ContainsKey(productId))
+                return;
+
+            var purchaseToken = ExtractPurchaseToken(productReceipt);
+            var receipt = orderInfo?.Receipt ?? string.Empty;
+            DispatchPurchaseSuccess(BuildNotification(productId, pack, orderInfo, productReceipt, purchaseToken,
+                receipt, isRestore: true));
         }
 
         IapPurchaseNotification BuildNotification(string productId, IAPPackage pack, IOrderInfo orderInfo,
@@ -842,7 +875,11 @@ namespace JisSDKAds.IAP
             if (success)
                 DebugAds.Log("Purchases restored successfully.");
             else
+            {
+                // No purchases fetch follows a failed restore.
+                _restoreInProgress = false;
                 DebugAds.LogError($"Failed to restore purchases: {error}");
+            }
         }
 
         public void OnPurchaseConfirmed(Product product, IOrderInfo orderInfo)

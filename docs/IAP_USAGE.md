@@ -169,6 +169,7 @@ bool owned = InAppPurchaser.Instance.HasPurchased("remove_ads");
 
 - **Transaction đã xử lý** lưu riêng → tránh cộng coin / analytics trùng khi fetch purchase cũ.
 - **Restore** vẫn apply Remove Ads nhưng **không** gửi lại Firebase / AppsFlyer / SolarEngine (`IsRestore = true`).
+- Non-consumable / subscription **đã xử lý** mà store gửi lại (bấm mua lại gói đã sở hữu, hoặc bấm Restore) vẫn được báo lại qua `PurchaseCompleted` với `IsRestore = true` → game phải cấp entitlement **idempotent**. Replay lúc boot / focus thì không báo lại (dùng `HasPurchased` để đối chiếu).
 - **`IsStoreReady`** chỉ true sau khi fetch existing purchases xong (hoặc fetch fail + cảnh báo).
 - Receipt invalid → **không** confirm order (pending giữ lại để retry).
 - Khi store ready, SDK tự apply Remove Ads nếu đã có trong persistence local.

@@ -1,6 +1,6 @@
 {
   "name": "com.jis.sdkads.iap",
-  "version": "5.0.2",
+  "version": "5.0.3",
   "displayName": "JIS SDK - IAP",
   "description": "Unity IAP integration for JIS SDK.",
   "unity": "2022.3",
